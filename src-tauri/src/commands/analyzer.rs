@@ -36,11 +36,14 @@ pub async fn analyze_skill_quality(
     let analyzer = SkillAnalyzer::with_default_config()
         .map_err(|e| AnalyzerCommandError::from(e))?;
 
-    // Analyze the skill
+    // Analyze the skill in a blocking thread
     let path = PathBuf::from(skill_path);
-    let score = analyzer
-        .analyze_file(&path)
-        .map_err(|e| AnalyzerCommandError::from(e))?;
+    let score = tauri::async_runtime::spawn_blocking(move || {
+        analyzer.analyze_file(&path)
+    })
+    .await
+    .map_err(|e| AnalyzerCommandError { message: e.to_string() })?
+    .map_err(|e| AnalyzerCommandError::from(e))?;
 
     Ok(score)
 }
@@ -63,8 +66,12 @@ pub async fn batch_analyze_skills(
     // Convert strings to PathBuf
     let paths: Vec<PathBuf> = skill_paths.iter().map(|s| PathBuf::from(s)).collect();
 
-    // Analyze all skills
-    let results = analyzer.batch_analyze(&paths);
+    // Analyze all skills in a blocking thread
+    let results = tauri::async_runtime::spawn_blocking(move || {
+        analyzer.batch_analyze(&paths)
+    })
+    .await
+    .map_err(|e| AnalyzerCommandError { message: e.to_string() })?;
 
     // Collect successful results, skip errors
     let scores: Vec<SkillScore> = results
@@ -93,8 +100,12 @@ pub async fn batch_analyze_skills_detailed(
     // Convert strings to PathBuf
     let paths: Vec<PathBuf> = skill_paths.iter().map(|s| PathBuf::from(s)).collect();
 
-    // Analyze all skills
-    let results = analyzer.batch_analyze(&paths);
+    // Analyze all skills in a blocking thread
+    let results = tauri::async_runtime::spawn_blocking(move || {
+        analyzer.batch_analyze(&paths)
+    })
+    .await
+    .map_err(|e| AnalyzerCommandError { message: e.to_string() })?;
 
     let mut scores = Vec::new();
     let mut errors = Vec::new();

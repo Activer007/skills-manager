@@ -226,11 +226,14 @@ pub fn extract_use_cases(content: &str) -> Vec<String> {
 
 /// Check if content has step-by-step instructions
 pub fn has_step_by_step(content: &str) -> bool {
+    use std::sync::OnceLock;
+    static STEP_RE: OnceLock<Regex> = OnceLock::new();
+
     let content_lower = content.to_lowercase();
 
     // Check for numbered lists or step indicators
-    let has_numbered_list = Regex::new(r"(?m)^\s*\d+\.\s+")
-        .unwrap()
+    let has_numbered_list = STEP_RE
+        .get_or_init(|| Regex::new(r"(?m)^\s*\d+\.\s+").unwrap())
         .is_match(content);
 
     let has_step_keywords = content_lower.contains("step")
