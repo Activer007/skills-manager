@@ -5,17 +5,23 @@ import { useSkillStore } from '../store/useSkillStore';
 
 const Security = () => {
   const { t, i18n } = useTranslation();
-  const { installedSkills } = useSkillStore();
+  const { installedSkills, scanLocalSkills } = useSkillStore();
   const [scanning, setScanning] = useState(false);
   const [lastScan, setLastScan] = useState<Date | null>(new Date());
 
-  const handleScan = () => {
+  const handleScan = async () => {
     setScanning(true);
-    setTimeout(() => {
-        setScanning(false);
-        setLastScan(new Date());
-    }, 2000);
+    try {
+      await scanLocalSkills();
+      setLastScan(new Date());
+    } catch (error) {
+      console.error('Scan failed:', error);
+    } finally {
+      setScanning(false);
+    }
   };
+
+  const riskCount = installedSkills.filter(s => s.status === 'unsafe').length;
 
   return (
     <div className="space-y-6">
@@ -71,7 +77,7 @@ const Security = () => {
                 <h3 className="card-title">
                   {i18n.language === 'zh' ? '发现风险' : 'Risks Found'}
                 </h3>
-                <p className="text-2xl font-bold">0</p>
+                <p className="text-2xl font-bold">{riskCount}</p>
                 <p className="text-xs text-base-content/50">
                   {i18n.language === 'zh' ? '需要处理' : 'Needs attention'}
                 </p>

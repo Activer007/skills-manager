@@ -269,7 +269,9 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
                 Ok(report) => {
                     if report.blocked {
                         // Remove the skill if blocked by hard triggers
-                        let _ = fs::remove_dir_all(&target_dir);
+                        if let Err(e) = fs::remove_dir_all(&target_dir) {
+                            eprintln!("Failed to remove blocked skill directory {}: {}", target_dir.display(), e);
+                        }
                         return ImportResult {
                             success: false,
                             message: format!(
@@ -285,6 +287,19 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
                     eprintln!("Security scan completed for {}: {} ({})", skill_name, report.score, report.level.as_str());
                     if !report.issues.is_empty() {
                         eprintln!("Security issues found: {}", report.issues.len());
+                    }
+
+                    if report.score < 70 {
+                        return ImportResult {
+                            success: true,
+                            message: format!(
+                                "Successfully installed {} to {}, but warning: low security score ({}). Please review the code.",
+                                skill_name,
+                                target_dir.display(),
+                                report.score
+                            ),
+                            blocked: false,
+                        };
                     }
                 }
                 Err(e) => {
@@ -384,7 +399,9 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
             Ok(report) => {
                 if report.blocked {
                     // Remove the skill if blocked by hard triggers
-                    let _ = fs::remove_dir_all(&target_dir);
+                    if let Err(e) = fs::remove_dir_all(&target_dir) {
+                        eprintln!("Failed to remove blocked skill directory {}: {}", target_dir.display(), e);
+                    }
                     return Ok(ImportResult {
                         success: false,
                         message: format!(
@@ -400,6 +417,19 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
                 eprintln!("Security scan completed for {}: {} ({})", request.skill_name, report.score, report.level.as_str());
                 if !report.issues.is_empty() {
                     eprintln!("Security issues found: {}", report.issues.len());
+                }
+
+                if report.score < 70 {
+                    return Ok(ImportResult {
+                        success: true,
+                        message: format!(
+                            "Successfully imported {} to {}, but warning: low security score ({}). Please review the code.",
+                            request.skill_name,
+                            target_dir.display(),
+                            report.score
+                        ),
+                        blocked: false,
+                    });
                 }
             }
             Err(e) => {

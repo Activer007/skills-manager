@@ -15,7 +15,7 @@ use std::path::PathBuf;
 /// # Returns
 /// * `Result<SecurityReport, String>` - Security scan report or error message
 #[tauri::command]
-pub async fn scan_skill_security(skill_path: String) -> Result<SecurityReport, String> {
+pub async fn scan_skill_security(skill_path: String, locale: Option<String>) -> Result<SecurityReport, String> {
     let scanner = SecurityScanner::new();
     let path = PathBuf::from(&skill_path);
 
@@ -28,7 +28,7 @@ pub async fn scan_skill_security(skill_path: String) -> Result<SecurityReport, S
         .and_then(|n| n.to_str())
         .unwrap_or("unknown");
 
-    scanner.scan_directory(&skill_path, skill_id, "en")
+    scanner.scan_directory(&skill_path, skill_id, locale.as_deref().unwrap_or("en"))
         .map_err(|e| e.to_string())
 }
 
@@ -36,13 +36,15 @@ pub async fn scan_skill_security(skill_path: String) -> Result<SecurityReport, S
 ///
 /// # Arguments
 /// * `skill_paths` - Vector of skill directory paths to scan
+/// * `locale` - Optional locale for the report
 ///
 /// # Returns
 /// * `Result<Vec<SecurityReport>, String>` - Vector of security scan reports
 #[tauri::command]
-pub async fn batch_scan_skills(skill_paths: Vec<String>) -> Result<Vec<SecurityReport>, String> {
+pub async fn batch_scan_skills(skill_paths: Vec<String>, locale: Option<String>) -> Result<Vec<SecurityReport>, String> {
     let scanner = SecurityScanner::new();
     let mut results = Vec::new();
+    let loc = locale.as_deref().unwrap_or("en");
 
     for skill_path in skill_paths {
         let path = PathBuf::from(&skill_path);
@@ -56,7 +58,7 @@ pub async fn batch_scan_skills(skill_paths: Vec<String>) -> Result<Vec<SecurityR
             .and_then(|n| n.to_str())
             .unwrap_or("unknown");
 
-        match scanner.scan_directory(&skill_path, skill_id, "en") {
+        match scanner.scan_directory(&skill_path, skill_id, loc) {
             Ok(report) => results.push(report),
             Err(e) => {
                 eprintln!("Failed to scan skill {}: {}", skill_path, e);

@@ -60,32 +60,41 @@ export const useSkillStore = create<SkillStore>()(
         set({ isLoading: true });
         try {
           const result: any = await invoke('scan_skills');
+          
+          const allSkillPaths = [
+            ...result.systemSkills.map((s: any) => s.path),
+            ...result.projectSkills.map((s: any) => s.path)
+          ];
+
+          // Batch scan for security
+          const securityReports: any[] = await invoke('batch_scan_skills', { 
+            skillPaths: allSkillPaths,
+            locale: window.localStorage.getItem('i18nextLng') || 'en'
+          });
+
+          const securityMap = new Map(securityReports.map(r => [r.skill_id, r]));
+
+          const mapSkill = (s: any) => {
+            const report = securityMap.get(s.path.split(/[\\/]/).pop());
+            return {
+              id: s.path,
+              name: s.name,
+              description: s.description || '',
+              localPath: s.path,
+              status: report ? (report.score >= 70 ? 'safe' : 'unsafe') : 'safe',
+              type: s.skillType,
+              installDate: Date.now(),
+              version: '1.0.0',
+              author: 'Unknown',
+              stars: 0,
+              securityScore: report?.score,
+              securityIssues: report?.issues
+            };
+          };
 
           const allSkills = [
-            ...result.systemSkills.map((s: any) => ({
-              id: s.path,  // 使用 path 作为唯一 id
-              name: s.name,
-              description: s.description || '',
-              localPath: s.path,
-              status: 'safe',
-              type: s.skillType,
-              installDate: Date.now(),
-              version: '1.0.0',
-              author: 'Unknown',
-              stars: 0
-            })),
-            ...result.projectSkills.map((s: any) => ({
-              id: s.path,  // 使用 path 作为唯一 id
-              name: s.name,
-              description: s.description || '',
-              localPath: s.path,
-              status: 'safe',
-              type: s.skillType,
-              installDate: Date.now(),
-              version: '1.0.0',
-              author: 'Unknown',
-              stars: 0
-            }))
+            ...result.systemSkills.map(mapSkill),
+            ...result.projectSkills.map(mapSkill)
           ];
 
           set({
