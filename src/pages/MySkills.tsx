@@ -5,6 +5,8 @@ import { Trash2, Eye, FolderOpen, X, Github, HardDrive, Plus } from 'lucide-reac
 import type { InstalledSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
+import SkillQualityCard from '../components/SkillQualityCard';
+import type { SkillScore } from '../types/scorer';
 
 const MySkills = () => {
   const { t, i18n } = useTranslation();
@@ -13,6 +15,9 @@ const MySkills = () => {
   const [selectedSkill, setSelectedSkill] = useState<InstalledSkill | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [skillContent, setSkillContent] = useState<string>('');
+  const [skillScore, setSkillScore] = useState<SkillScore | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importType, setImportType] = useState<'github' | 'local' | null>(null);
   const [importUrl, setImportUrl] = useState('');
@@ -60,6 +65,23 @@ const MySkills = () => {
   const handleViewSkill = async (skill: InstalledSkill) => {
     setSelectedSkill(skill);
     setShowViewModal(true);
+    setSkillScore(null);
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+
+    // Analyze skill quality
+    invoke<SkillScore>('analyze_skill_quality', {
+      skillPath: skill.localPath
+    })
+    .then(score => {
+      setSkillScore(score);
+      setIsAnalyzing(false);
+    })
+    .catch(err => {
+      console.error('Analysis failed:', err);
+      setAnalysisError(typeof err === 'string' ? err : JSON.stringify(err));
+      setIsAnalyzing(false);
+    });
 
     // 读取 SKILL.md 文件内容
     try {
@@ -260,7 +282,14 @@ const MySkills = () => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-auto bg-base-200 p-6">
+                <div className="flex-1 overflow-auto bg-base-200 p-6 space-y-6">
+                    {/* Quality Score Card */}
+                    <SkillQualityCard
+                      score={skillScore!}
+                      isLoading={isAnalyzing}
+                      error={analysisError}
+                    />
+
                     <div className="prose prose-sm max-w-none bg-base-100 p-6 rounded-lg shadow-sm">
                       <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed font-mono bg-transparent">
                         {skillContent || '加载中...'}
