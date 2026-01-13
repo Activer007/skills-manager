@@ -26,14 +26,14 @@
 cd C:\Users\17136\Desktop\work\project\others\creat\skill-manager
 
 # 设置 remote
-git remote set-url origin https://github.com/buzhangsan/skills-manager-client.git
+git remote set-url origin https://github.com/Activer007/skills-manager.git
 
 # 推送代码
 git push -u origin master
 ```
 
 如果网络问题无法推送，可以使用 GitHub Desktop 或者：
-1. 访问 https://github.com/buzhangsan/skills-manager-client
+1. 访问 https://github.com/Activer007/skills-manager
 2. 点击 "Add file" > "Upload files"
 3. 上传整个项目
 
@@ -45,7 +45,11 @@ npm run build
 
 # Tauri 构建
 npm run tauri:build:windows
+
+# Linux 版本
+npm run tauri:build -- --target x86_64-unknown-linux-gnu
 ```
+
 
 构建产物位置：
 - EXE: `src-tauri\target\x86_64-pc-windows-msvc\release\skill-manager.exe`
@@ -55,7 +59,7 @@ npm run tauri:build:windows
 
 1. **访问 Releases 页面**
    ```
-   https://github.com/buzhangsan/skills-manager-client/releases/new
+   https://github.com/Activer007/skills-manager/releases/new
    ```
 
 2. **填写 Release 信息**
@@ -79,7 +83,7 @@ npm run tauri:build:windows
 
 测试下载链接是否正确：
 ```
-https://github.com/buzhangsan/skills-manager-client/releases/latest/download/init-data.zip
+https://github.com/Activer007/skills-manager/releases/latest/download/init-data.zip
 ```
 
 应该能下载到 746 bytes 的 ZIP 文件。
@@ -133,7 +137,7 @@ git push
 - ⭐ **必须先上传 init-data.zip**
 - 应用首次启动会从以下地址下载：
   ```
-  https://github.com/buzhangsan/skills-manager-client/releases/latest/download/init-data.zip
+  https://github.com/Activer007/skills-manager/releases/latest/download/init-data.zip
   ```
 - 如果这个文件不存在，应用会使用默认配置继续运行
 
@@ -141,7 +145,7 @@ git push
 
 已在 `src-tauri/src/main.rs` 第 13 行配置：
 ```rust
-const INIT_DATA_URL: &str = "https://github.com/buzhangsan/skills-manager-client/releases/latest/download/init-data.zip";
+const INIT_DATA_URL: &str = "https://github.com/Activer007/skills-manager/releases/latest/download/init-data.zip";
 ```
 
 这个地址指向 **latest release**，所以每次发布新 Release 时：

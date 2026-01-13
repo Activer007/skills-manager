@@ -24,7 +24,7 @@ impl From<crate::analyzer::AnalyzerError> for AnalyzerCommandError {
 /// Analyze a single skill file and return quality score
 ///
 /// # Arguments
-/// * `skill_path` - Path to the SKILL.md file
+/// * `skill_path` - Path to the skill directory or SKILL.md file
 ///
 /// # Returns
 /// * `Result<SkillScore, AnalyzerCommandError>` - Skill quality score or error
@@ -32,14 +32,32 @@ impl From<crate::analyzer::AnalyzerError> for AnalyzerCommandError {
 pub async fn analyze_skill_quality(
     skill_path: String,
 ) -> Result<SkillScore, AnalyzerCommandError> {
+    use std::path::PathBuf;
+
     // Create analyzer
     let analyzer = SkillAnalyzer::with_default_config()
         .map_err(|e| AnalyzerCommandError::from(e))?;
 
+    // Handle both directory and file paths
+    let path = PathBuf::from(&skill_path);
+    let skill_md = if path.is_dir() {
+        // If directory, append SKILL.md
+        path.join("SKILL.md")
+    } else {
+        // If already a file path, use as-is
+        path
+    };
+
+    // Verify file exists
+    if !skill_md.exists() {
+        return Err(AnalyzerCommandError {
+            message: format!("SKILL.md not found at: {}", skill_md.display()),
+        });
+    }
+
     // Analyze the skill in a blocking thread
-    let path = PathBuf::from(skill_path);
     let score = tauri::async_runtime::spawn_blocking(move || {
-        analyzer.analyze_file(&path)
+        analyzer.analyze_file(&skill_md)
     })
     .await
     .map_err(|e| AnalyzerCommandError { message: e.to_string() })?

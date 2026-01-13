@@ -6,11 +6,9 @@
 
 ## 快速开始
 
-直接从 [Releases](https://github.com/buzhangsan/skills-manager-client/releases) 下载最新版本。
+直接从 [Releases](https://github.com/Activer007/skills-manager/releases) 下载最新版本。
 
-如果想更加智能的查找 skill，请使用此 CLI 工具：https://github.com/buzhangsan/skill-manager
-
-如有问题请在 [Issues](https://github.com/buzhangsan/skills-manager-client/issues) 中反馈。
+如有问题请在 [Issues](https://github.com/Activer007/skills-manager/issues) 中反馈。
 
 ## 功能特性
 

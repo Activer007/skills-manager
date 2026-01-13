@@ -6,11 +6,11 @@ A desktop application for managing Claude Code Skills, supporting browsing, inst
 
 ## Quick Start
 
-Download the latest version from [Releases](https://github.com/buzhangsan/skills-manager-client/releases).
+Download the latest version from [Releases](https://github.com/Activer007/skills-manager/releases).
 
 For smarter skill discovery, try this CLI tool: https://github.com/buzhangsan/skill-manager
 
-Report issues on [GitHub Issues](https://github.com/buzhangsan/skills-manager-client/issues).
+Report issues on [GitHub Issues](https://github.com/Activer007/skills-manager/issues).
 
 ## Features
 

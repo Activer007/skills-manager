@@ -256,12 +256,12 @@ const Settings = () => {
                     {i18n.language === 'zh' ? '项目仓库' : 'Repository'}
                   </span>
                   <a
-                    href="https://github.com/buzhangsan/skills-manager-client"
+                    href="https://github.com/Activer007/skills-manager"
                     className="btn btn-sm btn-ghost gap-1"
                     onClick={async (e) => {
                       e.preventDefault();
                       try {
-                        await invoke('open_url', { url: 'https://github.com/buzhangsan/skills-manager-client' });
+                        await invoke('open_url', { url: 'https://github.com/Activer007/skills-manager' });
                       } catch (error) {
                         console.error('Failed to open URL:', error);
                       }
