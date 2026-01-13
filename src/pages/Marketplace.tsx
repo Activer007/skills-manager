@@ -25,6 +25,15 @@ const Marketplace = () => {
   const handleInstall = async (skill: any) => {
     if (installingSkillId) return;
 
+    // 显示安装前安全警告
+    const confirmed = window.confirm(
+      i18n.language === 'zh'
+        ? `⚠️ 安全提示\n\n当前版本已启用安全检查功能。\n\n安装前会自动扫描 Skill 内容，检测以下危险模式：\n• 破坏性操作（如 rm -rf /）\n• 远程代码执行（如 curl | sh）\n• 命令注入（如 eval()）\n• 数据泄露风险\n\n如检测到硬触发危险代码，将阻止安装。\n\n是否继续安装 ${skill.name}？`
+        : `⚠️ Security Notice\n\nSecurity scanning is enabled. The skill will be scanned for:\n• Destructive operations (e.g., rm -rf /)\n• Remote code execution (e.g., curl | sh)\n• Command injection (e.g., eval())\n• Data exfiltration risks\n\nInstallation will be blocked if critical patterns are detected.\n\nContinue installing ${skill.name}?`
+    );
+
+    if (!confirmed) return;
+
     setInstallingSkillId(skill.id);
     setInstallStatus({
       show: true,
