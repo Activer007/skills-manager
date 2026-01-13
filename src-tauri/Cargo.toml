@@ -30,6 +30,11 @@ serde_yaml = "0.9"              # YAML frontmatter parsing
 pulldown-cmark = "0.11"         # Markdown parsing
 chrono = "0.4"                  # Date/time handling
 
+# Security Scanner dependencies
+anyhow = "1"                    # Error handling
+lazy_static = "1.4"             # Lazy static regex patterns
+sha2 = "0.10"                   # Checksum calculation
+
 [dev-dependencies]
 tempfile = "3"                  # Temporary files for testing
 

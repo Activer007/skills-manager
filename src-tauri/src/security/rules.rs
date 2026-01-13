@@ -1,0 +1,671 @@
+use regex::Regex;
+use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
+
+/// 风险严重程度
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Severity {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+/// 风险类别
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Category {
+    Destructive,      // 破坏性操作
+    RemoteExec,       // 远程执行
+    CmdInjection,     // 命令注入
+    Network,          // 网络外传
+    Privilege,        // 权限提升
+    Secrets,          // 敏感泄露
+    Persistence,      // 持久化
+    SensitiveFileAccess,  // 敏感文件访问
+}
+
+/// 置信度等级
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Confidence {
+    High,    // 高置信度，误报可能性低
+    Medium,  // 中等置信度
+    Low,     // 低置信度，可能误报
+}
+
+/// 危险模式规则
+#[derive(Debug, Clone)]
+pub struct PatternRule {
+    pub id: &'static str,
+    pub name: &'static str,
+    pub pattern: Regex,
+    pub severity: Severity,
+    pub category: Category,
+    pub weight: i32,
+    pub description: &'static str,
+    pub hard_trigger: bool,
+    pub confidence: Confidence,           // 新增
+    pub remediation: &'static str,        // 新增：修复建议
+    pub cwe_id: Option<&'static str>,     // 新增：CWE 编号
+}
+
+impl PatternRule {
+    fn new(
+        id: &'static str,
+        name: &'static str,
+        pattern: &'static str,
+        severity: Severity,
+        category: Category,
+        weight: i32,
+        description: &'static str,
+        hard_trigger: bool,
+        confidence: Confidence,           // 新增
+        remediation: &'static str,        // 新增
+        cwe_id: Option<&'static str>,     // 新增
+    ) -> Self {
+        Self {
+            id,
+            name,
+            pattern: Regex::new(pattern).expect("Invalid regex pattern"),
+            severity,
+            category,
+            weight,
+            description,
+            hard_trigger,
+            confidence,      // 新增
+            remediation,     // 新增
+            cwe_id,          // 新增
+        }
+    }
+}
+
+lazy_static! {
+    /// 所有危险模式规则库
+    pub static ref PATTERN_RULES: Vec<PatternRule> = vec![
+        // A. 破坏性操作
+        PatternRule::new(
+            "RM_RF_ROOT",
+            "删除根目录",
+            r"rm\s+(-[a-zA-Z]*)*\s*-r[a-zA-Z]*\s+(-[a-zA-Z]*\s+)*/($|\s|;|\|)",
+            Severity::Critical,
+            Category::Destructive,
+            100,
+            "rm -rf / 删除根目录",
+            true,
+            Confidence::High,
+            "检查命令参数，避免操作根目录或使用通配符",
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "RM_RF_HOME",
+            "删除用户目录",
+            r"rm\s+(-[a-zA-Z]*)*\s*-r[a-zA-Z]*\s+(-[a-zA-Z]*\s+)*(~|\$HOME)",
+            Severity::Critical,
+            Category::Destructive,
+            90,
+            "rm -rf ~ 删除用户目录",
+            true,
+            Confidence::High,
+            "检查命令参数，避免操作用户主目录",
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "DD_WIPE",
+            "磁盘擦除",
+            r"dd\s+.*of=/dev/(sd[a-z]|nvme|hd[a-z]|vd[a-z])",
+            Severity::Critical,
+            Category::Destructive,
+            100,
+            "dd 写入磁盘设备",
+            true,
+            Confidence::High,
+            "检查命令参数，避免写入系统磁盘设备",
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "MKFS_FORMAT",
+            "格式化磁盘",
+            r"mkfs(\.[a-z0-9]+)?\s+/dev/",
+            Severity::Critical,
+            Category::Destructive,
+            100,
+            "mkfs 格式化命令",
+            true,
+            Confidence::High,
+            "检查命令参数，避免格式化系统磁盘",
+            Some("CWE-78"),
+        ),
+
+        // B. 远程执行
+        PatternRule::new(
+            "CURL_PIPE_SH",
+            "Curl管道执行",
+            r"curl\s+[^|]*\|\s*(ba)?sh",
+            Severity::Critical,
+            Category::RemoteExec,
+            90,
+            "curl | sh 远程执行",
+            true,
+            Confidence::High,
+            "避免直接执行远程脚本，应先下载后检查",
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "WGET_PIPE_SH",
+            "Wget管道执行",
+            r"wget\s+[^|]*\|\s*(ba)?sh",
+            Severity::Critical,
+            Category::RemoteExec,
+            90,
+            "wget | sh 远程执行",
+            true,
+            Confidence::High,
+            "避免直接执行远程脚本，应先下载后检查",
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "BASE64_EXEC",
+            "Base64解码执行",
+            r"base64\s+(-d|--decode)[^|]*\|\s*(ba)?sh",
+            Severity::Critical,
+            Category::RemoteExec,
+            85,
+            "base64 解码后执行",
+            true,
+            Confidence::High,
+            "避免执行Base64编码的命令，可能隐藏恶意代码",
+            Some("CWE-506"),
+        ),
+        PatternRule::new(
+            "REVERSE_SHELL",
+            "反弹Shell",
+            r"(socket\.socket|s\.connect|os\.dup2|subprocess\.call.*bin/(ba)?sh)",
+            Severity::Critical,
+            Category::RemoteExec,
+            95,
+            "反弹Shell后门",
+            true,
+            Confidence::High,
+            "检查网络连接和进程调用，避免反弹Shell后门",
+            Some("CWE-506"),
+        ),
+
+        // C. 命令注入
+        PatternRule::new(
+            "PY_EVAL",
+            "Python eval",
+            r"\beval\s*\(",
+            Severity::High,
+            Category::CmdInjection,
+            70,
+            "eval() 动态执行",
+            false,
+            Confidence::Medium,
+            "避免使用eval()动态执行代码，使用安全的替代方法",
+            Some("CWE-94"),
+        ),
+        PatternRule::new(
+            "PY_EXEC",
+            "Python exec",
+            r"\bexec\s*\(",
+            Severity::High,
+            Category::CmdInjection,
+            70,
+            "exec() 动态执行",
+            false,
+            Confidence::Medium,
+            "避免使用exec()动态执行代码，使用安全的替代方法",
+            Some("CWE-94"),
+        ),
+        PatternRule::new(
+            "OS_SYSTEM",
+            "os.system",
+            r"os\.system\s*\(",
+            Severity::High,
+            Category::CmdInjection,
+            65,
+            "os.system() Shell执行",
+            false,
+            Confidence::Medium,
+            "避免使用os.system()，改用subprocess.run()并设置shell=False",
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "SUBPROCESS_SHELL",
+            "subprocess shell=True",
+            r"subprocess\.(run|call|Popen)\s*\([^)]*shell\s*=\s*True",
+            Severity::High,
+            Category::CmdInjection,
+            65,
+            "subprocess shell=True",
+            false,
+            Confidence::High,
+            "避免设置shell=True，使用列表参数传递命令",
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "SUBPROCESS_CALL",
+            "subprocess 调用",
+            r"subprocess\.(run|call|Popen)\s*\(",
+            Severity::Medium,
+            Category::CmdInjection,
+            25,
+            "subprocess 进程调用",
+            false,
+            Confidence::Low,
+            "确保命令参数经过验证，避免注入风险",
+            Some("CWE-78"),
+        ),
+
+        // D. 网络外传
+        PatternRule::new(
+            "CURL_POST",
+            "Curl POST",
+            r"curl\s+[^;|]*-X\s*POST",
+            Severity::Medium,
+            Category::Network,
+            40,
+            "curl POST 请求",
+            false,
+            Confidence::Medium,
+            "确认网络请求目标，避免泄露敏感数据",
+            Some("CWE-319"),
+        ),
+        PatternRule::new(
+            "NETCAT",
+            "Netcat连接",
+            r"\bnc\s+(-[a-z]*\s+)*[a-zA-Z0-9.-]+\s+\d+",
+            Severity::High,
+            Category::Network,
+            60,
+            "netcat 网络连接",
+            false,
+            Confidence::Medium,
+            "检查netcat使用场景，避免未授权的网络连接",
+            Some("CWE-319"),
+        ),
+        PatternRule::new(
+            "PY_URLLIB",
+            "Python urllib",
+            r"urllib\.request\.urlopen\s*\(",
+            Severity::Medium,
+            Category::Network,
+            35,
+            "urllib 网络请求",
+            false,
+            Confidence::Low,
+            "确认请求目标URL的安全性，使用HTTPS协议",
+            None,
+        ),
+        PatternRule::new(
+            "HTTP_REQUEST",
+            "HTTP 请求库",
+            r"requests\.(get|post|put|delete|patch)\s*\(",
+            Severity::Low,
+            Category::Network,
+            15,
+            "Python requests HTTP 请求",
+            false,
+            Confidence::Low,
+            "确认请求目标URL的安全性，使用HTTPS协议",
+            None,
+        ),
+
+        // E. 权限提升
+        PatternRule::new(
+            "SUDO",
+            "sudo提权",
+            r"\bsudo\s+",
+            Severity::High,
+            Category::Privilege,
+            60,
+            "sudo 权限提升",
+            false,
+            Confidence::Low,
+            "审查sudo使用场景，确保符合最小权限原则",
+            Some("CWE-250"),
+        ),
+        PatternRule::new(
+            "CHMOD_777",
+            "chmod 777",
+            r"chmod\s+(-[a-zA-Z]*\s+)*7[0-7]{2}",
+            Severity::High,
+            Category::Privilege,
+            55,
+            "chmod 777 开放权限",
+            false,
+            Confidence::High,
+            "避免设置777权限，使用最小权限原则",
+            Some("CWE-732"),
+        ),
+        PatternRule::new(
+            "SUDOERS",
+            "sudoers修改",
+            r"(/etc/sudoers|visudo|NOPASSWD)",
+            Severity::Critical,
+            Category::Privilege,
+            95,
+            "sudoers 文件修改",
+            true,
+            Confidence::High,
+            "检查sudoers修改，避免不当的权限配置",
+            Some("CWE-250"),
+        ),
+
+        // F. 持久化
+        PatternRule::new(
+            "CRONTAB",
+            "Crontab持久化",
+            r"(crontab\s+-|/etc/cron)",
+            Severity::High,
+            Category::Persistence,
+            65,
+            "crontab 持久化",
+            false,
+            Confidence::Medium,
+            "检查定时任务内容，避免恶意持久化机制",
+            Some("CWE-506"),
+        ),
+        PatternRule::new(
+            "SSH_KEYS",
+            "SSH密钥注入",
+            r"(>>|>)\s*~?/?(\.ssh/authorized_keys|\.ssh/id_)",
+            Severity::Critical,
+            Category::Persistence,
+            90,
+            "SSH 密钥写入",
+            true,
+            Confidence::High,
+            "检查SSH密钥写入操作，避免未授权访问",
+            Some("CWE-506"),
+        ),
+
+        // G. 敏感泄露
+        PatternRule::new(
+            "PRIVATE_KEY",
+            "私钥硬编码",
+            r"-----BEGIN\s+(RSA|OPENSSH|EC|DSA)?\s*PRIVATE KEY-----",
+            Severity::High,
+            Category::Secrets,
+            70,
+            "硬编码私钥",
+            false,
+            Confidence::High,
+            "使用环境变量或密钥管理服务，不要硬编码私钥",
+            Some("CWE-798"),
+        ),
+        PatternRule::new(
+            "API_KEY",
+            "API Key",
+            r#"(api[_-]?key|apikey|api_secret)\s*[=:]\s*["'][a-zA-Z0-9_-]{16,}["']"#,
+            Severity::High,
+            Category::Secrets,
+            60,
+            "硬编码 API Key",
+            false,
+            Confidence::High,
+            "使用环境变量或密钥管理服务，不要硬编码API密钥",
+            Some("CWE-798"),
+        ),
+        PatternRule::new(
+            "PASSWORD",
+            "密码硬编码",
+            r#"(password|passwd|pwd)\s*[=:]\s*["'][^"']{4,}["']"#,
+            Severity::High,
+            Category::Secrets,
+            55,
+            "硬编码密码",
+            false,
+            Confidence::Medium,
+            "使用环境变量或配置文件，不要硬编码密码",
+            Some("CWE-798"),
+        ),
+        PatternRule::new(
+            "AWS_KEY",
+            "AWS密钥",
+            r"(AKIA|ASIA)[A-Z0-9]{16}",
+            Severity::Critical,
+            Category::Secrets,
+            80,
+            "AWS Access Key",
+            false,
+            Confidence::High,
+            "使用AWS密钥管理服务或环境变量，不要硬编码AWS密钥",
+            Some("CWE-798"),
+        ),
+        PatternRule::new(
+            "GITHUB_TOKEN",
+            "GitHub Token",
+            r"ghp_[a-zA-Z0-9]{36}",
+            Severity::Critical,
+            Category::Secrets,
+            80,
+            "GitHub Token",
+            false,
+            Confidence::High,
+            "使用GitHub Secrets或环境变量，不要硬编码Token",
+            Some("CWE-798"),
+        ),
+
+        // H. 敏感文件访问
+        PatternRule::new(
+            "READ_SSH_PRIVATE_KEY",
+            "读取SSH私钥",
+            r"(cat|less|head|tail|vim|nano|open)\s+.*\.ssh/(id_rsa|id_dsa|id_ecdsa|id_ed25519)($|\s)",
+            Severity::High,
+            Category::SensitiveFileAccess,
+            70,
+            "读取SSH私钥文件",
+            false,
+            Confidence::High,
+            "避免直接读取私钥文件，使用ssh-agent管理密钥",
+            Some("CWE-522"),
+        ),
+        PatternRule::new(
+            "READ_AWS_CREDENTIALS",
+            "读取AWS凭证",
+            r"(cat|less|head|tail|vim|nano|open)\s+.*\.aws/credentials",
+            Severity::High,
+            Category::SensitiveFileAccess,
+            70,
+            "读取AWS凭证文件",
+            false,
+            Confidence::High,
+            "使用AWS IAM角色或环境变量，避免读取凭证文件",
+            Some("CWE-522"),
+        ),
+        PatternRule::new(
+            "READ_ENV_FILE",
+            "读取.env文件",
+            r"(cat|less|head|tail|vim|nano|open)\s+.*\.env($|\s)",
+            Severity::Medium,
+            Category::SensitiveFileAccess,
+            50,
+            "读取环境变量配置文件",
+            false,
+            Confidence::Medium,
+            "确保.env文件不包含敏感信息，或使用密钥管理服务",
+            Some("CWE-522"),
+        ),
+        PatternRule::new(
+            "READ_PASSWD",
+            "读取passwd文件",
+            r"(cat|less|head|tail)\s+/etc/passwd",
+            Severity::Medium,
+            Category::SensitiveFileAccess,
+            45,
+            "读取系统用户信息",
+            false,
+            Confidence::High,
+            "确认是否需要读取用户信息，避免信息泄露",
+            Some("CWE-200"),
+        ),
+        PatternRule::new(
+            "READ_SHADOW",
+            "读取shadow文件",
+            r"(cat|less|head|tail)\s+/etc/shadow",
+            Severity::Critical,
+            Category::SensitiveFileAccess,
+            85,
+            "读取系统密码哈希文件",
+            true,
+            Confidence::High,
+            "绝不应读取shadow文件，这是严重的安全风险",
+            Some("CWE-522"),
+        ),
+        PatternRule::new(
+            "READ_GIT_CREDENTIALS",
+            "读取Git凭证",
+            r"(cat|less|head|tail|vim|nano|open)\s+.*\.git-credentials",
+            Severity::High,
+            Category::SensitiveFileAccess,
+            65,
+            "读取Git凭证存储文件",
+            false,
+            Confidence::High,
+            "使用SSH密钥或凭证管理器，避免明文存储Git凭证",
+            Some("CWE-522"),
+        ),
+
+        // I. Node.js 命令注入
+        PatternRule::new(
+            "NODE_CHILD_EXEC",
+            "Node.js child_process.exec",
+            r"child_process\.exec\s*\(",
+            Severity::High,
+            Category::CmdInjection,
+            70,
+            "Node.js child_process.exec 执行",
+            false,
+            Confidence::High,
+            "避免使用exec()，改用execFile()或spawn()并验证参数",
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "NODE_VM_RUN",
+            "Node.js vm.runInNewContext",
+            r"vm\.runInNewContext\s*\(",
+            Severity::High,
+            Category::CmdInjection,
+            65,
+            "Node.js 动态代码执行",
+            false,
+            Confidence::High,
+            "避免动态执行未验证的代码，使用安全的替代方案",
+            Some("CWE-94"),
+        ),
+        PatternRule::new(
+            "NODE_EVAL",
+            "Node.js eval",
+            r"\beval\s*\(",
+            Severity::High,
+            Category::CmdInjection,
+            70,
+            "JavaScript eval() 动态执行",
+            false,
+            Confidence::Medium,  // eval 在 JS 中有合法用途
+            "避免使用eval()，使用JSON.parse()或Function构造函数的安全替代",
+            Some("CWE-94"),
+        ),
+
+        // J. 敏感数据泄露增强
+        PatternRule::new(
+            "JWT_TOKEN",
+            "JWT Token 硬编码",
+            r"eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}",
+            Severity::High,
+            Category::Secrets,
+            75,
+            "硬编码的 JWT Token",
+            false,
+            Confidence::High,
+            "不要硬编码JWT Token，使用安全的存储方式",
+            Some("CWE-798"),
+        ),
+        PatternRule::new(
+            "DB_CONNECTION_STRING",
+            "数据库连接串",
+            r#"(mongodb|mysql|postgresql|postgres)://[^\s"']{10,}"#,
+            Severity::High,
+            Category::Secrets,
+            70,
+            "硬编码的数据库连接字符串",
+            false,
+            Confidence::High,
+            "使用环境变量或配置文件管理数据库连接串，不要硬编码",
+            Some("CWE-798"),
+        ),
+        PatternRule::new(
+            "SLACK_WEBHOOK",
+            "Slack Webhook URL",
+            r"https://hooks\.slack\.com/services/[A-Z0-9/]{30,}",
+            Severity::Medium,
+            Category::Secrets,
+            50,
+            "硬编码的 Slack Webhook URL",
+            false,
+            Confidence::High,
+            "使用环境变量存储 Webhook URL",
+            Some("CWE-798"),
+        ),
+        PatternRule::new(
+            "GENERIC_SECRET",
+            "通用密钥模式",
+            r#"(secret|token|key)\s*[=:]\s*[\"'][a-zA-Z0-9_-]{16,}[\"']"#,
+            Severity::Medium,
+            Category::Secrets,
+            45,
+            "可能的硬编码密钥",
+            false,
+            Confidence::Low,  // 误报可能性较高
+            "检查是否为敏感密钥，使用密钥管理服务",
+            Some("CWE-798"),
+        ),
+
+        // K. 网络行为增强
+        PatternRule::new(
+            "WEBSOCKET_CONNECT",
+            "WebSocket 连接",
+            r"(new\s+WebSocket|ws://|wss://)",
+            Severity::Low,
+            Category::Network,
+            25,
+            "WebSocket 连接",
+            false,
+            Confidence::Low,
+            "确认 WebSocket 连接的安全性，使用 wss:// 加密连接",
+            None,
+        ),
+        PatternRule::new(
+            "FTP_PROTOCOL",
+            "FTP 协议使用",
+            r"ftp://",
+            Severity::Medium,
+            Category::Network,
+            40,
+            "使用不安全的 FTP 协议",
+            false,
+            Confidence::High,
+            "使用 SFTP 或 FTPS 替代明文 FTP",
+            Some("CWE-319"),
+        ),
+    ];
+
+    /// 仅获取硬触发规则
+    pub static ref HARD_TRIGGER_RULES: Vec<&'static PatternRule> = {
+        PATTERN_RULES.iter().filter(|r| r.hard_trigger).collect()
+    };
+}
+
+pub struct SecurityRules;
+
+impl SecurityRules {
+    /// 获取所有模式规则
+    pub fn get_all_patterns() -> &'static Vec<PatternRule> {
+        &PATTERN_RULES
+    }
+
+    /// 获取所有硬触发规则
+    pub fn get_hard_triggers() -> Vec<&'static PatternRule> {
+        PATTERN_RULES.iter().filter(|r| r.hard_trigger).collect()
+    }
+}
