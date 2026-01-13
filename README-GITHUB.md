@@ -8,7 +8,7 @@
 
 一个用于管理 Claude Code 技能的桌面应用程序
 
-[下载](https://github.com/buzhangsan/skills-manager-client/releases) • [文档](#-使用) • [构建](#-构建)
+[下载](https://github.com/Activer007/skills-manager/releases) • [文档](#-使用) • [构建](#-构建)
 
 </div>
 
@@ -24,7 +24,7 @@ Skill Manager 是一个为 Claude Code 设计的技能管理工具，采用纯 R
 
 ## 📥 下载
 
-访问 [Releases](https://github.com/buzhangsan/skills-manager-client/releases/latest) 下载最新版本。
+访问 [Releases](https://github.com/Activer007/skills-manager/releases/latest) 下载最新版本。
 
 ### Windows (x64)
 - `skill-manager.exe` - 绿色版单文件 (~10MB)
@@ -51,7 +51,7 @@ C:\Users\你的用户名\.skills-manager\
 
 ```bash
 # 克隆仓库
-git clone https://github.com/buzhangsan/skills-manager-client.git
+git clone https://github.com/Activer007/skills-manager.git
 cd skills-manager-client
 
 # 安装依赖

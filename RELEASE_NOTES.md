@@ -113,7 +113,7 @@ MIT License
 
 ## 🐛 问题反馈
 
-如遇到问题，请在 [Issues](https://github.com/buzhangsan/skills-manager-client/issues) 中反馈。
+如遇到问题，请在 [Issues](https://github.com/Activer007/skills-manager/issues) 中反馈。
 
 ## 🔄 更新日志
 
