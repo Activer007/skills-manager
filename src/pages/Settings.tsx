@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useSkillStore } from '../store/useSkillStore';
 import { Plus, X, FolderOpen, ExternalLink, Package } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { toast } from 'sonner';
 
 const Settings = () => {
   const { t, i18n } = useTranslation();
@@ -37,7 +38,7 @@ const Settings = () => {
         await saveProjectPaths(updatedPaths);
       } catch (error) {
         console.error('Failed to save paths:', error);
-        alert(t('saveError'));
+        toast.error(t('saveError'));
       }
     }
   };
@@ -50,7 +51,7 @@ const Settings = () => {
       await saveProjectPaths(updatedPaths);
     } catch (error) {
       console.error('Failed to save paths:', error);
-      alert(t('saveError'));
+      toast.error(t('saveError'));
     }
   };
 

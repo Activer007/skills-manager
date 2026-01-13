@@ -4,6 +4,8 @@ import { useSkillStore } from '../store/useSkillStore';
 import { Download, Search, Star, ExternalLink, Check, Loader2 } from 'lucide-react';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
+import { toast } from 'sonner';
+import { SkeletonCard } from '../components/SkeletonCard';
 
 const Marketplace = () => {
   const { t, i18n } = useTranslation();
@@ -57,7 +59,7 @@ const Marketplace = () => {
         await invoke('open_url', { url });
     } catch (error) {
         console.error('Failed to open URL:', error);
-        alert(i18n.language === 'zh'
+        toast.error(i18n.language === 'zh'
             ? `无法打开链接: ${error}`
             : `Failed to open URL: ${error}`);
     }
@@ -148,15 +150,13 @@ const Marketplace = () => {
         </div>
       </div>
 
-      {isLoading && (
-          <div className="flex justify-center py-20">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
-          </div>
-      )}
-
-      {!isLoading && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <SkeletonCard count={8} />
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {currentSkills.map((skill) => {
                     const installed = isInstalled(skill.id);
                     return (
