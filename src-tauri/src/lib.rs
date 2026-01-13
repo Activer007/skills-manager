@@ -4,6 +4,10 @@ use std::path::PathBuf;
 use std::process::Command;
 use walkdir::WalkDir;
 
+// Import analyzer and commands modules
+mod analyzer;
+mod commands;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SkillInfo {
     pub name: String,
@@ -446,7 +450,10 @@ pub fn run() {
             get_project_paths,
             save_project_paths,
             open_url,
-            read_skill
+            read_skill,
+            commands::analyzer::analyze_skill_quality,
+            commands::analyzer::batch_analyze_skills,
+            commands::analyzer::batch_analyze_skills_detailed
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
