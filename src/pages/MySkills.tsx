@@ -6,11 +6,13 @@ import type { InstalledSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
 import SkillQualityCard from '../components/SkillQualityCard';
+import { SkeletonCard } from '../components/SkeletonCard';
 import type { SkillScore } from '../types/scorer';
+import { toast } from 'sonner';
 
 const MySkills = () => {
   const { t, i18n } = useTranslation();
-  const { installedSkills, scanLocalSkills, importFromGithub, importFromLocal } = useSkillStore();
+  const { installedSkills, scanLocalSkills, importFromGithub, importFromLocal, isLoading } = useSkillStore();
   const [activeTab, setActiveTab] = useState<'all' | 'system' | 'project'>('all');
   const [selectedSkill, setSelectedSkill] = useState<InstalledSkill | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -100,10 +102,10 @@ const MySkills = () => {
     try {
       if (importType === 'github') {
         await importFromGithub(importUrl);
-        alert('成功从 GitHub 导入 Skill！');
+        toast.success('成功从 GitHub 导入 Skill！');
       } else if (importType === 'local') {
         await importFromLocal(importPath);
-        alert('成功从本地导入 Skill！');
+        toast.success('成功从本地导入 Skill！');
       }
       // 重置状态
       setShowImportModal(false);
@@ -111,7 +113,7 @@ const MySkills = () => {
       setImportPath('');
       setImportType(null);
     } catch (error: any) {
-      alert(`导入失败: ${error.message}`);
+      toast.error(`导入失败: ${error.message}`);
     } finally {
       setIsImporting(false);
     }
@@ -190,7 +192,16 @@ const MySkills = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredSkills.map((skill) => (
+            {isLoading ? (
+              <tr>
+                <td colSpan={5}>
+                  <div className="space-y-3 p-4">
+                    <SkeletonCard count={3} />
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filteredSkills.map((skill) => (
               <tr key={skill.id} className="hover">
                 <td>
                   <div className="font-bold flex items-center gap-2">
@@ -237,7 +248,8 @@ const MySkills = () => {
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
         {filteredSkills.length === 0 && (

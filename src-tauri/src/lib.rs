@@ -4,9 +4,11 @@ use std::path::PathBuf;
 use std::process::Command;
 use walkdir::WalkDir;
 
-// Import analyzer and commands modules
+// Import modules
 mod analyzer;
 mod commands;
+mod models;
+mod security;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SkillInfo {
@@ -56,6 +58,8 @@ pub struct ImportLocalRequest {
     pub install_path: Option<String>,
     #[serde(rename = "skillName")]
     pub skill_name: String,
+    #[serde(rename = "skipSecurityCheck")]
+    pub skip_security_check: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -256,6 +260,55 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
             }
         }
 
+        // Security scan after successful clone
+        if !request.skip_security_check {
+            use crate::security::SecurityScanner;
+            let scanner = SecurityScanner::new();
+
+            match scanner.scan_directory(target_dir.to_str().unwrap(), &skill_name, "en") {
+                Ok(report) => {
+                    if report.blocked {
+                        // Remove the skill if blocked by hard triggers
+                        if let Err(e) = fs::remove_dir_all(&target_dir) {
+                            eprintln!("Failed to remove blocked skill directory {}: {}", target_dir.display(), e);
+                        }
+                        return ImportResult {
+                            success: false,
+                            message: format!(
+                                "Security check blocked installation. Found {} critical issues:\n{}",
+                                report.hard_trigger_issues.len(),
+                                report.hard_trigger_issues.join("\n")
+                            ),
+                            blocked: true,
+                        };
+                    }
+
+                    // Log security score and issues
+                    eprintln!("Security scan completed for {}: {} ({})", skill_name, report.score, report.level.as_str());
+                    if !report.issues.is_empty() {
+                        eprintln!("Security issues found: {}", report.issues.len());
+                    }
+
+                    if report.score < 70 {
+                        return ImportResult {
+                            success: true,
+                            message: format!(
+                                "Successfully installed {} to {}, but warning: low security score ({}). Please review the code.",
+                                skill_name,
+                                target_dir.display(),
+                                report.score
+                            ),
+                            blocked: false,
+                        };
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Security scan failed for {}: {}", skill_name, e);
+                    // Continue installation even if scan fails (log warning only)
+                }
+            }
+        }
+
         ImportResult {
             success: true,
             message: format!("Successfully installed {} to {}", skill_name, target_dir.display()),
@@ -336,6 +389,55 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
     let target_dir = install_dir.join(&request.skill_name);
 
     copy_dir_all(&source, &target_dir).map_err(|e| e.to_string())?;
+
+    // Security scan after successful copy
+    if !request.skip_security_check {
+        use crate::security::SecurityScanner;
+        let scanner = SecurityScanner::new();
+
+        match scanner.scan_directory(target_dir.to_str().unwrap(), &request.skill_name, "en") {
+            Ok(report) => {
+                if report.blocked {
+                    // Remove the skill if blocked by hard triggers
+                    if let Err(e) = fs::remove_dir_all(&target_dir) {
+                        eprintln!("Failed to remove blocked skill directory {}: {}", target_dir.display(), e);
+                    }
+                    return Ok(ImportResult {
+                        success: false,
+                        message: format!(
+                            "Security check blocked installation. Found {} critical issues:\n{}",
+                            report.hard_trigger_issues.len(),
+                            report.hard_trigger_issues.join("\n")
+                        ),
+                        blocked: true,
+                    });
+                }
+
+                // Log security score and issues
+                eprintln!("Security scan completed for {}: {} ({})", request.skill_name, report.score, report.level.as_str());
+                if !report.issues.is_empty() {
+                    eprintln!("Security issues found: {}", report.issues.len());
+                }
+
+                if report.score < 70 {
+                    return Ok(ImportResult {
+                        success: true,
+                        message: format!(
+                            "Successfully imported {} to {}, but warning: low security score ({}). Please review the code.",
+                            request.skill_name,
+                            target_dir.display(),
+                            report.score
+                        ),
+                        blocked: false,
+                    });
+                }
+            }
+            Err(e) => {
+                eprintln!("Security scan failed for {}: {}", request.skill_name, e);
+                // Continue installation even if scan fails (log warning only)
+            }
+        }
+    }
 
     Ok(ImportResult {
         success: true,
@@ -453,7 +555,9 @@ pub fn run() {
             read_skill,
             commands::analyzer::analyze_skill_quality,
             commands::analyzer::batch_analyze_skills,
-            commands::analyzer::batch_analyze_skills_detailed
+            commands::analyzer::batch_analyze_skills_detailed,
+            commands::security::scan_skill_security,
+            commands::security::batch_scan_skills
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
