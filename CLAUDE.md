@@ -67,6 +67,8 @@ cargo clippy              # Rust lint 检查
 - `save_project_paths` - 保存项目路径
 - `open_url` - 在系统浏览器打开 URL
 - `read_skill` - 读取 SKILL.md 内容
+- `analyze_skill_quality` - 分析单个 Skill 质量
+- `batch_analyze_skills` - 批量分析 Skills
 
 ## Skill 目录结构
 
@@ -102,9 +104,13 @@ Your skill content here...
 - `InstalledSkill` - 已安装 Skill 接口
 - `SkillManifest` - Skill 清单接口
 
-## Rust Skill 评分系统（正在开发）
+前端评分相关类型定义在 `src/types/scorer.ts`：
+- `SkillScore` - 评分结果接口
+- `ScoreMetadata` - 评分元数据接口
 
-当前正在 `feature/rust-skill-scorer` 分支开发 Rust 版本的 Skill 质量评分系统，参考 `RUST_SCORER_PLAN.md`。
+## Rust Skill 评分系统（已完成）
+
+Rust 版本的 Skill 质量评分系统已实现，提供高性能的本地分析功能。
 
 ### 评分体系（100分制）
 - **内容质量**：50分（最高权重）- `content_scorer.rs`
