@@ -4,8 +4,6 @@
 
 一个用于管理 Claude Code Skills 的桌面应用程序，支持系统级和项目级 Skill 的浏览、安装、导入和安全扫描。
 
-![截图](IMG_BDE611CEE6F1-1.png)
-
 ## 快速开始
 
 直接从 [Releases](https://github.com/buzhangsan/skills-manager-client/releases) 下载最新版本。
@@ -124,7 +122,3 @@ Your skill content here...
 ## 贡献
 
 欢迎提交 Issue 和 Pull Request！
-
-## 许可证
-
-MIT License
