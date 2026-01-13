@@ -41,7 +41,7 @@ impl TechnicalScorer {
 
     /// Score code example quality (max 15 points)
     fn score_code_quality(&self, doc: &SkillDocument) -> CodeQualityScore {
-        let mut score = 0.0;
+        let mut score: f64 = 0.0;
 
         // Code blocks count (8 points)
         let code_blocks_count = doc.code_blocks_count();
@@ -88,7 +88,7 @@ impl TechnicalScorer {
 
     /// Score pattern design (max 10 points)
     fn score_pattern_design(&self, doc: &SkillDocument) -> f64 {
-        let mut score = 0.0;
+        let mut score: f64 = 0.0;
 
         // Design patterns mentioned (6 points)
         let has_patterns = doc.check_keywords(&self.config.keywords.patterns);
@@ -107,7 +107,7 @@ impl TechnicalScorer {
 
     /// Score error handling (max 5 points)
     fn score_error_handling(&self, doc: &SkillDocument) -> f64 {
-        let mut score = 0.0;
+        let mut score: f64 = 0.0;
 
         // Error handling keywords (3 points)
         let has_error_handling = doc.check_keywords(&self.config.keywords.error_handling);

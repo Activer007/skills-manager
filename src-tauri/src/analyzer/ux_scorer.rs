@@ -39,7 +39,7 @@ impl UxScorer {
 
     /// Score ease of use (max 5 points)
     fn score_ease_of_use(&self, doc: &SkillDocument) -> f64 {
-        let mut score = 0.0;
+        let mut score: f64 = 0.0;
 
         // Has quick start section (2 points)
         if doc.check_keywords(&self.config.keywords.quick_start) {

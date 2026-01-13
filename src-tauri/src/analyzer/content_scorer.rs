@@ -46,7 +46,7 @@ impl ContentScorer {
 
     /// Score instruction clarity (max 13 points)
     fn score_clarity(&self, doc: &SkillDocument) -> ClarityScore {
-        let mut score = 0.0;
+        let mut score: f64 = 0.0;
 
         // Check for "When to Use" section (5 points)
         let has_when_to_use = doc.check_keywords(&self.config.keywords.when_to_use);
@@ -101,7 +101,7 @@ impl ContentScorer {
 
     /// Score technical depth (max 19 points)
     fn score_technical_depth(&self, doc: &SkillDocument) -> TechnicalDepthScore {
-        let mut score = 0.0;
+        let mut score: f64 = 0.0;
 
         // Code examples count (8 points)
         let code_examples_count = doc.code_blocks_count();
@@ -148,7 +148,7 @@ impl ContentScorer {
 
     /// Score documentation completeness (max 13 points)
     fn score_documentation(&self, doc: &SkillDocument) -> DocumentationScore {
-        let mut score = 0.0;
+        let mut score: f64 = 0.0;
 
         // Section count (7 points)
         let sections_count = doc.sections_count();
@@ -196,7 +196,7 @@ impl ContentScorer {
 
     /// Score actionability (max 5 points)
     fn score_actionability(&self, doc: &SkillDocument) -> f64 {
-        let mut score = 0.0;
+        let mut score: f64 = 0.0;
 
         // Has step-by-step instructions (3 points)
         if doc.has_step_by_step() {

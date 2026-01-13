@@ -344,18 +344,25 @@ fn another() {}
 name: test
 ---
 
-# Title
+# Title of the Skill Document
 
-## Section 1
+## Section 1: Introduction
+This is a longer paragraph that should help increase the average line length of the document.
+We need to ensure that the average line length is between 20 and 120 characters for it to be valid.
 
-## Section 2
+## Section 2: Usage
+Here is another section with some reasonable amount of text to demonstrate good documentation practices.
 
-## Section 3
+## Section 3: Configuration
+Configuration options are important for users to understand how to use the skill effectively.
 
-## Section 4
+## Section 4: Examples
+Below is an example of how to use this skill in your own projects.
 
 ```rust
-fn main() {}
+fn main() {
+    println!("This is a code example");
+}
 ```
 "#;
 

@@ -109,12 +109,16 @@ pub async fn batch_analyze_skills_detailed(
         }
     }
 
+    // Calculate counts before moving ownership
+    let successful = scores.len();
+    let failed = errors.len();
+
     Ok(BatchAnalysisResult {
         scores,
         errors,
         total: skill_paths.len(),
-        successful: scores.len(),
-        failed: errors.len(),
+        successful,
+        failed,
     })
 }
 

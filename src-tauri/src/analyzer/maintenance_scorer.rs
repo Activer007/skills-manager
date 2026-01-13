@@ -84,7 +84,7 @@ impl MaintenanceScorer {
 
     /// Score compatibility and version information (max 2 points)
     fn score_compatibility(&self, doc: &SkillDocument) -> f64 {
-        let mut score = 0.0;
+        let mut score: f64 = 0.0;
 
         // Has version information (1 point)
         if doc.metadata.version.is_some() {
