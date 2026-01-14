@@ -14,6 +14,8 @@ Practical guides for installation, deployment, and configuration.
 Project roadmap, tasks, and future vision.
 - **[Master Roadmap](./planning/task.md)**: The overall project status and task list (SSOT).
 - **[Next Top 5 Tasks](./planning/NEXT_TOP_5_TASKS.md)**: Immediate focus and priorities for the current sprint.
+- **[Phase 3 Plan (AI)](./planning/PHASE3_PLAN.md)**: Detailed plan for AI integration and semantic review.
+- **[Phase 4 Plan (Quality)](./planning/PHASE4_PLAN.md)**: Plan for testing, type safety, and engineering excellence.
 - **[Scorer Upgrade Plan](./planning/task-upgrade.md)**: Detailed plan for upgrading the scoring system to AI agents.
 - **[Next Gen Vision](./planning/next-task.md)**: Future product evolution ideas (Nexus, Marketplace).
 
