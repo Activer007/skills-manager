@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use anyhow::{Context, Result};
 
@@ -39,6 +39,7 @@ impl Default for SecurityConfig {
     }
 }
 
+#[allow(dead_code)]
 impl SecurityConfig {
     /// 获取配置文件路径
     pub fn config_path() -> Result<PathBuf> {

@@ -78,6 +78,7 @@ pub enum IssueCategory {
 }
 
 /// Skill 扫描结果（用于前端展示）
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillScanResult {
     pub skill_id: String,

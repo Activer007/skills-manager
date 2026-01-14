@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
 // Configuration loader for the Skill Quality Analyzer
 //
 // This module loads scoring weights and analysis parameters from JSON configuration file.

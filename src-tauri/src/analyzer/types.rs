@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
 // Core data structures for the Skill Quality Analyzer
 //
 // This module defines all data types used throughout the skill scoring system.
@@ -170,6 +173,7 @@ pub struct SkillMetadata {
 
 /// Error types for the analyzer
 #[derive(Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum AnalyzerError {
     /// File not found or cannot be read
     FileReadError(String),
@@ -246,6 +250,7 @@ impl SkillScore {
     }
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for SkillMetadata {
     fn default() -> Self {
         Self {

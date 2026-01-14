@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // Technical Implementation Scorer (30 points total)
 //
 // This module evaluates the technical quality of skill implementations,

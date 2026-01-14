@@ -105,13 +105,11 @@ fn scan_skills() -> Result<ScanResult, String> {
 
     if let Some(skills_dir) = get_claude_skills_dir() {
         if skills_dir.exists() {
-            for entry in WalkDir::new(&skills_dir).max_depth(3) {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
-                        if let Some(skill) = parse_skill_md(&path.to_path_buf(), "system") {
-                            system_skills.push(skill);
-                        }
+            for entry in WalkDir::new(&skills_dir).max_depth(3).into_iter().flatten() {
+                let path = entry.path();
+                if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
+                    if let Some(skill) = parse_skill_md(&path.to_path_buf(), "system") {
+                        system_skills.push(skill);
                     }
                 }
             }
@@ -122,13 +120,11 @@ fn scan_skills() -> Result<ScanResult, String> {
         for project_path in paths {
             let skills_dir = PathBuf::from(&project_path).join(".claude").join("skills");
             if skills_dir.exists() {
-                for entry in WalkDir::new(&skills_dir).max_depth(3) {
-                    if let Ok(entry) = entry {
-                        let path = entry.path();
-                        if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
-                            if let Some(skill) = parse_skill_md(&path.to_path_buf(), "project") {
-                                project_skills.push(skill);
-                            }
+                for entry in WalkDir::new(&skills_dir).max_depth(3).into_iter().flatten() {
+                    let path = entry.path();
+                    if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
+                        if let Some(skill) = parse_skill_md(&path.to_path_buf(), "project") {
+                            project_skills.push(skill);
                         }
                     }
                 }

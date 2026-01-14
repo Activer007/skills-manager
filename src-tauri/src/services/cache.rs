@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::time::{Duration, Instant};
 use std::path::Path;
 use lru::LruCache;
@@ -233,8 +234,8 @@ impl SkillCache {
                     .unwrap_or(0);
 
                 hasher.update(path_str.as_bytes());
-                hasher.update(&meta.len().to_be_bytes());
-                hasher.update(&modified.to_be_bytes());
+                hasher.update(meta.len().to_be_bytes());
+                hasher.update(modified.to_be_bytes());
             }
         }
 

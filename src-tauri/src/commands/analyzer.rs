@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_closure)]
 // Tauri Commands for Skill Quality Analysis
 //
 // This module exposes the skill analyzer functionality to the frontend

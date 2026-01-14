@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // User Experience Scorer (10 points total)
 //
 // This module evaluates the user experience quality of skills,

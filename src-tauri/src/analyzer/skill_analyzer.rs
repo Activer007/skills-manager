@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
 // Skill Analyzer - Main coordinator for skill quality analysis
 //
 // This module orchestrates all scoring components to produce a comprehensive

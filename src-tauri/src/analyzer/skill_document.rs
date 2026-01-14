@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // Skill document parser for SKILL.md files
 //
 // This module handles parsing of SKILL.md files, extracting YAML frontmatter
