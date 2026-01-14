@@ -111,8 +111,11 @@ export function useMarketplaceSkills() {
   return useQuery({
     queryKey: ['marketplace-skills'],
     queryFn: async () => {
-      const result = await invoke<MarketplaceSkill[]>('fetch_marketplace_skills');
-      return result;
+      const response = await fetch('/data/marketplace.json');
+      if (!response.ok) {
+        throw new Error(`Failed to load marketplace data (${response.status})`);
+      }
+      return await response.json() as MarketplaceSkill[];
     },
     staleTime: 1000 * 60 * 10, // 10 minutes (marketplace data changes less frequently)
     gcTime: 1000 * 60 * 30, // 30 minutes
