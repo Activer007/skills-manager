@@ -197,15 +197,14 @@ const MySkills = () => {
               <th>{i18n.language === 'zh' ? '名称 / 路径' : 'Name / Path'}</th>
               <th>{t('description')}</th>
               <th>{t('type')}</th>
-              <th>{i18n.language === 'zh' ? '安全评分' : 'Security Score'}</th>
-              <th>{i18n.language === 'zh' ? '状态' : 'Status'}</th>
+              <th>{i18n.language === 'zh' ? '安全状态' : 'Security Status'}</th>
               <th className="text-right">{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={5}>
                   <div className="space-y-3 p-4">
                     <SkeletonCard count={3} />
                   </div>
@@ -235,29 +234,32 @@ const MySkills = () => {
                   )}
                 </td>
                 <td>
-                  {skill.securityScore !== undefined ? (
-                    <div className="flex items-center gap-2">
-                      <Shield size={14} className={
-                        skill.securityScore >= 90 ? 'text-success' :
-                        skill.securityScore >= 70 ? 'text-warning' :
-                        'text-error'
-                      } />
-                      <span className={`font-semibold ${
-                        skill.securityScore >= 90 ? 'text-success' :
-                        skill.securityScore >= 70 ? 'text-warning' :
-                        'text-error'
-                      }`}>
-                        {skill.securityScore}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-base-content/30">-</span>
-                  )}
-                </td>
-                <td>
-                  {skill.status === 'safe' && <div className="badge badge-success badge-sm gap-1">{i18n.language === 'zh' ? '安全' : 'Safe'}</div>}
-                  {skill.status === 'unsafe' && <div className="badge badge-error badge-sm gap-1">{i18n.language === 'zh' ? '风险' : 'Unsafe'}</div>}
-                  {skill.status === 'unknown' && <div className="badge badge-ghost badge-sm gap-1">{i18n.language === 'zh' ? '未扫描' : 'Unknown'}</div>}
+                  <div className="flex items-center gap-2">
+                    {/* Security Score */}
+                    {skill.securityScore !== undefined ? (
+                      <div className="flex items-center gap-1.5">
+                        <Shield size={14} className={
+                          skill.securityScore >= 90 ? 'text-success' :
+                          skill.securityScore >= 70 ? 'text-warning' :
+                          'text-error'
+                        } />
+                        <span className={`font-semibold ${
+                          skill.securityScore >= 90 ? 'text-success' :
+                          skill.securityScore >= 70 ? 'text-warning' :
+                          'text-error'
+                        }`}>
+                          {skill.securityScore}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-base-content/30 text-sm">未扫描</span>
+                    )}
+
+                    {/* Status Badge */}
+                    {skill.status === 'safe' && <div className="badge badge-success badge-sm gap-1">安全</div>}
+                    {skill.status === 'unsafe' && <div className="badge badge-error badge-sm gap-1">风险</div>}
+                    {skill.status === 'unknown' && <div className="badge badge-ghost badge-sm gap-1">未知</div>}
+                  </div>
                 </td>
                 <td>
                   <div className="flex justify-end gap-2">

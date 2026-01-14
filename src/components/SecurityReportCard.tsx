@@ -1,4 +1,5 @@
-import { Shield, AlertTriangle, CheckCircle, XCircle, Info, FileWarning } from 'lucide-react';
+import { useState } from 'react';
+import { Shield, AlertTriangle, CheckCircle, XCircle, Info, FileWarning, ChevronDown, ChevronUp } from 'lucide-react';
 import type { SecurityReport, SecurityIssue, SecurityLevel } from '../types/security';
 
 const mapSeverity = (severity: SecurityIssue['severity']): 'critical' | 'error' | 'warning' | 'info' => {
@@ -14,10 +15,11 @@ const mapSeverity = (severity: SecurityIssue['severity']): 'critical' | 'error' 
 interface SecurityReportCardProps {
   report: SecurityReport | null;
   loading?: boolean;
-  onClose?: () => void;
 }
 
-export default function SecurityReportCard({ report, loading, onClose }: SecurityReportCardProps) {
+export default function SecurityReportCard({ report, loading }: SecurityReportCardProps) {
+  const [expanded, setExpanded] = useState(false);
+
   if (loading) {
     return (
       <div className="card bg-base-100 shadow-xl">
@@ -87,24 +89,37 @@ export default function SecurityReportCard({ report, loading, onClose }: Securit
   };
 
   return (
-    <div className="card bg-base-100 shadow-xl border border-base-300">
-      <div className="card-body">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8 text-primary" />
-            <div>
-              <h3 className="card-title text-lg">安全扫描报告</h3>
-              <p className="text-sm text-base-content/60">{report.skill_id}</p>
+    <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
+      {/* Summary Header - Always Visible */}
+      <div
+        className="p-4 flex items-center justify-between cursor-pointer hover:bg-base-200/50 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-4">
+          <Shield className="w-8 h-8 text-primary" />
+          <div>
+            <h3 className="font-bold text-lg">安全扫描报告</h3>
+            <div className="flex items-center gap-3 text-sm">
+              <span className={`font-mono font-bold ${getScoreColor(report.score)}`}>
+                {report.score} / 100
+              </span>
+              <span className={`badge ${getScoreBadge(report.score)} badge-sm`}>
+                {getLevelText(report.level)}
+              </span>
+              <span className="text-base-content/50">
+                {report.scanned_files.length} 个文件已扫描
+              </span>
             </div>
           </div>
-          {onClose && (
-            <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle">
-              ✕
-            </button>
-          )}
         </div>
+        <button className="btn btn-ghost btn-sm btn-circle">
+          {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        </button>
+      </div>
 
+      {/* Expanded Details */}
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-base-200 animate-in slide-in-from-top-2 duration-200">
         {/* Blocked Warning */}
         {report.blocked && (
           <div className="alert alert-error mb-4">
@@ -121,28 +136,6 @@ export default function SecurityReportCard({ report, loading, onClose }: Securit
             </div>
           </div>
         )}
-
-        {/* Score and Level */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="stat bg-base-200 rounded-box">
-            <div className="stat-title">安全评分</div>
-            <div className={`stat-value ${getScoreColor(report.score)}`}>
-              {report.score}
-            </div>
-            <div className="stat-desc">满分 100</div>
-          </div>
-          <div className="stat bg-base-200 rounded-box">
-            <div className="stat-title">风险等级</div>
-            <div className="stat-value text-2xl">
-              <span className={`badge ${getScoreBadge(report.score)} badge-lg`}>
-                {getLevelText(report.level)}
-              </span>
-            </div>
-            <div className="stat-desc">
-              {report.scanned_files.length} 个文件已扫描
-            </div>
-          </div>
-        </div>
 
         {/* Recommendations */}
         {report.recommendations.length > 0 && (
@@ -221,7 +214,8 @@ export default function SecurityReportCard({ report, loading, onClose }: Securit
             <span>未发现明显安全风险，该 Skill 看起来是安全的！</span>
           </div>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
