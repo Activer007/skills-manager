@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { useSkillStore } from '../store/useSkillStore';
+import { useSkills } from '../hooks/useSkills';
 import { ShieldAlert, Zap, Box, HardDrive } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +18,7 @@ const StatCard = ({ title, value, icon: Icon, color, desc }: any) => (
 
 const Dashboard = () => {
   const { t, i18n } = useTranslation();
-  const { scanLocalSkills, installedSkills } = useSkillStore();
+  const { data: installedSkills = [] } = useSkills();
 
   // 根据语言切换图表数据
   const data = i18n.language === 'zh' ? [
@@ -39,10 +38,6 @@ const Dashboard = () => {
     { name: 'Sat', usage: 23 },
     { name: 'Sun', usage: 34 },
   ];
-
-  useEffect(() => {
-    scanLocalSkills();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const systemSkillsCount = installedSkills.filter(s => s.type === 'system').length;
   const projectSkillsCount = installedSkills.filter(s => s.type === 'project').length;
