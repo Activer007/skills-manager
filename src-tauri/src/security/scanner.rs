@@ -758,4 +758,166 @@ eval(user_input)
             report.hard_trigger_issues
         );
     }
+
+    // ========== 新增规则的测试 ==========
+
+    #[test]
+    fn test_javascript_dangerously_set_inner_html() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+function render(html) {
+    return <div dangerouslySetInnerHTML={{__html: html}} />;
+}
+"#;
+
+        let report = scanner.scan_file(content, "test.jsx", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("dangerouslySetInnerHTML")));
+    }
+
+    #[test]
+    fn test_javascript_inner_html() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+document.getElementById('content').innerHTML = user_input;
+"#;
+
+        let report = scanner.scan_file(content, "test.js", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("innerHTML")));
+    }
+
+    #[test]
+    fn test_javascript_eval() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+const code = "console.log('test')";
+eval(code);
+"#;
+
+        let report = scanner.scan_file(content, "test.js", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("eval")));
+    }
+
+    #[test]
+    fn test_javascript_function_constructor() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+const fn = new Function('a', 'b', 'return a + b');
+"#;
+
+        let report = scanner.scan_file(content, "test.js", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("Function 构造函数")));
+    }
+
+    #[test]
+    fn test_rust_unsafe_block() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+fn dangerous_operation() {
+    unsafe {
+        let ptr = 0x1 as *mut i32;
+        *ptr = 42;
+    }
+}
+"#;
+
+        let report = scanner.scan_file(content, "test.rs", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("unsafe")));
+    }
+
+    #[test]
+    fn test_rust_raw_pointer() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+let ptr: *const i32 = &x;
+let mut_ptr: *mut i32 = &mut y;
+"#;
+
+        let report = scanner.scan_file(content, "test.rs", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("原始指针")));
+    }
+
+    #[test]
+    fn test_rust_transmute() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+use std::mem;
+let x: i32 = 42;
+let y: f32 = unsafe { mem::transmute(x) };
+"#;
+
+        let report = scanner.scan_file(content, "test.rs", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("transmute")));
+    }
+
+    #[test]
+    fn test_rust_extern_c() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+extern "C" {
+    fn external_function(x: i32) -> i32;
+}
+"#;
+
+        let report = scanner.scan_file(content, "test.rs", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("FFI")));
+    }
+
+    #[test]
+    fn test_tauri_command_new() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+use tauri_plugin_shell::shell::Command;
+let output = Command::new("ls").arg("-la").output();
+"#;
+
+        let report = scanner.scan_file(content, "test.rs", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("Command::new")));
+    }
+
+    #[test]
+    fn test_javascript_localstorage_sensitive() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+localStorage.setItem('token', 'user_auth_token');
+localStorage.setItem('password', 'secret');
+"#;
+
+        let report = scanner.scan_file(content, "test.js", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("localStorage")));
+    }
+
+    #[test]
+    fn test_javascript_document_write() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+document.write('<h1>Hello</h1>');
+"#;
+
+        let report = scanner.scan_file(content, "test.js", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("document.write")));
+    }
+
+    #[test]
+    fn test_javascript_settimeout_string() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+setTimeout('alert("test")', 1000);
+setInterval('console.log("test")', 1000);
+"#;
+
+        let report = scanner.scan_file(content, "test.js", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("setTimeout") || i.description.contains("setInterval")));
+    }
 }

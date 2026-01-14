@@ -4,7 +4,7 @@
 // through Tauri's command system.
 
 use crate::models::security::SecurityReport;
-use crate::security::SecurityScanner;
+use crate::security::{SecurityScanner, SecurityConfig};
 use std::path::PathBuf;
 
 /// Scan a single skill directory for security issues
@@ -68,4 +68,25 @@ pub async fn batch_scan_skills(skill_paths: Vec<String>, locale: Option<String>)
     }
 
     Ok(results)
+}
+
+/// Get the current security configuration
+///
+/// # Returns
+/// * `Result<SecurityConfig, String>` - Current security configuration
+#[tauri::command]
+pub async fn get_security_config() -> Result<SecurityConfig, String> {
+    SecurityConfig::load().map_err(|e| e.to_string())
+}
+
+/// Update the security configuration
+///
+/// # Arguments
+/// * `config` - New security configuration
+///
+/// # Returns
+/// * `Result<(), String>` - Success or error message
+#[tauri::command]
+pub async fn update_security_config(config: SecurityConfig) -> Result<(), String> {
+    config.save().map_err(|e| e.to_string())
 }
