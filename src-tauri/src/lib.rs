@@ -541,6 +541,12 @@ fn read_skill(skill_path: String) -> Result<String, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .setup(|_app| {
+            if let Err(e) = crate::services::db::init_db() {
+                eprintln!("Failed to initialize database: {}", e);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             scan_skills,
             import_github_skill,
@@ -557,6 +563,7 @@ pub fn run() {
             commands::security::batch_scan_skills,
             commands::security::get_security_config,
             commands::security::update_security_config,
+            commands::security::get_scan_history,
             commands::cache::get_cache_stats,
             commands::cache::clear_cache
         ])

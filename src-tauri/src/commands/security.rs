@@ -5,6 +5,7 @@
 
 use crate::models::security::SecurityReport;
 use crate::security::{SecurityScanner, SecurityConfig};
+use crate::services::scan_history;
 use std::path::PathBuf;
 
 /// Scan a single skill directory for security issues
@@ -28,8 +29,15 @@ pub async fn scan_skill_security(skill_path: String, locale: Option<String>) -> 
         .and_then(|n| n.to_str())
         .unwrap_or("unknown");
 
-    scanner.scan_directory(&skill_path, skill_id, locale.as_deref().unwrap_or("en"))
-        .map_err(|e| e.to_string())
+    let report = scanner.scan_directory(&skill_path, skill_id, locale.as_deref().unwrap_or("en"))
+        .map_err(|e| e.to_string())?;
+
+    // Save to history (ignore error)
+    if let Err(e) = scan_history::save_scan_result(skill_id, &report) {
+        eprintln!("Failed to save scan history: {}", e);
+    }
+
+    Ok(report)
 }
 
 /// Batch scan multiple skills
@@ -59,7 +67,11 @@ pub async fn batch_scan_skills(skill_paths: Vec<String>, locale: Option<String>)
             .unwrap_or("unknown");
 
         match scanner.scan_directory(&skill_path, skill_id, loc) {
-            Ok(report) => results.push(report),
+            Ok(report) => {
+                // For batch scan, we might optionally save history, 
+                // but let's avoid it for now to prevent spamming if scanning hundreds of skills.
+                results.push(report);
+            },
             Err(e) => {
                 eprintln!("Failed to scan skill {}: {}", skill_path, e);
                 // Continue scanning other skills even if one fails
@@ -89,4 +101,9 @@ pub async fn get_security_config() -> Result<SecurityConfig, String> {
 #[tauri::command]
 pub async fn update_security_config(config: SecurityConfig) -> Result<(), String> {
     config.save().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_scan_history(limit: usize) -> Result<Vec<scan_history::ScanRecord>, String> {
+    scan_history::get_recent_scans(limit).map_err(|e| e.to_string())
 }

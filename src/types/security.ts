@@ -19,3 +19,14 @@ export interface SecurityReport {
   hard_trigger_issues: string[];
   scanned_files: string[];
 }
+
+export interface ScanRecord {
+  id: number;
+  skill_id: string;
+  skill_name: string;
+  scanned_at: number;
+  score: number;
+  level: SecurityLevel;
+  issues_count: number;
+  blocked: boolean;
+}

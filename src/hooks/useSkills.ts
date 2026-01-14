@@ -39,7 +39,7 @@ export function useSkills() {
       const securityMap = new Map(securityReports.map(report => [report.skill_id, report]));
 
       const mapSkill = (skill: ScanSkillEntry): InstalledSkill => {
-        const report = securityMap.get(skill.path.split(/[\\/]/).pop());
+        const report = securityMap.get(skill.path.split(/[\\/]/).pop() || '');
         return {
           id: skill.path,
           name: skill.name,

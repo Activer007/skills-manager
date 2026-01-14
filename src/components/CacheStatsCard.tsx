@@ -13,7 +13,7 @@ interface CacheStats {
 }
 
 export function CacheStatsCard() {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const [stats, setStats] = useState<CacheStats | null>(null);
   const [loading, setLoading] = useState(false);
 

@@ -1,3 +1,5 @@
+import type { SecurityIssue } from './security';
+
 export interface MarketplaceSkill {
   id: string;
   name: string;
@@ -26,6 +28,8 @@ export interface InstalledSkill extends Partial<MarketplaceSkill> {
   status: 'safe' | 'unsafe' | 'unknown';
   type: 'system' | 'project';
   version?: string;
+  securityScore?: number;
+  securityIssues?: SecurityIssue[];
 }
 
 export interface SkillManifest {

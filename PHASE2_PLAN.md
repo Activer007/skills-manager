@@ -50,8 +50,8 @@
 | 🔴 P1 | 完整安全规则库 | 3-5 天 | 安全 | 高 | Week 3 |
 | 🟡 P1 | 智能缓存系统 | 3-5 天 | 性能 | 中 | Week 3 |
 | 🟡 P1 | 扫描历史记录 | 2-3 天 | 功能 | 中 | Week 5 |
-| ⚪ P3 | 多 Agent 评分 | 1-2 周 | 评分 | 低 | Month 3 |
-| ⚪ P3 | Skills Master | 2-3 月 | 创新 | 低 | Month 3 |
+| ⚪ P3 | 多 Agent 评分 | 1-2 周 | 评分 | 低 | Phase 3 |
+| ⚪ P3 | Skills Master | 2-3 月 | 创新 | 低 | Phase 3 |
 
 ---
 
@@ -545,180 +545,11 @@ export function ScanHistoryPage() {
 
 ---
 
-## ⚪ P3-1: 评分系统原型（AI 驱动）
-
-### 概述
-**优先级**: 🟢 中 | **工作量**: 1-2 周 | **并发**: ✅ 可与 P1-1, P1-2, P1-3 并行
-
-### 详细任务
-
-#### Week 1: 传感器原子化
-
-**目标**: 将现有的 `analyzer/` 模块重构为独立的"事实提取器"
-
-**任务**:
-- [ ] 整理 `tools/analyzer/` 的 Python 逻辑
-- [ ] 改造为独立的 Rust 模块
-- [ ] 定义"技术事实规约"（JSON Schema）
-
-**事实规约示例**:
-```json
-{
-  "file_structure": {
-    "has_skill_md": true,
-    "total_files": 15,
-    "code_files": 8,
-    "test_files": 2,
-    "doc_files": 5
-  },
-  "code_complexity": {
-    "avg_cyclomatic_complexity": 3.5,
-    "max_nesting_depth": 4,
-    "lines_of_code": 1250
-  },
-  "prompt_length": {
-    "total_chars": 3500,
-    "instruction_chars": 2800,
-    "ratio": 0.8
-  },
-  "dependencies": [
-    "requests",
-    "numpy",
-    "pandas"
-  ]
-}
-```
-
-#### Week 1-2: 多 Agent 专家审计
-
-**架构**:
-```
-┌─────────────────────────────────────┐
-│         用户提交 Skill               │
-└──────────────┬──────────────────────┘
-               │
-               ▼
-      ┌─────────────────┐
-      │  事实提取器     │
-      │ (Facts Extractor)│
-      └────────┬────────┘
-               │
-      ┌────────▼────────┐
-      │                 │
-      ▼                 ▼
-┌──────────┐     ┌──────────┐
-│架构师   │     │产品/UX  │
-│Agent    │     │Agent    │
-└────┬────┘     └────┬────┘
-     │               │
-     └───────┬───────┘
-             ▼
-      ┌──────────┐
-      │ 主审官   │
-      │(Arbiter) │
-      └────┬─────┘
-           │
-           ▼
-    ┌──────────────┐
-    │ 最终评分     │
-    │ 改进建议    │
-    └─────────────┘
-```
-
-**Agent 1: 架构师 Agent** (代码健壮性、安全性)
-```rust
-pub struct ArchitectAgent;
-
-impl ArchitectAgent {
-    pub async fn audit(&self, facts: &TechFacts) -> ArchitectScore {
-        // 审查代码逻辑、错误处理、安全性
-    }
-}
-```
-
-**Agent 2: 产品/UX Agent** (README 易用性)
-```rust
-pub struct UxAgent;
-
-impl UxAgent {
-    pub async fn audit(&self, facts: &TechFacts) -> UxScore {
-        // 审查 README 结构、说明清晰度、示例质量
-    }
-}
-```
-
-**Agent 3: 稀缺性 Agent** (原创性与独特性)
-```rust
-pub struct NoveltyAgent;
-
-impl NoveltyAgent {
-    pub async fn audit(&self, facts: &TechFacts) -> NoveltyScore {
-        // 判断是否与现有 skills 重复、创新程度
-    }
-}
-```
-
-**锚点比对法**:
-- 准备 3-5 个"黄金样本"（已知高分的 skills）
-- 新 skill 与黄金样本对比
-- 计算相似度，调整评分权重
-
-#### Week 2: 主审官汇总
-
-**实现**:
-```rust
-pub struct Arbiter {
-    architect: ArchitectAgent,
-    ux: UxAgent,
-    novelty: NoveltyAgent,
-}
-
-impl Arbiter {
-    pub async fn evaluate(&self, skill: &Skill) -> FinalScore {
-        let facts = FactsExtractor::extract(skill)?;
-
-        let arch_score = self.architect.audit(&facts).await?;
-        let ux_score = self.ux.audit(&facts).await?;
-        let novelty_score = self.novelty.audit(&facts).await?;
-
-        // 加权汇总
-        let final_score = arch_score.weight(0.4)
-            + ux_score.weight(0.3)
-            + novelty_score.weight(0.3);
-
-        // 生成改进建议
-        let recommendations = self.generate_recommendations(&[
-            arch_score.suggestions,
-            ux_score.suggestions,
-            novelty_score.suggestions,
-        ]);
-
-        Ok(FinalScore {
-            total: final_score,
-            breakdown: ScoreBreakdown {
-                architecture: arch_score,
-                ux: ux_score,
-                novelty: novelty_score,
-            },
-            recommendations,
-        })
-    }
-}
-```
-
-**交付物**:
-- ✅ 原子化传感器库（Facts Extractor）
-- ✅ 三个 AI 专家 Agent
-- ✅ 主审官汇总系统
-- ✅ 改进建议报告
-
----
-
 ## 📅 时间线和依赖关系
 
 ```mermaid
 gantt
-    title 第二阶段时间线（Week 3-10）
+    title 第二阶段时间线（Week 3-8）
     dateFormat  YYYY-MM-DD
     section P1-1: 规则库
     评估优化规则      :a1, 2026-01-20, 2d
@@ -736,11 +567,6 @@ gantt
     数据库设计       :c1, 2026-01-27, 1d
     后端CRUD         :c2, 2026-01-28, 2d
     前端展示         :c3, 2026-01-30, 2d
-
-    section P1-4: AI评分
-    传感器原子化     :d1, 2026-02-03, 5d
-    多Agent审计      :d2, 2026-02-08, 5d
-    主审官汇总       :d3, 2026-02-13, 5d
 ```
 
 ---
