@@ -30,8 +30,10 @@ pub fn init_db() -> Result<()> {
 }
 
 pub fn get_connection() -> Result<r2d2::PooledConnection<SqliteConnectionManager>> {
-    let pool_guard = DB_POOL.lock().unwrap();
-    let pool = pool_guard.as_ref().ok_or(anyhow::anyhow!("Database not initialized"))?;
+    let pool = {
+        let pool_guard = DB_POOL.lock().unwrap();
+        pool_guard.as_ref().ok_or(anyhow::anyhow!("Database not initialized"))?.clone()
+    };
     Ok(pool.get()?)
 }
 
