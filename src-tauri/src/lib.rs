@@ -557,7 +557,9 @@ pub fn run() {
             commands::analyzer::batch_analyze_skills,
             commands::analyzer::batch_analyze_skills_detailed,
             commands::security::scan_skill_security,
-            commands::security::batch_scan_skills
+            commands::security::batch_scan_skills,
+            commands::security::get_security_config,
+            commands::security::update_security_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
