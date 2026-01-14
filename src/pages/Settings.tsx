@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CacheStatsCard } from '../components/CacheStatsCard';
 import { useSkillStore } from '../store/useSkillStore';
 import { Plus, X, FolderOpen, ExternalLink, Package } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
@@ -399,6 +400,8 @@ const Settings = () => {
             </div>
         </div>
       </div>
+
+      <CacheStatsCard />
 
       <div className="card bg-base-100 shadow-sm border border-base-200">
         <div className="card-body">
