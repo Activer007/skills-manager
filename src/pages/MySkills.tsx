@@ -10,6 +10,16 @@ import { SkeletonCard } from '../components/SkeletonCard';
 import type { SkillScore } from '../types/scorer';
 import { toast } from 'sonner';
 
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return JSON.stringify(error);
+};
+
 const MySkills = () => {
   const { t, i18n } = useTranslation();
   const { data: installedSkills = [], isLoading } = useSkills();
@@ -35,9 +45,8 @@ const MySkills = () => {
     try {
       await uninstallMutation.mutateAsync(skill.localPath);
       toast.success(`${skill.name} 已成功删除`);
-    } catch (error: any) {
-      const errMsg = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
-      toast.error(`删除失败: ${errMsg}`);
+    } catch (error: unknown) {
+      toast.error(`删除失败: ${getErrorMessage(error)}`);
     }
   };
 
@@ -66,8 +75,8 @@ const MySkills = () => {
       setImportUrl('');
       setImportPath('');
       setImportType(null);
-    } catch (error: any) {
-      toast.error(`导入失败: ${error.message || error}`);
+    } catch (error: unknown) {
+      toast.error(`导入失败: ${getErrorMessage(error)}`);
     }
   };
 

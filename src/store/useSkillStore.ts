@@ -1,7 +1,26 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
+import type { SecurityReport } from '../types/security';
 import { invoke } from '@tauri-apps/api/core';
+
+type ScanSkillEntry = {
+  name: string;
+  description?: string;
+  path: string;
+  skillType: 'system' | 'project' | string;
+};
+
+type ScanSkillsResult = {
+  systemSkills: ScanSkillEntry[];
+  projectSkills: ScanSkillEntry[];
+};
+
+type ImportResult = {
+  success: boolean;
+  message: string;
+  blocked: boolean;
+};
 
 interface SkillStore {
   installedSkills: InstalledSkill[];
@@ -59,30 +78,30 @@ export const useSkillStore = create<SkillStore>()(
       scanLocalSkills: async () => {
         set({ isLoading: true });
         try {
-          const result: any = await invoke('scan_skills');
-          
+          const result = await invoke<ScanSkillsResult>('scan_skills');
+
           const allSkillPaths = [
-            ...result.systemSkills.map((s: any) => s.path),
-            ...result.projectSkills.map((s: any) => s.path)
+            ...result.systemSkills.map((s) => s.path),
+            ...result.projectSkills.map((s) => s.path)
           ];
 
           // Batch scan for security
-          const securityReports: any[] = await invoke('batch_scan_skills', { 
+          const securityReports = await invoke<SecurityReport[]>('batch_scan_skills', {
             skillPaths: allSkillPaths,
             locale: window.localStorage.getItem('i18nextLng') || 'en'
           });
 
           const securityMap = new Map(securityReports.map(r => [r.skill_id, r]));
 
-          const mapSkill = (s: any) => {
-            const report = securityMap.get(s.path.split(/[\\/]/).pop());
+          const mapSkill = (s: ScanSkillEntry): InstalledSkill => {
+            const report = securityMap.get(s.path.split(/[\\/]/).pop());        
             return {
               id: s.path,
               name: s.name,
-              description: s.description || '',
+              description: s.description ?? '',
               localPath: s.path,
               status: report ? (report.score >= 70 ? 'safe' : 'unsafe') : 'safe',
-              type: s.skillType,
+              type: s.skillType as InstalledSkill['type'],
               installDate: Date.now(),
               version: '1.0.0',
               author: 'Unknown',
@@ -128,7 +147,7 @@ export const useSkillStore = create<SkillStore>()(
           }
 
           // 使用 GitHub URL 安装技能
-          const result: any = await invoke('import_github_skill', {
+          const result = await invoke<ImportResult>('import_github_skill', {
             request: {
               repoUrl: skill.githubUrl,
               installPath,
@@ -159,7 +178,7 @@ export const useSkillStore = create<SkillStore>()(
           }
 
           // 调用后端删除
-          const result: any = await invoke('uninstall_skill', {
+          const result = await invoke<ImportResult>('uninstall_skill', {
             request: {
               skillPath: skill.localPath
             }
@@ -189,7 +208,7 @@ export const useSkillStore = create<SkillStore>()(
 
       importFromGithub: async (url: string, installPath?: string) => {
         try {
-          const result: any = await invoke('import_github_skill', {
+          const result = await invoke<ImportResult>('import_github_skill', {
             request: {
               repoUrl: url,
               installPath,
@@ -214,11 +233,12 @@ export const useSkillStore = create<SkillStore>()(
         try {
           const skillName = sourcePath.split(/[\\/]/).pop() || 'unknown-skill';
 
-          const result: any = await invoke('import_local_skill', {
+          const result = await invoke<ImportResult>('import_local_skill', {
             request: {
               sourcePath,
               installPath,
-              skillName
+              skillName,
+              skipSecurityCheck: false
             }
           });
 

@@ -35,9 +35,9 @@ const Marketplace = () => {
     try {
         await installMutation.mutateAsync(skill);
         toast.success(i18n.language === 'zh' ? `${skill.name} 安装成功！` : `${skill.name} installed successfully!`);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Installation error:', error);
-        const errorMessage = typeof error === 'string' ? error : (error.message || 'Unknown error');
+        const errorMessage = error instanceof Error ? error.message : String(error);
         toast.error(i18n.language === 'zh' ? `安装失败: ${errorMessage}` : `Installation failed: ${errorMessage}`);
     } finally {
         setInstallingSkillId(null);

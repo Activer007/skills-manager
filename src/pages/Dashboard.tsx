@@ -1,9 +1,18 @@
+import type { ComponentType, ReactNode } from 'react';
 import { useSkills } from '../hooks/useSkills';
 import { ShieldAlert, Zap, Box, HardDrive } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
-const StatCard = ({ title, value, icon: Icon, color, desc }: any) => (
+type StatCardProps = {
+  title: string;
+  value: ReactNode;
+  icon: ComponentType<{ size?: number }>;
+  color: string;
+  desc: string;
+};
+
+const StatCard = ({ title, value, icon: Icon, color, desc }: StatCardProps) => (
   <div className="stats shadow bg-base-100 border border-base-200">
     <div className="stat">
       <div className={`stat-figure text-${color}`}>

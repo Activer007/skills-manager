@@ -26,7 +26,10 @@ export function useImportSkill() {
   return useMutation({
     mutationFn: async (skill: MarketplaceSkill) => {
       return await invoke('import_github_skill', {
-        request: { repoUrl: skill.githubUrl }
+        request: {
+          repoUrl: skill.githubUrl,
+          skipSecurityCheck: false
+        }
       });
     },
     onSuccess: () => {
@@ -44,7 +47,11 @@ export function useUninstallSkill() {
 
   return useMutation({
     mutationFn: async (skillPath: string) => {
-      return await invoke('uninstall_skill', { skillPath });
+      return await invoke('uninstall_skill', {
+        request: {
+          skillPath
+        }
+      });
     },
     onMutate: async (skillPath) => {
       // Cancel any outgoing refetches
@@ -82,8 +89,13 @@ export function useImportLocalSkill() {
 
   return useMutation({
     mutationFn: async (folderPath: string) => {
+      const skillName = folderPath.split(/[\\/]/).pop() || 'unknown-skill';
       return await invoke('import_local_skill', {
-        request: { folderPath }
+        request: {
+          sourcePath: folderPath,
+          skillName,
+          skipSecurityCheck: false
+        }
       });
     },
     onSuccess: () => {
@@ -116,7 +128,10 @@ export function useInstallSkill() {
   return useMutation({
     mutationFn: async (skill: MarketplaceSkill) => {
       return await invoke('import_github_skill', {
-        request: { repoUrl: skill.githubUrl }
+        request: {
+          repoUrl: skill.githubUrl,
+          skipSecurityCheck: false
+        }
       });
     },
     onSuccess: () => {

@@ -33,5 +33,5 @@ export interface SkillManifest {
   description: string;
   descriptionZh?: string; // 中文描述（可选）
   descriptionEn?: string; // 英文描述（可选）
-  [key: string]: any;
+  [key: string]: unknown;
 }
