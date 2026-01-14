@@ -1,8 +1,10 @@
 mod scanner;
 mod rules;
+mod config;
 
 pub use scanner::SecurityScanner;
 pub use rules::SecurityRules;
+pub use config::SecurityConfig;
 
 // Use the models from the parent's models directory
 use crate::models::security::*;
