@@ -8,6 +8,7 @@ pub struct ScanRecord {
     pub id: i64,
     pub skill_id: String,
     pub skill_name: String,
+    /// Unix timestamp in milliseconds (consistent with JavaScript Date)
     pub scanned_at: i64,
     pub score: i32,
     pub level: String,
@@ -15,10 +16,12 @@ pub struct ScanRecord {
     pub blocked: bool,
 }
 
+/// Save a security scan result to the database history.
 pub fn save_scan_result(skill_name: &str, report: &SecurityReport) -> Result<()> {
     let conn = get_connection()?;
     let report_json = serde_json::to_string(report)?;
-    let now = chrono::Utc::now().timestamp();
+    // Use milliseconds for consistency with JavaScript Date
+    let now = chrono::Utc::now().timestamp_millis();
 
     conn.execute(
         "INSERT INTO security_scan_history (

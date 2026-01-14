@@ -3,13 +3,17 @@ use r2d2_sqlite::SqliteConnectionManager;
 use r2d2::Pool;
 use std::path::PathBuf;
 use anyhow::Result;
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use once_cell::sync::OnceCell;
 
 pub type DbPool = Pool<SqliteConnectionManager>;
 
-pub static DB_POOL: Lazy<Mutex<Option<DbPool>>> = Lazy::new(|| Mutex::new(None));
+/// Global database connection pool.
+/// OnceCell is thread-safe and r2d2::Pool is already thread-safe internally,
+/// so we don't need an additional Mutex layer.
+pub static DB_POOL: OnceCell<DbPool> = OnceCell::new();
 
+/// Initialize the database connection pool and run migrations.
+/// This should be called once during application startup.
 pub fn init_db() -> Result<()> {
     let db_path = get_db_path()?;
     if let Some(parent) = db_path.parent() {
@@ -18,23 +22,26 @@ pub fn init_db() -> Result<()> {
 
     let manager = SqliteConnectionManager::file(db_path);
     let pool = Pool::new(manager)?;
-    
+
     // Run migrations
     let conn = pool.get()?;
     migrate(&conn)?;
 
-    let mut global_pool = DB_POOL.lock().unwrap();
-    *global_pool = Some(pool);
+    // Set the global pool
+    DB_POOL.set(pool)
+        .map_err(|_| anyhow::anyhow!("Database already initialized"))?;
 
     Ok(())
 }
 
+/// Get a database connection from the global pool.
+/// This is thread-safe and efficient as it avoids unnecessary locking.
 pub fn get_connection() -> Result<r2d2::PooledConnection<SqliteConnectionManager>> {
-    let pool = {
-        let pool_guard = DB_POOL.lock().unwrap();
-        pool_guard.as_ref().ok_or(anyhow::anyhow!("Database not initialized"))?.clone()
-    };
-    Ok(pool.get()?)
+    DB_POOL
+        .get()
+        .ok_or_else(|| anyhow::anyhow!("Database not initialized"))?
+        .get()
+        .map_err(Into::into)
 }
 
 fn get_db_path() -> Result<PathBuf> {
@@ -44,7 +51,51 @@ fn get_db_path() -> Result<PathBuf> {
     Ok(path)
 }
 
+/// Current database schema version
+const CURRENT_DB_VERSION: i32 = 1;
+
+/// Run database migrations to ensure schema is up to date.
+/// This function creates a schema_migrations table to track version.
 fn migrate(conn: &Connection) -> Result<()> {
+    // Create schema_migrations table first if it doesn't exist
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS schema_migrations (
+            version INTEGER PRIMARY KEY,
+            applied_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+
+    // Get current version
+    let current_version: i32 = conn.query_row(
+        "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
+        [],
+        |row| row.get(0),
+    ).unwrap_or(0);
+
+    // Run migrations if needed
+    if current_version < CURRENT_DB_VERSION {
+        println!("Database migration: v{} -> v{}", current_version, CURRENT_DB_VERSION);
+
+        // Migration v1: Create initial schema
+        if current_version < 1 {
+            migrate_v1(conn)?;
+            // Record migration
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (1, ?)",
+                [chrono::Utc::now().timestamp_millis()],
+            )?;
+        }
+
+        // Future migrations would go here:
+        // if current_version < 2 { migrate_v2(conn)?; ... }
+    }
+
+    Ok(())
+}
+
+/// Migration v1: Create initial schema for scan history
+fn migrate_v1(conn: &Connection) -> Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS security_scan_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,7 +111,7 @@ fn migrate(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    // Create indexes
+    // Create indexes for better query performance
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_scan_history_skill_id ON security_scan_history(skill_id)",
         [],

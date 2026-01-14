@@ -1,28 +1,26 @@
-import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
+import type { CSSProperties } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import type { ScanRecord } from '../types/security';
-import { ShieldAlert, ShieldCheck, ShieldBan } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, ShieldBan, RefreshCw } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 export default function ScanHistory() {
   const { i18n } = useTranslation();
-  const [history, setHistory] = useState<ScanRecord[]>([]);
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  const loadHistory = async () => {
-    try {
+  // Use TanStack Query for automatic refetching and caching
+  const { data: history = [], refetch, isRefetching } = useQuery({
+    queryKey: ['scan-history'],
+    queryFn: async () => {
       const data = await invoke<ScanRecord[]>('get_scan_history', { limit: 50 });
-      // Sort by date ascending for chart (API returns desc)
-      setHistory(data.reverse());
-    } catch (error) {
-      console.error('Failed to load scan history:', error);
-    }
-  };
+      // API returns desc, reverse for chart (ascending)
+      return data.reverse();
+    },
+    staleTime: 30000, // 30 seconds
+    refetchInterval: 60000, // Auto-refresh every minute
+  });
 
   const getLevelColor = (level: string) => {
     switch (level) {
@@ -36,7 +34,7 @@ export default function ScanHistory() {
   };
 
   const chartData = history.map(h => ({
-    date: format(new Date(h.scanned_at * 1000), 'MM-dd HH:mm'),
+    date: format(new Date(h.scanned_at), 'MM-dd HH:mm'),
     score: h.score,
     name: h.skill_name
   }));
@@ -46,7 +44,18 @@ export default function ScanHistory() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">{i18n.language === 'zh' ? '安全扫描历史' : 'Security Scan History'}</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">{i18n.language === 'zh' ? '安全扫描历史' : 'Security Scan History'}</h2>
+        <button
+          className={`btn btn-ghost btn-sm gap-2 ${isRefetching ? 'loading' : ''}`}
+          onClick={() => refetch()}
+          disabled={isRefetching}
+          title={i18n.language === 'zh' ? '刷新' : 'Refresh'}
+        >
+          {!isRefetching && <RefreshCw className="w-4 h-4" />}
+          {i18n.language === 'zh' ? '刷新' : 'Refresh'}
+        </button>
+      </div>
 
       {/* Chart */}
       <div className="card bg-base-100 shadow-sm border border-base-200">
@@ -90,11 +99,14 @@ export default function ScanHistory() {
                 {tableData.map((record) => (
                   <tr key={record.id}>
                     <td className="font-mono text-xs">
-                        {format(new Date(record.scanned_at * 1000), 'yyyy-MM-dd HH:mm')}
+                        {format(new Date(record.scanned_at), 'yyyy-MM-dd HH:mm')}
                     </td>
                     <td className="font-semibold">{record.skill_name}</td>
                     <td>
-                        <div className="radial-progress text-primary text-xs" style={{"--value": record.score, "--size": "2rem"} as any}>
+                        <div
+                          className="radial-progress text-primary text-xs"
+                          style={{ '--value': record.score, '--size': '2rem' } as CSSProperties}
+                        >
                             {record.score}
                         </div>
                     </td>

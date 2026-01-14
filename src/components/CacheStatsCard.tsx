@@ -21,8 +21,8 @@ export function CacheStatsCard() {
     try {
       const data = await invoke<CacheStats>('get_cache_stats');
       setStats(data);
-    } catch (error) {
-      console.error('Failed to fetch cache stats:', error);
+    } catch (err) {
+      console.error('Failed to fetch cache stats:', err);
     }
   };
 
@@ -32,7 +32,7 @@ export function CacheStatsCard() {
       await invoke('clear_cache');
       toast.success(i18n.language === 'zh' ? '缓存已清空' : 'Cache cleared');
       await fetchStats();
-    } catch (error) {
+    } catch {
       toast.error(i18n.language === 'zh' ? '清空缓存失败' : 'Failed to clear cache');
     } finally {
       setLoading(false);
@@ -41,7 +41,8 @@ export function CacheStatsCard() {
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 5000); // Poll every 5s
+    // Poll every 30s (cache stats change infrequently, no need for 5s polling)
+    const interval = setInterval(fetchStats, 30000);
     return () => clearInterval(interval);
   }, []);
 
