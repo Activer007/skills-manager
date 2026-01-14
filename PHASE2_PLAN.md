@@ -1,0 +1,757 @@
+# 🚀 Skills Manager - 第二阶段开发计划
+
+**文档版本**: 2.0
+**创建日期**: 2026-01-14
+**基于**: 第一阶段已完成（PR #3 + #4）
+
+---
+
+## 📊 第一阶段回顾（✅ 已完成）
+
+### 交付成果
+- ✅ **安全扫描引擎**: 60+ 规则、硬触发阻止、安全评分
+- ✅ **UI/UX 改进**: Sonner Toast、骨架屏加载
+- ✅ **用户文档**: 详细安全说明、免责声明、使用建议
+- ✅ **安装前警告**: 双语确认对话框
+
+### 技术指标
+| 指标 | 数值 |
+|------|------|
+| 新增代码 | 2,200+ 行 |
+| 新增文件 | 8 个 |
+| 测试覆盖 | 13/13 ✅ |
+| PR 合并 | 4 个 |
+| 开发时间 | 1 天 |
+
+---
+
+## 🎯 第二阶段目标（Week 3-8）
+
+**核心目标**: 建立完整的安全和评分系统
+**里程碑**: v2.0.0 版本发布
+**团队规模**: 4-5 人（后端×2 + 前端×1 + AI×1 + QA×1）
+
+---
+
+## 📋 任务优先级矩阵
+
+| 优先级 | 任务类型 | 工作量 | 影响范围 | 紧急程度 | 建议开始 |
+|--------|---------|--------|---------|---------|---------|
+| 🔴 P1 | 完整安全规则库 | 3-5 天 | 安全 | 高 | Week 3 |
+| 🟡 P1 | 智能缓存系统 | 3-5 天 | 性能 | 中 | Week 3 |
+| 🟡 P1 | 扫描历史记录 | 2-3 天 | 功能 | 中 | Week 5 |
+| ⚪ P3 | 多 Agent 评分 | 1-2 周 | 评分 | 低 | Month 3 |
+| ⚪ P3 | Skills Master | 2-3 月 | 创新 | 低 | Month 3 |
+
+---
+
+## 🔴 P1-1: 完整安全规则库（后端）
+
+### 概述
+**优先级**: 🔴 最高 | **工作量**: 3-5 天 | **并发**: ✅ 可与 P1-2 并行
+
+### 详细任务
+
+#### Day 1-2: 评估和优化现有规则
+**输入**: 当前 60+ 条规则（Python 为主）
+**输出**: 优化后的规则列表
+
+**任务**:
+- [ ] 测试每条规则在 Skills Manager 场景的适用性
+- [ ] 移除 Python 特有规则（不适用）
+- [ ] 标记需要调整的规则
+- [ ] 识别缺失的关键规则
+
+**删除候选**（Python 特有）:
+- `PYTHON_PICKLE` (pickle 操作)
+- `PYTHON_YAML_LOAD` (yaml.load)
+- `PYTHON_CODE_EXEC` (exec/compile)
+
+**保留规则**（通用）:
+- 所有破坏性操作（rm, chmod, dd 等）
+- 远程代码执行（curl|sh, reverse shell）
+- 命令注入（eval, exec, system）
+- 凭证泄露（API Key, 私钥）
+
+#### Day 2-3: 扩展规则库
+**目标**: 从 60+ → 80+ 条规则
+
+**新增规则分类**:
+
+1. **JavaScript/TypeScript 特有** (10 条)
+   - `dangerouslySetInnerHTML` 使用
+   - `eval()` 和 `Function()` 构造函数
+   - `innerHTML` 赋值
+   - `document.write()` 调用
+   - `setTimeout(string)` / `setInterval(string)`
+   - `postMessage()` 不安全的 origin
+   - `localStorage` 存储敏感信息
+   - `location.assign()` 未验证的 URL
+   - `new Function()` 动态代码生成
+   - `import()` 动态加载未验证的模块
+
+2. **Rust 特有** (5 条)
+   - `unsafe` 块使用
+   - `raw_pointer` 操作
+   - `transmute` 类型转换
+   - `extern "C"` FFI 调用未验证的库
+   - `std::mem::forget()` 内存泄漏风险
+
+3. **Tauri 特有** (3 条)
+   - `invoke()` 调用未注册的命令
+   - Shell 插件执行命令（`Command::new()`）
+   - 文件系统 API 访问敏感路径
+
+#### Day 3-4: 实现规则配置系统
+
+**数据结构**:
+```rust
+// src-tauri/src/security/config.rs
+use std::collections::HashSet;
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecurityConfig {
+    /// 启用的规则 ID 集合
+    pub enabled_rules: HashSet<String>,
+    /// 白名单：这些文件/模式不扫描
+    pub whitelist: HashSet<String>,
+    /// 黑名单：这些文件/模式强制扫描
+    pub blacklist: HashSet<String>,
+    /// 是否启用硬触发阻止
+    pub block_on_hard_trigger: bool,
+}
+
+impl Default for SecurityConfig {
+    fn default() -> Self {
+        Self {
+            enabled_rules: SecurityRules::get_all_patterns()
+                .iter()
+                .map(|r| r.id.to_string())
+                .collect(),
+            whitelist: HashSet::new(),
+            blacklist: HashSet::new(),
+            block_on_hard_trigger: true,
+        }
+    }
+}
+```
+
+**功能**:
+- [ ] 配置文件读取（`~/.skill-manager/security-config.json`）
+- [ ] 配置文件写入
+- [ ] 规则过滤器（扫描前应用配置）
+- [ ] Tauri 命令：`get_security_config`, `update_security_config`
+
+#### Day 4-5: 测试和文档
+
+**单元测试**:
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_javascript_eval_detection() {
+        let scanner = SecurityScanner::new();
+        let code = r#"
+        const user_input = "console.log('hello')";
+        eval(user_input);
+        "#;
+        let report = scanner.scan_file(code, "test.js", "en").unwrap();
+        assert!(report.blocked);
+    }
+
+    #[test]
+    fn test_rust_unsafe_detection() {
+        let scanner = SecurityScanner::new();
+        let code = r#"
+        unsafe {
+            let ptr = 0x1 as *mut i32;
+            *ptr = 42;
+        }
+        "#;
+        let report = scanner.scan_file(code, "test.rs", "en").unwrap();
+        assert!(report.score < 90);
+    }
+}
+```
+
+**规则文档**:
+- [ ] 生成 `docs/security-rules.md`
+- [ ] 每条规则的说明（危险类型、检测模式、示例代码）
+- [ ] 配置文件示例
+
+**交付物**:
+- ✅ 80+ 条安全规则
+- ✅ 规则配置系统
+- ✅ 完整的测试覆盖
+- ✅ 规则文档
+
+---
+
+## 🟡 P1-2: 智能缓存系统（前后端）
+
+### 概述
+**优先级**: 🟡 中 | **工作量**: 3-5 天 | **并发**: ✅ 可与 P1-1 并行
+
+### 详细任务
+
+#### Day 1-2: 后端 LRU 缓存
+
+**实现**:
+```rust
+// src-tauri/src/services/cache.rs
+use std::time::{Duration, Instant};
+use lru::LruCache;
+use serde::{Serialize, Deserialize};
+
+pub struct SkillCache {
+    cache: LruCache<String, CachedSkill>,
+    ttl: Duration,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CachedSkill {
+    data: InstalledSkill,
+    checksum: String,
+    cached_at: Instant,
+}
+
+impl SkillCache {
+    pub fn new(capacity: usize, ttl: Duration) -> Self {
+        Self {
+            cache: LruCache::new(capacity),
+            ttl,
+        }
+    }
+
+    pub fn get(&mut self, path: &str) -> Option<InstalledSkill> {
+        if let Some(cached) = self.cache.get(path) {
+            // 检查是否过期
+            if cached.cached_at.elapsed() < self.ttl {
+                return Some(cached.data.clone());
+            }
+        }
+        None
+    }
+
+    pub fn put(&mut self, path: String, skill: InstalledSkill, checksum: String) {
+        let cached = CachedSkill {
+            data: skill,
+            checksum,
+            cached_at: Instant::now(),
+        };
+        self.cache.put(path, cached);
+    }
+}
+```
+
+**功能**:
+- [ ] LRU 缓存实现（容量：100 个 skills）
+- [ ] TTL 过期（5 分钟）
+- [ ] Checksum 校验（SHA256）
+- [ ] 集成到 `scan_skills` 命令
+
+**依赖**:
+```toml
+[dependencies]
+lru = "0.12"
+```
+
+#### Day 2-3: 前端缓存优化
+
+**方案 A: TanStack Query** (推荐)
+```typescript
+// src/hooks/useSkills.ts
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { invoke } from '@tauri-apps/api/core';
+
+export function useSkills() {
+  return useQuery({
+    queryKey: ['skills'],
+    queryFn: async () => {
+      return await invoke('scan_skills');
+    },
+    staleTime: 1000 * 60 * 5, // 5 分钟
+    gcTime: 1000 * 60 * 10, // 10 分钟
+  });
+}
+
+export function useImportSkill() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (skill: MarketplaceSkill) => {
+      return await invoke('import_github_skill', {
+        request: { repoUrl: skill.githubUrl }
+      });
+    },
+    onSuccess: () => {
+      // 乐观更新：刷新 skills 列表
+      queryClient.invalidateQueries({ queryKey: ['skills'] });
+    },
+  });
+}
+```
+
+**方案 B: 自实现缓存** (轻量级)
+```typescript
+// src/utils/cache.ts
+interface CachedData<T> {
+  data: T;
+  timestamp: number;
+}
+
+class SimpleCache<T> {
+  private cache = new Map<string, CachedData<T>>();
+  private ttl: number;
+
+  constructor(ttl: number) {
+    this.ttl = ttl;
+  }
+
+  get(key: string): T | null {
+    const cached = this.cache.get(key);
+    if (!cached) return null;
+
+    if (Date.now() - cached.timestamp > this.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return cached.data;
+  }
+
+  set(key: string, data: T): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+    });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+```
+
+**功能**:
+- [ ] 5 分钟 stale time
+- [ ] 窗口聚焦时自动刷新
+- [ ] 乐观更新（安装/卸载立即响应）
+- [ ] 请求去重（相同的并发请求只执行一次）
+
+#### Day 3-4: 性能优化
+
+**优化项**:
+1. **请求去重**
+   ```typescript
+   const pendingRequests = new Map<string, Promise<any>>();
+
+   async function dedupedRequest<T>(key: string, fn: () => Promise<T>): Promise<T> {
+     if (pendingRequests.has(key)) {
+       return pendingRequests.get(key) as Promise<T>;
+     }
+
+     const promise = fn().finally(() => {
+       pendingRequests.delete(key);
+     });
+
+     pendingRequests.set(key, promise);
+     return promise;
+   }
+   ```
+
+2. **并行查询**
+   - 使用 `Promise.all()` 批量扫描
+   - Worker 线程池（如果需要）
+
+3. **分页/虚拟滚动**
+   - 大量 skills 时使用虚拟滚动
+   - 前端分页（每页 20-50 个）
+
+#### Day 5: 测试和监控
+
+**测试**:
+- [ ] 缓存命中率测试（目标 > 80%）
+- [ ] 性能基准测试（扫描时间 < 1s）
+- [ ] 并发压力测试
+
+**监控**:
+- [ ] 缓存统计（命中率、未命中率）
+- [ ] 日志输出（缓存命中/失效）
+
+**交付物**:
+- ✅ 后端 LRU 缓存
+- ✅ 前端智能缓存
+- ✅ 性能优化
+- ✅ 监控和文档
+
+---
+
+## 🟡 P1-3: 安全扫描历史记录（后端+前端）
+
+### 概述
+**优先级**: 🟡 中 | **工作量**: 2-3 天 | **并发**: ✅ 可与 P1-1, P1-2 并行
+
+### 详细任务
+
+#### Day 1: 数据库设计
+
+**表结构**:
+```sql
+CREATE TABLE security_scan_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    skill_id TEXT NOT NULL,
+    skill_name TEXT NOT NULL,
+    scanned_at TIMESTAMP NOT NULL,
+    score INTEGER NOT NULL,
+    level TEXT NOT NULL,  -- 'Safe', 'Low', 'Medium', 'High', 'Critical'
+    issues_count INTEGER NOT NULL,
+    hard_trigger_count INTEGER NOT NULL,
+    blocked INTEGER NOT NULL,  -- 0 or 1
+    report_json TEXT NOT NULL,
+    FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_scan_history_skill_id ON security_scan_history(skill_id);
+CREATE INDEX idx_scan_history_scanned_at ON security_scan_history(scanned_at DESC);
+```
+
+**迁移脚本**:
+```rust
+// src-tauri/src/migrations/001_create_scan_history.rs
+use rusqlite::{Connection, Result};
+
+pub fn migrate(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "BEGIN;
+         CREATE TABLE IF NOT EXISTS security_scan_history (...);
+         COMMIT;"
+    )?;
+    Ok(())
+}
+```
+
+#### Day 1-2: 后端实现
+
+**CRUD 操作**:
+```rust
+// src-tauri/src/services/scan_history.rs
+pub struct ScanHistoryService {
+    db: Arc<Mutex<Connection>>,
+}
+
+impl ScanHistoryService {
+    pub fn save_scan(&self, report: &SecurityReport) -> Result<()> {
+        // 保存扫描结果
+    }
+
+    pub fn get_history(&self, skill_id: &str, limit: usize) -> Result<Vec<ScanRecord>> {
+        // 查询历史记录
+    }
+
+    pub fn get_statistics(&self) -> Result<ScanStatistics> {
+        // 统计分析
+    }
+}
+```
+
+**Tauri 命令**:
+```rust
+#[tauri::command]
+pub async fn get_scan_history(skill_id: String, limit: usize) -> Result<Vec<ScanRecord>, String>
+
+#[tauri::command]
+pub async fn get_scan_statistics() -> Result<ScanStatistics, String>
+```
+
+#### Day 2-3: 前端展示
+
+**页面组件**:
+```typescript
+// src/pages/ScanHistory.tsx
+import { LineChart, Line } from 'recharts';
+
+export function ScanHistoryPage() {
+  const { data: history } = useScanHistory(skillId);
+  const { data: stats } = useScanStatistics();
+
+  return (
+    <div>
+      <h2>扫描历史</h2>
+      <LineChart data={history.trend}>
+        <Line dataKey="score" stroke="#8884d8" />
+      </LineChart>
+      <StatisticsCards stats={stats} />
+    </div>
+  );
+}
+```
+
+**功能**:
+- [ ] 历史记录列表
+- [ ] 趋势图（使用 Recharts）
+- [ ] 对比功能（本次 vs 上次）
+- [ ] 导出报告（CSV/JSON）
+
+**交付物**:
+- ✅ 扫描历史数据库
+- ✅ 后端 CRUD 操作
+- ✅ 前端历史记录页面
+- ✅ 趋势分析图表
+
+---
+
+## ⚪ P3-1: 评分系统原型（AI 驱动）
+
+### 概述
+**优先级**: 🟢 中 | **工作量**: 1-2 周 | **并发**: ✅ 可与 P1-1, P1-2, P1-3 并行
+
+### 详细任务
+
+#### Week 1: 传感器原子化
+
+**目标**: 将现有的 `analyzer/` 模块重构为独立的"事实提取器"
+
+**任务**:
+- [ ] 整理 `tools/analyzer/` 的 Python 逻辑
+- [ ] 改造为独立的 Rust 模块
+- [ ] 定义"技术事实规约"（JSON Schema）
+
+**事实规约示例**:
+```json
+{
+  "file_structure": {
+    "has_skill_md": true,
+    "total_files": 15,
+    "code_files": 8,
+    "test_files": 2,
+    "doc_files": 5
+  },
+  "code_complexity": {
+    "avg_cyclomatic_complexity": 3.5,
+    "max_nesting_depth": 4,
+    "lines_of_code": 1250
+  },
+  "prompt_length": {
+    "total_chars": 3500,
+    "instruction_chars": 2800,
+    "ratio": 0.8
+  },
+  "dependencies": [
+    "requests",
+    "numpy",
+    "pandas"
+  ]
+}
+```
+
+#### Week 1-2: 多 Agent 专家审计
+
+**架构**:
+```
+┌─────────────────────────────────────┐
+│         用户提交 Skill               │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+      ┌─────────────────┐
+      │  事实提取器     │
+      │ (Facts Extractor)│
+      └────────┬────────┘
+               │
+      ┌────────▼────────┐
+      │                 │
+      ▼                 ▼
+┌──────────┐     ┌──────────┐
+│架构师   │     │产品/UX  │
+│Agent    │     │Agent    │
+└────┬────┘     └────┬────┘
+     │               │
+     └───────┬───────┘
+             ▼
+      ┌──────────┐
+      │ 主审官   │
+      │(Arbiter) │
+      └────┬─────┘
+           │
+           ▼
+    ┌──────────────┐
+    │ 最终评分     │
+    │ 改进建议    │
+    └─────────────┘
+```
+
+**Agent 1: 架构师 Agent** (代码健壮性、安全性)
+```rust
+pub struct ArchitectAgent;
+
+impl ArchitectAgent {
+    pub async fn audit(&self, facts: &TechFacts) -> ArchitectScore {
+        // 审查代码逻辑、错误处理、安全性
+    }
+}
+```
+
+**Agent 2: 产品/UX Agent** (README 易用性)
+```rust
+pub struct UxAgent;
+
+impl UxAgent {
+    pub async fn audit(&self, facts: &TechFacts) -> UxScore {
+        // 审查 README 结构、说明清晰度、示例质量
+    }
+}
+```
+
+**Agent 3: 稀缺性 Agent** (原创性与独特性)
+```rust
+pub struct NoveltyAgent;
+
+impl NoveltyAgent {
+    pub async fn audit(&self, facts: &TechFacts) -> NoveltyScore {
+        // 判断是否与现有 skills 重复、创新程度
+    }
+}
+```
+
+**锚点比对法**:
+- 准备 3-5 个"黄金样本"（已知高分的 skills）
+- 新 skill 与黄金样本对比
+- 计算相似度，调整评分权重
+
+#### Week 2: 主审官汇总
+
+**实现**:
+```rust
+pub struct Arbiter {
+    architect: ArchitectAgent,
+    ux: UxAgent,
+    novelty: NoveltyAgent,
+}
+
+impl Arbiter {
+    pub async fn evaluate(&self, skill: &Skill) -> FinalScore {
+        let facts = FactsExtractor::extract(skill)?;
+
+        let arch_score = self.architect.audit(&facts).await?;
+        let ux_score = self.ux.audit(&facts).await?;
+        let novelty_score = self.novelty.audit(&facts).await?;
+
+        // 加权汇总
+        let final_score = arch_score.weight(0.4)
+            + ux_score.weight(0.3)
+            + novelty_score.weight(0.3);
+
+        // 生成改进建议
+        let recommendations = self.generate_recommendations(&[
+            arch_score.suggestions,
+            ux_score.suggestions,
+            novelty_score.suggestions,
+        ]);
+
+        Ok(FinalScore {
+            total: final_score,
+            breakdown: ScoreBreakdown {
+                architecture: arch_score,
+                ux: ux_score,
+                novelty: novelty_score,
+            },
+            recommendations,
+        })
+    }
+}
+```
+
+**交付物**:
+- ✅ 原子化传感器库（Facts Extractor）
+- ✅ 三个 AI 专家 Agent
+- ✅ 主审官汇总系统
+- ✅ 改进建议报告
+
+---
+
+## 📅 时间线和依赖关系
+
+```mermaid
+gantt
+    title 第二阶段时间线（Week 3-10）
+    dateFormat  YYYY-MM-DD
+    section P1-1: 规则库
+    评估优化规则      :a1, 2026-01-20, 2d
+    扩展规则库       :a2, 2026-01-22, 2d
+    规则配置系统      :a3, 2026-01-24, 2d
+    测试和文档        :a4, 2026-01-26, 2d
+
+    section P1-2: 缓存系统
+    后端LRU缓存      :b1, 2026-01-20, 2d
+    前端缓存优化      :b2, 2026-01-22, 2d
+    性能优化         :b3, 2026-01-24, 2d
+    测试和监控        :b4, 2026-01-26, 1d
+
+    section P1-3: 扫描历史
+    数据库设计       :c1, 2026-01-27, 1d
+    后端CRUD         :c2, 2026-01-28, 2d
+    前端展示         :c3, 2026-01-30, 2d
+
+    section P1-4: AI评分
+    传感器原子化     :d1, 2026-02-03, 5d
+    多Agent审计      :d2, 2026-02-08, 5d
+    主审官汇总       :d3, 2026-02-13, 5d
+```
+
+---
+
+## 🎯 建议的执行顺序
+
+### Week 3-4（立即可开始）
+1. **P1-1: 完整安全规则库** (后端团队)
+   - 优先级最高
+   - 影响范围大
+   - 可独立开发
+
+2. **P1-2: 智能缓存系统** (前后端团队)
+   - 性能优化
+   - 可与 P1-1 并行
+   - 不依赖其他任务
+
+### Week 5-6
+3. **P1-3: 安全扫描历史记录** (后端+前端)
+   - 依赖 P1-1 的扫描结果
+   - 可与 P1-4 并行
+
+4. **P1-4: 评分系统原型** (AI 团队启动)
+   - 传感器原子化
+   - 不依赖其他任务
+
+### Week 7-10
+5. **P1-4: 评分系统原型** (AI 团队完成)
+   - 多 Agent 审计
+   - 主审官汇总
+
+---
+
+## 🔥 立即可以开始的任务
+
+**推荐**: 从 **P1-1（完整安全规则库）** 开始
+
+**原因**:
+1. ✅ 优先级最高（安全功能）
+2. ✅ 影响范围最大（所有用户）
+3. ✅ 可立即开始（无依赖）
+4. ✅ 工作量适中（3-5 天）
+5. ✅ 成果可独立交付
+
+**下一步**:
+```bash
+# 创建功能分支
+git checkout -b feature/security-rules-expansion
+
+# 开始开发...
+```
+
+---
+
+**需要我帮你开始 P1-1 任务吗？**

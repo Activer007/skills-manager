@@ -9,6 +9,7 @@ mod analyzer;
 mod commands;
 mod models;
 mod security;
+mod services;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SkillInfo {
