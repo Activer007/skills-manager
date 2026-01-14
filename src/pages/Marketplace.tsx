@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useMarketplaceSkills, useInstallSkill } from '../hooks/useSkills';
+import type { MarketplaceSkill } from '../types';
 import { Download, Search, Star, ExternalLink, Check } from 'lucide-react';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
@@ -17,7 +18,7 @@ const Marketplace = () => {
   const [installingSkillId, setInstallingSkillId] = useState<string | null>(null);
   const pageSize = 12;
 
-  const handleInstall = async (skill: any) => {
+  const handleInstall = async (skill: MarketplaceSkill) => {
     if (installMutation.isPending) return;
 
     // 显示安装前安全警告

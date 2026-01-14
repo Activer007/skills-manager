@@ -41,8 +41,8 @@ cargo clippy              # Rust lint 检查
 ## 架构
 
 ### 前端架构
-- **状态管理**：Zustand (with persist middleware)
-  - `src/store/useSkillStore.ts` - 全局状态管理
+- **状态管理**：TanStack Query (for server state)
+  - `src/hooks/useSkills.ts` - 核心数据 Hooks
 - **路由**：React Router v7（位于 `src/App.tsx`）
 - **UI 组件**：Tailwind CSS 3.4 + DaisyUI 5.5
 - **主要页面**：
