@@ -1,8 +1,18 @@
 # 🚀 Skills Manager - 第二阶段开发计划
 
-**文档版本**: 2.0
+**文档版本**: 2.1
 **创建日期**: 2026-01-14
+**最后更新**: 2026-01-14
 **基于**: 第一阶段已完成（PR #3 + #4）
+
+> **📊 实际进度报告**: 详见 [PHASE2_PROGRESS_REPORT.md](./PHASE2_PROGRESS_REPORT.md)
+>
+> **当前状态** (2026-01-14):
+> - ✅ P1-1: **85% 完成** (68/80条规则，缺12条)
+> - 🟡 P1-2: **60% 完成** (后端完成，前端未开始)
+> - ⚪ P1-3: **0% 完成** (未开始)
+>
+> **总体进度**: **48.3%** (P1 任务)
 
 ---
 
@@ -47,6 +57,13 @@
 
 ## 🔴 P1-1: 完整安全规则库（后端）
 
+> **实际进度**: ✅ **85% 完成** (2026-01-14)
+> - ✅ **68条规则** (目标80+)
+> - ✅ **18条特定语言规则** (JS: 10, Rust: 5, Tauri: 3)
+> - ✅ **规则配置系统** (100% 完成)
+> - ❌ **规则文档** (未完成)
+> - 🔴 **缺口**: 12条规则
+
 ### 概述
 **优先级**: 🔴 最高 | **工作量**: 3-5 天 | **并发**: ✅ 可与 P1-2 并行
 
@@ -57,10 +74,10 @@
 **输出**: 优化后的规则列表
 
 **任务**:
-- [ ] 测试每条规则在 Skills Manager 场景的适用性
-- [ ] 移除 Python 特有规则（不适用）
-- [ ] 标记需要调整的规则
-- [ ] 识别缺失的关键规则
+- [x] 测试每条规则在 Skills Manager 场景的适用性 ✅
+- [x] 移除 Python 特有规则（不适用） ✅
+- [x] 标记需要调整的规则 ✅
+- [x] 识别缺失的关键规则 ✅
 
 **删除候选**（Python 特有）:
 - `PYTHON_PICKLE` (pickle 操作)
@@ -75,29 +92,30 @@
 
 #### Day 2-3: 扩展规则库
 **目标**: 从 60+ → 80+ 条规则
+**实际**: ✅ **68条规则** (85% 完成，缺12条)
 
 **新增规则分类**:
 
-1. **JavaScript/TypeScript 特有** (10 条)
-   - `dangerouslySetInnerHTML` 使用
-   - `eval()` 和 `Function()` 构造函数
-   - `innerHTML` 赋值
-   - `document.write()` 调用
-   - `setTimeout(string)` / `setInterval(string)`
-   - `postMessage()` 不安全的 origin
-   - `localStorage` 存储敏感信息
-   - `location.assign()` 未验证的 URL
-   - `new Function()` 动态代码生成
-   - `import()` 动态加载未验证的模块
+1. **JavaScript/TypeScript 特有** (10 条) ✅ **已完成**
+   - ✅ `JS_DANGEROUSLY_SET_INNER_HTML` - React dangerouslySetInnerHTML
+   - ✅ `JS_INNER_HTML` - innerHTML 赋值
+   - ✅ `JS_DOCUMENT_WRITE` - document.write() 调用
+   - ✅ `JS_SET_TIMEOUT_STRING` - setTimeout 字符串参数
+   - ✅ `JS_SET_INTERVAL_STRING` - setInterval 字符串参数
+   - ✅ `JS_POST_MESSAGE` - postMessage() 不安全调用
+   - ✅ `JS_LOCAL_STORAGE_SENSITIVE` - localStorage 存储敏感信息
+   - ✅ `JS_LOCATION_ASSIGN` - location.assign 未验证URL
+   - ✅ `JS_FUNCTION_CONSTRUCTOR` - Function 构造函数
+   - ✅ `JS_DYNAMIC_IMPORT` - 动态 import() 未验证
 
-2. **Rust 特有** (5 条)
-   - `unsafe` 块使用
-   - `raw_pointer` 操作
-   - `transmute` 类型转换
-   - `extern "C"` FFI 调用未验证的库
-   - `std::mem::forget()` 内存泄漏风险
+2. **Rust 特有** (5 条) ✅ **已完成**
+   - ✅ `RUST_UNSAFE_BLOCK` - unsafe 块使用
+   - ✅ `RUST_RAW_POINTER` - 原始指针操作
+   - ✅ `RUST_TRANSMUTE` - transmute 类型转换
+   - ✅ `RUST_EXTERN_C` - extern "C" FFI 调用
+   - ✅ `RUST_MEM_FORGET` - std::mem::forget
 
-3. **Tauri 特有** (3 条)
+3. **Tauri 特有** (3 条) ✅ **已完成**
    - `invoke()` 调用未注册的命令
    - Shell 插件执行命令（`Command::new()`）
    - 文件系统 API 访问敏感路径
@@ -192,14 +210,23 @@ mod tests {
 
 ## 🟡 P1-2: 智能缓存系统（前后端）
 
+> **实际进度**: 🟡 **60% 完成** (2026-01-14)
+> - ✅ **后端 LRU 缓存** (100% 完成)
+> - ✅ **Checksum 校验** (SHA256)
+> - ✅ **全局缓存实例** (GLOBAL_CACHE)
+> - ✅ **单元测试** (7个测试全部通过)
+> - ❌ **前端缓存** (未开始)
+> - ❌ **性能优化** (未开始)
+> - ❌ **基准测试** (未开始)
+
 ### 概述
 **优先级**: 🟡 中 | **工作量**: 3-5 天 | **并发**: ✅ 可与 P1-1 并行
 
 ### 详细任务
 
-#### Day 1-2: 后端 LRU 缓存
+#### Day 1-2: 后端 LRU 缓存 ✅ **已完成**
 
-**实现**:
+**实现**: ✅
 ```rust
 // src-tauri/src/services/cache.rs
 use std::time::{Duration, Instant};
@@ -248,20 +275,26 @@ impl SkillCache {
 ```
 
 **功能**:
-- [ ] LRU 缓存实现（容量：100 个 skills）
-- [ ] TTL 过期（5 分钟）
-- [ ] Checksum 校验（SHA256）
-- [ ] 集成到 `scan_skills` 命令
+- [x] LRU 缓存实现（容量：100 个 skills） ✅
+- [x] TTL 过期（5 分钟） ✅
+- [x] Checksum 校验（SHA256） ✅
+- [x] 集成到 `scan_skills` 命令 ✅
+- [x] 全局缓存实例 (GLOBAL_CACHE) ✅
+- [x] 缓存统计 (命中率、命中数、未命中数) ✅
 
-**依赖**:
+**依赖**: ✅ **已添加**
 ```toml
 [dependencies]
-lru = "0.12"
+lru = "0.16.3"
+sha2 = "0.10"
+once_cell = "1.21.3"
 ```
 
-#### Day 2-3: 前端缓存优化
+**单元测试**: ✅ **7个测试全部通过**
 
-**方案 A: TanStack Query** (推荐)
+#### Day 2-3: 前端缓存优化 ❌ **未开始**
+
+**方案 A: TanStack Query** (推荐) ⚠️ **待实现**
 ```typescript
 // src/hooks/useSkills.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -336,15 +369,15 @@ class SimpleCache<T> {
 }
 ```
 
-**功能**:
+**功能**: ❌ **待实现**
 - [ ] 5 分钟 stale time
 - [ ] 窗口聚焦时自动刷新
 - [ ] 乐观更新（安装/卸载立即响应）
 - [ ] 请求去重（相同的并发请求只执行一次）
 
-#### Day 3-4: 性能优化
+#### Day 3-4: 性能优化 ❌ **未开始**
 
-**优化项**:
+**优化项**: ❌ **待实现**
 1. **请求去重**
    ```typescript
    const pendingRequests = new Map<string, Promise<any>>();
@@ -371,26 +404,34 @@ class SimpleCache<T> {
    - 大量 skills 时使用虚拟滚动
    - 前端分页（每页 20-50 个）
 
-#### Day 5: 测试和监控
+#### Day 5: 测试和监控 ❌ **未开始**
 
-**测试**:
-- [ ] 缓存命中率测试（目标 > 80%）
-- [ ] 性能基准测试（扫描时间 < 1s）
-- [ ] 并发压力测试
+**测试**: ⚠️ **部分完成**
+- [x] 后端单元测试（7个测试全部通过） ✅
+- [ ] 缓存命中率测试（目标 > 80%） ❌
+- [ ] 性能基准测试（扫描时间 < 1s） ❌
+- [ ] 并发压力测试 ❌
 
-**监控**:
-- [ ] 缓存统计（命中率、未命中率）
-- [ ] 日志输出（缓存命中/失效）
+**监控**: ⚠️ **部分完成**
+- [x] 缓存统计 API (CacheStats) ✅
+- [ ] 前端 UI 展示 ❌
+- [ ] 日志输出（缓存命中/失效） ❌
 
 **交付物**:
-- ✅ 后端 LRU 缓存
-- ✅ 前端智能缓存
-- ✅ 性能优化
-- ✅ 监控和文档
+- ✅ 后端 LRU 缓存 **已完成**
+- ❌ 前端智能缓存 **未开始**
+- ❌ 性能优化 **未开始**
+- ❌ 监控和文档 **未开始**
 
 ---
 
 ## 🟡 P1-3: 安全扫描历史记录（后端+前端）
+
+> **实际进度**: ⚪ **0% 完成** (2026-01-14)
+> - ❌ **数据库设计** (未开始)
+> - ❌ **后端 CRUD** (未开始)
+> - ❌ **前端展示** (未开始)
+> - 🔴 **依赖**: 需等待 P1-1 和 P1-2 完成
 
 ### 概述
 **优先级**: 🟡 中 | **工作量**: 2-3 天 | **并发**: ✅ 可与 P1-1, P1-2 并行

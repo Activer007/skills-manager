@@ -263,6 +263,7 @@ impl SecurityScanner {
     }
 
     /// 扫描文件内容，生成安全报告
+    #[allow(dead_code)]
     pub fn scan_file(&self, content: &str, file_path: &str, _locale: &str) -> Result<SecurityReport> {
         let mut matches = Vec::new();
         let skill_id = file_path.to_string();
@@ -345,6 +346,7 @@ impl SecurityScanner {
     }
 
     /// 旧的计算方法（保留兼容性）
+    #[allow(dead_code)]
     pub fn calculate_score(&self, issues: &[SecurityIssue]) -> i32 {
         let mut base_score = 100;
 
@@ -386,6 +388,7 @@ impl SecurityScanner {
     }
 
     /// 计算文件校验和
+    #[allow(dead_code)]
     pub fn calculate_checksum(&self, content: &[u8]) -> String {
         let mut hasher = Sha256::new();
         hasher.update(content);
@@ -919,5 +922,139 @@ setInterval('console.log("test")', 1000);
 
         let report = scanner.scan_file(content, "test.js", "en").unwrap();
         assert!(report.issues.iter().any(|i| i.description.contains("setTimeout") || i.description.contains("setInterval")));
+    }
+
+    // ========== 新增测试：Go 语言规则 ==========
+
+    #[test]
+    fn test_go_unsafe_package() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+package main
+
+import "unsafe"
+
+func main() {
+    var x int = 42
+    ptr := unsafe.Pointer(&x)
+}
+"#;
+
+        let report = scanner.scan_file(content, "test.go", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("unsafe")));
+        assert!(report.score < 100);
+    }
+
+    #[test]
+    fn test_go_cgo_usage() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+package main
+
+// #cgo LDFLAGS: -lm
+// #include <math.h>
+import "C"
+
+func main() {
+    x := C.sqrt(4.0)
+}
+"#;
+
+        let report = scanner.scan_file(content, "test.go", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("CGo")));
+    }
+
+    // ========== 新增测试：Python 语言规则 ==========
+
+    #[test]
+    fn test_python_pickle_load() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+import pickle
+
+with open('data.pkl', 'rb') as f:
+    data = pickle.load(f)
+"#;
+
+        let report = scanner.scan_file(content, "test.py", "en").unwrap();
+        assert!(report.blocked, "pickle.load should trigger hard block");
+        assert!(report.hard_trigger_issues.len() > 0);
+        assert!(report.issues.iter().any(|i| i.description.contains("pickle")));
+    }
+
+    #[test]
+    fn test_python_yaml_load() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+import yaml
+
+with open('config.yaml') as f:
+    config = yaml.load(f)
+"#;
+
+        let report = scanner.scan_file(content, "test.py", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("yaml")));
+        assert!(report.score < 90);
+    }
+
+    #[test]
+    fn test_python_compile() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+code = "print('hello')"
+compiled = compile(code, '<string>', 'exec')
+exec(compiled)
+"#;
+
+        let report = scanner.scan_file(content, "test.py", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("compile")));
+    }
+
+    // ========== 新增测试：Shell 脚本规则 ==========
+
+    #[test]
+    fn test_shell_word_splitting() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+#!/bin/bash
+file=$1
+rm $file
+"#;
+
+        let report = scanner.scan_file(content, "test.sh", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("单词分割") || i.description.contains("word splitting")));
+    }
+
+    #[test]
+    fn test_shell_glob_expansion() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+#!/bin/bash
+rm -rf /tmp/*
+"#;
+
+        let report = scanner.scan_file(content, "test.sh", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("通配符") || i.description.contains("glob")));
+    }
+
+    #[test]
+    fn test_shell_command_substitution() {
+        let scanner = SecurityScanner::new();
+
+        let content = r#"
+#!/bin/bash
+user_input=$1
+result=$(cat $user_input)
+"#;
+
+        let report = scanner.scan_file(content, "test.sh", "en").unwrap();
+        assert!(report.issues.iter().any(|i| i.description.contains("命令替换") || i.description.contains("command substitution")));
     }
 }

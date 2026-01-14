@@ -34,6 +34,7 @@ pub enum Confidence {
 
 /// 危险模式规则
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct PatternRule {
     pub id: &'static str,
     pub name: &'static str,
@@ -49,6 +50,7 @@ pub struct PatternRule {
 }
 
 impl PatternRule {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         id: &'static str,
         name: &'static str,
@@ -891,6 +893,171 @@ lazy_static! {
             "确保文件路径验证，避免路径遍历攻击",
             Some("CWE-22"),
         ),
+
+        // ========== O. Go 语言特有规则 (4条) ==========
+
+        PatternRule::new(
+            "GO_UNSAFE_PACKAGE",
+            "Go unsafe 包使用",
+            r#"import\s+"unsafe"|unsafe\."#,
+            Severity::Medium,
+            Category::CmdInjection,
+            55,
+            "Go unsafe 包使用（绕过类型安全）",
+            false,
+            Confidence::High,
+            "审查 unsafe 代码，确保内存安全，考虑使用安全的替代方案",
+            Some("CWE-119"),
+        ),
+        PatternRule::new(
+            "GO_CGO_USAGE",
+            "Go CGo 外部函数调用",
+            r#"import\s+"C"|//\s*#cgo"#,
+            Severity::Medium,
+            Category::CmdInjection,
+            50,
+            "Go CGo 调用 C 代码（潜在不安全）",
+            false,
+            Confidence::High,
+            "确保 C 代码可信且安全，验证内存管理",
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "GO_GOROUTINE_LEAK",
+            "Go goroutine 泄漏风险",
+            r"go\s+func\s*\(|go\s+\w+\(",
+            Severity::Low,
+            Category::Destructive,
+            30,
+            "Go goroutine 调用（可能泄漏）",
+            false,
+            Confidence::Low,
+            "确保 goroutine 正确退出，使用 context 管理生命周期",
+            Some("CWE-404"),
+        ),
+        PatternRule::new(
+            "GO_RACE_CONDITION",
+            "Go 数据竞争检测",
+            r"go\s+func.*\{.*[^&]([\w\.]+)\s*=",
+            Severity::Medium,
+            Category::CmdInjection,
+            45,
+            "Go 并发访问共享变量（数据竞争风险）",
+            false,
+            Confidence::Low,
+            "使用 sync.Mutex 或 channel 保护共享数据，运行 go build -race 检测",
+            Some("CWE-362"),
+        ),
+
+        // ========== P. Python 语言特有规则 (4条) ==========
+
+        PatternRule::new(
+            "PYTHON_PICKLE_LOAD",
+            "Python pickle 不安全反序列化",
+            r"pickle\.load(s)?\s*\(",
+            Severity::Critical,
+            Category::CmdInjection,
+            85,
+            "Python pickle.load 不安全反序列化（远程代码执行）",
+            true,
+            Confidence::High,
+            "避免反序列化不可信数据，使用 JSON 或其他安全格式",
+            Some("CWE-502"),
+        ),
+        PatternRule::new(
+            "PYTHON_YAML_LOAD",
+            "Python yaml.load 不安全加载",
+            r"yaml\.load\s*\([^,)]*\)|yaml\.unsafe_load",
+            Severity::High,
+            Category::CmdInjection,
+            75,
+            "Python yaml.load 不安全加载（代码执行风险）",
+            false,
+            Confidence::High,
+            "使用 yaml.safe_load() 替代 yaml.load()",
+            Some("CWE-94"),
+        ),
+        PatternRule::new(
+            "PYTHON_CODE_COMPILE",
+            "Python compile 动态编译",
+            r"\bcompile\s*\(",
+            Severity::High,
+            Category::CmdInjection,
+            70,
+            "Python compile() 动态编译代码",
+            false,
+            Confidence::Medium,
+            "避免编译未验证的代码，使用安全的替代方法",
+            Some("CWE-94"),
+        ),
+        PatternRule::new(
+            "PYTHON_INPUT_RAW",
+            "Python input 未验证输入",
+            r"\binput\s*\(",
+            Severity::Low,
+            Category::CmdInjection,
+            25,
+            "Python input() 接收用户输入（需验证）",
+            false,
+            Confidence::Low,
+            "验证和清理用户输入，避免注入攻击",
+            Some("CWE-20"),
+        ),
+
+        // ========== Q. Shell 脚本特有规则 (4条) ==========
+
+        PatternRule::new(
+            "SHELL_WORD_SPLITTING",
+            "Shell 单词分割漏洞",
+            r#"(rm|mv|cp|cat)\s+\$\w+|\$\{\w+\}"#,
+            Severity::Medium,
+            Category::CmdInjection,
+            50,
+            "Shell 变量未引号包裹（单词分割风险）",
+            false,
+            Confidence::Medium,
+            r#"使用双引号包裹变量: "$var" 而不是 $var"#,
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "SHELL_GLOB_EXPANSION",
+            "Shell 通配符扩展风险",
+            r"rm\s+.*\*|mv\s+.*\*",
+            Severity::High,
+            Category::Destructive,
+            60,
+            "Shell 通配符扩展（可能误删文件）",
+            false,
+            Confidence::Medium,
+            "小心使用通配符，先测试匹配结果，使用 -- 分隔选项和参数",
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "SHELL_COMMAND_SUBSTITUTION",
+            "Shell 命令替换注入",
+            r"\$\(.*\$\{?\w+\}?.*\)|`.*\$\{?\w+\}?.*`",
+            Severity::High,
+            Category::CmdInjection,
+            65,
+            "Shell 命令替换包含变量（注入风险）",
+            false,
+            Confidence::Medium,
+            "验证变量内容，避免在命令替换中使用未验证的变量",
+            Some("CWE-78"),
+        ),
+        PatternRule::new(
+            "SHELL_SOURCE_UNTRUSTED",
+            "Shell source 不可信文件",
+            r"(source|\\.)\s+\$\{?\w+\}?|source\s+/tmp/",
+            Severity::High,
+            Category::RemoteExec,
+            70,
+            "Shell source 执行不可信文件",
+            false,
+            Confidence::High,
+            "避免 source 用户可控的文件路径，验证文件来源",
+            Some("CWE-94"),
+        ),
     ];
 
     /// 仅获取硬触发规则
@@ -908,6 +1075,7 @@ impl SecurityRules {
     }
 
     /// 获取所有硬触发规则
+    #[allow(dead_code)]
     pub fn get_hard_triggers() -> Vec<&'static PatternRule> {
         PATTERN_RULES.iter().filter(|r| r.hard_trigger).collect()
     }

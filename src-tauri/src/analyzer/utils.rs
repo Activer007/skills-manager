@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
 // Utility functions for text analysis and processing
 //
 // This module provides core text analysis functions used across all scorers.
@@ -33,6 +36,7 @@ pub struct Section {
 }
 
 /// Count code blocks in markdown content
+#[allow(unused_assignments)]
 pub fn count_code_blocks(content: &str) -> usize {
     let parser = Parser::new(content);
     let mut count = 0;

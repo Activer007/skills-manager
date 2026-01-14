@@ -22,4 +22,3 @@ pub mod skill_analyzer;
 // Re-export main types for convenience
 pub use types::*;
 pub use skill_analyzer::SkillAnalyzer;
-pub use config::ScoringConfig;
