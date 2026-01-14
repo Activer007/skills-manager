@@ -46,6 +46,15 @@ const MySkills = () => {
   const handleUninstall = async (skill: InstalledSkill) => {
     if (uninstallMutation.isPending) return;
 
+    // 显示确认对话框
+    const confirmed = window.confirm(
+      i18n.language === 'zh'
+        ? `⚠️ 确认删除\n\n你确定要删除 Skill "${skill.name}" 吗？\n\n此操作将删除以下内容：\n• Skill 文件夹及所有文件\n• 相关配置信息\n\n此操作无法撤销！`
+        : `⚠️ Confirm Deletion\n\nAre you sure you want to delete the skill "${skill.name}"?\n\nThis will remove:\n• Skill folder and all files\n• Related configuration\n\nThis action cannot be undone!`
+    );
+
+    if (!confirmed) return;
+
     try {
       await uninstallMutation.mutateAsync(skill.localPath);
       toast.success(`${skill.name} 已成功删除`);
