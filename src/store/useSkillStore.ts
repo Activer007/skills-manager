@@ -33,11 +33,11 @@ interface SkillStore {
   // Actions
   fetchMarketplaceSkills: () => Promise<void>;
   scanLocalSkills: () => Promise<void>;
-  installSkill: (skill: MarketplaceSkill) => Promise<void>;
+  installSkill: (skill: MarketplaceSkill) => Promise<ImportResult>;
   uninstallSkill: (id: string) => void;
   updateSkill: (id: string, skill: Partial<InstalledSkill>) => void;
-  importFromGithub: (url: string, installPath?: string) => Promise<void>;
-  importFromLocal: (sourcePath: string, installPath?: string) => Promise<void>;
+  importFromGithub: (url: string, installPath?: string) => Promise<ImportResult>;
+  importFromLocal: (sourcePath: string, installPath?: string) => Promise<ImportResult>;
   fetchProjectPaths: () => Promise<void>;
   saveProjectPaths: (paths: string[]) => Promise<void>;
   setDefaultInstallLocation: (location: 'system' | 'project') => void;
@@ -94,7 +94,7 @@ export const useSkillStore = create<SkillStore>()(
           const securityMap = new Map(securityReports.map(r => [r.skill_id, r]));
 
           const mapSkill = (s: ScanSkillEntry): InstalledSkill => {
-            const report = securityMap.get(s.path.split(/[\\/]/).pop());        
+            const report = securityMap.get(s.path.split(/[\\/]/).pop() || '');        
             return {
               id: s.path,
               name: s.name,

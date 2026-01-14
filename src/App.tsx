@@ -4,6 +4,7 @@ import Layout from './components/layout/Layout';
 import MySkills from './pages/MySkills';
 import Marketplace from './pages/Marketplace';
 import Settings from './pages/Settings';
+import ScanHistory from './pages/ScanHistory';
 
 const router = createBrowserRouter([
   {
@@ -21,6 +22,10 @@ const router = createBrowserRouter([
       {
         path: 'marketplace',
         element: <Marketplace />,
+      },
+      {
+        path: 'security',
+        element: <ScanHistory />,
       },
       {
         path: 'settings',
