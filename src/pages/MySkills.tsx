@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSkillStore } from '../store/useSkillStore';
+import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill } from '../hooks/useSkills';
 import { Trash2, Eye, FolderOpen, X, Github, HardDrive, Plus } from 'lucide-react';
-import type { InstalledSkill } from '../types';
+import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
 import SkillQualityCard from '../components/SkillQualityCard';
@@ -10,9 +10,23 @@ import { SkeletonCard } from '../components/SkeletonCard';
 import type { SkillScore } from '../types/scorer';
 import { toast } from 'sonner';
 
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return JSON.stringify(error);
+};
+
 const MySkills = () => {
   const { t, i18n } = useTranslation();
-  const { installedSkills, scanLocalSkills, importFromGithub, importFromLocal, isLoading } = useSkillStore();
+  const { data: installedSkills = [], isLoading } = useSkills();
+  const uninstallMutation = useUninstallSkill();
+  const importGithubMutation = useImportSkill();
+  const importLocalMutation = useImportLocalSkill();
+
   const [activeTab, setActiveTab] = useState<'all' | 'system' | 'project'>('all');
   const [selectedSkill, setSelectedSkill] = useState<InstalledSkill | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -24,40 +38,47 @@ const MySkills = () => {
   const [importType, setImportType] = useState<'github' | 'local' | null>(null);
   const [importUrl, setImportUrl] = useState('');
   const [importPath, setImportPath] = useState('');
-  const [isImporting, setIsImporting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteResult, setDeleteResult] = useState<{show: boolean, success: boolean, message: string}>({show: false, success: false, message: ''});
 
   const handleUninstall = async (skill: InstalledSkill) => {
-    if (isDeleting) return;
+    if (uninstallMutation.isPending) return;
 
-    // 使用 window.confirm 可能也不工作，直接执行删除
-    setIsDeleting(true);
     try {
-      const result: any = await invoke('uninstall_skill', {
-        request: {
-          skillPath: skill.localPath
-        }
-      });
-
-      if (result.success) {
-        setDeleteResult({show: true, success: true, message: `${skill.name} 已成功删除`});
-        await scanLocalSkills();
-      } else {
-        setDeleteResult({show: true, success: false, message: `删除失败: ${result.message}`});
-      }
-    } catch (error: any) {
-      const errMsg = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
-      setDeleteResult({show: true, success: false, message: `删除出错: ${errMsg}`});
-    } finally {
-      setIsDeleting(false);
-      setTimeout(() => setDeleteResult({show: false, success: false, message: ''}), 3000);
+      await uninstallMutation.mutateAsync(skill.localPath);
+      toast.success(`${skill.name} 已成功删除`);
+    } catch (error: unknown) {
+      toast.error(`删除失败: ${getErrorMessage(error)}`);
     }
   };
 
-  useEffect(() => {
-    scanLocalSkills();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleImport = async () => {
+    // 显示安全警告
+    const confirmed = window.confirm(
+      i18n.language === 'zh'
+        ? `⚠️ 安全提示\n\n当前版本已启用安全检查功能。\n\n导入前会自动扫描 Skill 内容，检测以下危险模式：\n• 破坏性操作（如 rm -rf /）\n• 远程代码执行（如 curl | sh）\n• 命令注入（如 eval()）\n• 数据泄露风险\n\n如检测到硬触发危险代码，将阻止导入。\n\n是否继续导入？`
+        : `⚠️ Security Notice\n\nSecurity scanning is enabled. The skill will be scanned for:\n• Destructive operations (e.g., rm -rf /)\n• Remote code execution (e.g., curl | sh)\n• Command injection (e.g., eval())\n• Data exfiltration risks\n\nImport will be blocked if critical patterns are detected.\n\nContinue importing?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      if (importType === 'github') {
+        await importGithubMutation.mutateAsync({
+          githubUrl: importUrl,
+        } as MarketplaceSkill);
+        toast.success('成功从 GitHub 导入 Skill！');
+      } else if (importType === 'local') {
+        await importLocalMutation.mutateAsync(importPath);
+        toast.success('成功从本地导入 Skill！');
+      }
+      // 重置状态
+      setShowImportModal(false);
+      setImportUrl('');
+      setImportPath('');
+      setImportType(null);
+    } catch (error: unknown) {
+      toast.error(`导入失败: ${getErrorMessage(error)}`);
+    }
+  };
 
   const filteredSkills = installedSkills.filter(skill => {
     if (activeTab === 'all') return true;
@@ -97,37 +118,6 @@ const MySkills = () => {
     }
   };
 
-  const handleImport = async () => {
-    // 显示安装前安全警告
-    const confirmed = window.confirm(
-      i18n.language === 'zh'
-        ? `⚠️ 安全提示\n\n当前版本已启用安全检查功能。\n\n导入前会自动扫描 Skill 内容，检测以下危险模式：\n• 破坏性操作（如 rm -rf /）\n• 远程代码执行（如 curl | sh）\n• 命令注入（如 eval()）\n• 数据泄露风险\n\n如检测到硬触发危险代码，将阻止导入。\n\n是否继续导入？`
-        : `⚠️ Security Notice\n\nSecurity scanning is enabled. The skill will be scanned for:\n• Destructive operations (e.g., rm -rf /)\n• Remote code execution (e.g., curl | sh)\n• Command injection (e.g., eval())\n• Data exfiltration risks\n\nImport will be blocked if critical patterns are detected.\n\nContinue importing?`
-    );
-
-    if (!confirmed) return;
-
-    setIsImporting(true);
-    try {
-      if (importType === 'github') {
-        await importFromGithub(importUrl);
-        toast.success('成功从 GitHub 导入 Skill！');
-      } else if (importType === 'local') {
-        await importFromLocal(importPath);
-        toast.success('成功从本地导入 Skill！');
-      }
-      // 重置状态
-      setShowImportModal(false);
-      setImportUrl('');
-      setImportPath('');
-      setImportType(null);
-    } catch (error: any) {
-      toast.error(`导入失败: ${error.message}`);
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
   const closeImportModal = () => {
     setShowImportModal(false);
     setImportType(null);
@@ -137,15 +127,6 @@ const MySkills = () => {
 
   return (
     <div className="space-y-6">
-      {/* Delete Result Toast */}
-      {deleteResult.show && (
-        <div className="toast toast-top toast-end z-50">
-          <div className={`alert ${deleteResult.success ? 'alert-success' : 'alert-error'} shadow-lg`}>
-            <span>{deleteResult.message}</span>
-          </div>
-        </div>
-      )}
-
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h2 className="text-2xl font-bold">{t('mySkills')}</h2>
@@ -249,7 +230,7 @@ const MySkills = () => {
                     <button
                         className="btn btn-sm btn-ghost text-error hover:bg-error/10"
                         onClick={() => handleUninstall(skill)}
-                        disabled={isDeleting}
+                        disabled={uninstallMutation.isPending}
                     >
                         <Trash2 size={16} />
                         {t('remove')}
@@ -470,9 +451,9 @@ const MySkills = () => {
                   <button
                     className="btn btn-primary"
                     onClick={handleImport}
-                    disabled={isImporting || (importType === 'github' ? !importUrl.trim() : !importPath.trim())}
+                    disabled={importGithubMutation.isPending || importLocalMutation.isPending || (importType === 'github' ? !importUrl.trim() : !importPath.trim())}
                   >
-                    {isImporting ? (
+                    {(importGithubMutation.isPending || importLocalMutation.isPending) ? (
                       <>
                         <span className="loading loading-spinner loading-sm"></span>
                         {t('importing')}

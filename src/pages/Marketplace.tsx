@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSkillStore } from '../store/useSkillStore';
-import { Download, Search, Star, ExternalLink, Check, Loader2 } from 'lucide-react';
+import { useSkills, useMarketplaceSkills, useInstallSkill } from '../hooks/useSkills';
+import type { MarketplaceSkill } from '../types';
+import { Download, Search, Star, ExternalLink, Check } from 'lucide-react';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
@@ -9,21 +10,16 @@ import { SkeletonCard } from '../components/SkeletonCard';
 
 const Marketplace = () => {
   const { t, i18n } = useTranslation();
-  const { marketplaceSkills, fetchMarketplaceSkills, installSkill, installedSkills, isLoading } = useSkillStore();
+  const { data: marketplaceSkills = [], isLoading: isLoadingMarketplace } = useMarketplaceSkills();
+  const { data: installedSkills = [] } = useSkills();
+  const installMutation = useInstallSkill();
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [installingSkillId, setInstallingSkillId] = useState<string | null>(null);
-  const [installStatus, setInstallStatus] = useState<{show: boolean, message: string, type: 'info' | 'success' | 'error'}>({show: false, message: '', type: 'info'});
   const pageSize = 12;
 
-  useEffect(() => {
-    if (marketplaceSkills.length === 0) {
-        fetchMarketplaceSkills();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleInstall = async (skill: any) => {
-    if (installingSkillId) return;
+  const handleInstall = async (skill: MarketplaceSkill) => {
+    if (installMutation.isPending) return;
 
     // 显示安装前安全警告
     const confirmed = window.confirm(
@@ -35,29 +31,14 @@ const Marketplace = () => {
     if (!confirmed) return;
 
     setInstallingSkillId(skill.id);
-    setInstallStatus({
-      show: true,
-      message: i18n.language === 'zh' ? `正在安装 ${skill.name}...` : `Installing ${skill.name}...`,
-      type: 'info'
-    });
 
     try {
-        await installSkill(skill);
-        setInstallStatus({
-          show: true,
-          message: i18n.language === 'zh' ? `${skill.name} 安装成功！` : `${skill.name} installed successfully!`,
-          type: 'success'
-        });
-        setTimeout(() => setInstallStatus({show: false, message: '', type: 'info'}), 3000);
-    } catch (error: any) {
+        await installMutation.mutateAsync(skill);
+        toast.success(i18n.language === 'zh' ? `${skill.name} 安装成功！` : `${skill.name} installed successfully!`);
+    } catch (error: unknown) {
         console.error('Installation error:', error);
-        const errorMessage = typeof error === 'string' ? error : (error.message || 'Unknown error');
-        setInstallStatus({
-          show: true,
-          message: i18n.language === 'zh' ? `安装失败: ${errorMessage}` : `Installation failed: ${errorMessage}`,
-          type: 'error'
-        });
-        setTimeout(() => setInstallStatus({show: false, message: '', type: 'info'}), 5000);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        toast.error(i18n.language === 'zh' ? `安装失败: ${errorMessage}` : `Installation failed: ${errorMessage}`);
     } finally {
         setInstallingSkillId(null);
     }
@@ -121,16 +102,6 @@ const Marketplace = () => {
 
   return (
     <div className="space-y-6">
-      {/* Install Status Toast */}
-      {installStatus.show && (
-        <div className="toast toast-top toast-end z-50">
-          <div className={`alert ${installStatus.type === 'success' ? 'alert-success' : installStatus.type === 'error' ? 'alert-error' : 'alert-info'} shadow-lg`}>
-            {installStatus.type === 'info' && <Loader2 className="animate-spin" size={18} />}
-            <span>{installStatus.message}</span>
-          </div>
-        </div>
-      )}
-
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
             <h2 className="text-2xl font-bold">{t('marketplace')}</h2>
@@ -159,7 +130,7 @@ const Marketplace = () => {
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoadingMarketplace ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <SkeletonCard count={8} />
         </div>

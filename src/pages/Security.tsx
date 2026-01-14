@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Shield, ShieldCheck, ShieldAlert, CheckCircle, RefreshCw } from 'lucide-react';
-import { useSkillStore } from '../store/useSkillStore';
+import { useSkills } from '../hooks/useSkills';
 
 const Security = () => {
   const { t, i18n } = useTranslation();
-  const { installedSkills, scanLocalSkills } = useSkillStore();
+  const { data: installedSkills = [], refetch } = useSkills();
   const [scanning, setScanning] = useState(false);
   const [lastScan, setLastScan] = useState<Date | null>(new Date());
 
   const handleScan = async () => {
     setScanning(true);
     try {
-      await scanLocalSkills();
+      await refetch();
       setLastScan(new Date());
     } catch (error) {
       console.error('Scan failed:', error);
