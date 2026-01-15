@@ -22,6 +22,18 @@ struct MatchResult {
 
 pub struct SecurityScanner;
 
+// 常见大目录（依赖/构建产物），默认不深入扫描
+const SKIP_DIR_NAMES: &[&str] = &[
+    ".git",
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    "__pycache__",
+    ".venv",
+    "venv",
+];
+
 impl SecurityScanner {
     pub fn new() -> Self {
         Self
@@ -41,18 +53,6 @@ impl SecurityScanner {
         const MAX_SCAN_DEPTH: usize = 20;
         const MAX_FILES: usize = 2000;
         const MAX_BYTES_PER_FILE: u64 = 2 * 1024 * 1024; // 2MiB
-
-        // 常见大目录（依赖/构建产物），默认不深入扫描
-        const SKIP_DIR_NAMES: &[&str] = &[
-            ".git",
-            "node_modules",
-            "target",
-            "dist",
-            "build",
-            "__pycache__",
-            ".venv",
-            "venv",
-        ];
 
         let mut all_issues = Vec::new();
         let mut all_matches = Vec::new();
@@ -74,6 +74,14 @@ impl SecurityScanner {
                 Ok(e) => e,
                 Err(e) => {
                     eprintln!("Failed to read directory entry under {:?}: {}", path, e);
+                    all_issues.push(SecurityIssue {
+                        severity: IssueSeverity::Warning,
+                        category: IssueCategory::FileSystem,
+                        description: format!("Failed to read directory entry: {}", e),
+                        line_number: None,
+                        code_snippet: None,
+                        file_path: None,
+                    });
                     continue;
                 }
             };
@@ -467,10 +475,6 @@ impl SecurityScanner {
         use std::path::Path;
         use walkdir::WalkDir;
 
-        const SKIP_DIR_NAMES: &[&str] = &[
-            ".git", "node_modules", "target", "dist", "build", "__pycache__", ".venv", "venv",
-        ];
-
         let path = Path::new(dir_path);
         if !path.exists() {
             anyhow::bail!("Directory does not exist: {}", dir_path);
@@ -507,8 +511,12 @@ impl SecurityScanner {
                 let mut buffer = vec![0u8; 1024 * 1024]; // 1MB buffer
                 if let Ok(bytes_read) = file.read(&mut buffer) {
                     hasher.update(&buffer[..bytes_read]);
-                    file_count += 1;
                 }
+                // Even if read fails, we updated hasher with path, which is something. 
+                // We could choose to error out or log warnings, but checksum generation should be robust.
+                // In calculate_directory_checksum we traditionally just best-effort hash files.
+                // If a file is unreadable it won't contribute content, which changes checksum vs readable.
+                file_count += 1;
             }
         }
 
