@@ -31,6 +31,7 @@ struct MatchResult {
     weight: i32,
     description: String,
     hard_trigger: bool,
+    #[allow(dead_code)]
     confidence: Confidence,  // 新增：置信度
     line_number: usize,
     code_snippet: String,
@@ -184,7 +185,9 @@ impl SecurityScanner {
             };
 
             let mut buf = Vec::new();
-            match file.take(MAX_BYTES_PER_FILE + 1).read_to_end(&mut buf) {
+            let reader = std::io::BufReader::new(file); // No mut needed
+            let mut taken = reader.take(MAX_BYTES_PER_FILE + 1);
+            match taken.read_to_end(&mut buf) {
                 Ok(_) => {}
                 Err(e) => {
                     eprintln!("Failed to read file {:?}: {}", file_path, e);
@@ -551,6 +554,8 @@ impl SecurityScanner {
 
         let mut hasher = Sha256::new();
         let mut file_count = 0;
+        // Allocate buffer once outside the loop
+        let mut buffer = vec![0u8; 8192]; 
 
         for entry in WalkDir::new(path)
             .follow_links(false)
@@ -575,16 +580,29 @@ impl SecurityScanner {
             let rel_path = entry.path().strip_prefix(path).unwrap_or(entry.path());
             hasher.update(rel_path.to_string_lossy().as_bytes());
 
-            // Hash the file content (limited to first 1MB for performance)
-            if let Ok(mut file) = File::open(entry.path()) {
-                let mut buffer = vec![0u8; 1024 * 1024]; // 1MB buffer
-                if let Ok(bytes_read) = file.read(&mut buffer) {
-                    hasher.update(&buffer[..bytes_read]);
+            if let Ok(file) = File::open(entry.path()) {
+                // Include file metadata to detect changes beyond the read limit
+                if let Ok(metadata) = file.metadata() {
+                    hasher.update(metadata.len().to_le_bytes());
+                    if let Ok(mtime) = metadata.modified() {
+                         // Best effort mtime hashing
+                         if let Ok(duration) = mtime.duration_since(std::time::UNIX_EPOCH) {
+                             hasher.update(duration.as_secs().to_le_bytes());
+                             hasher.update(duration.subsec_nanos().to_le_bytes());
+                         }
+                    }
                 }
-                // Even if read fails, we updated hasher with path, which is something. 
-                // We could choose to error out or log warnings, but checksum generation should be robust.
-                // In calculate_directory_checksum we traditionally just best-effort hash files.
-                // If a file is unreadable it won't contribute content, which changes checksum vs readable.
+                
+                // Hash content (limited to first 1MB for performance)
+                let reader = std::io::BufReader::new(file);
+                let mut taken = reader.take(1024 * 1024); 
+                loop {
+                    match taken.read(&mut buffer) {
+                        Ok(0) => break,
+                        Ok(n) => hasher.update(&buffer[..n]),
+                        Err(_) => break, // Best effort
+                    }
+                }
                 file_count += 1;
             }
         }
@@ -605,17 +623,29 @@ impl SecurityScanner {
     ) -> Result<SecurityReport> {
         use crate::services::scan_history::{get_cached_report, save_cached_report};
 
-        // Calculate current checksum
-        let current_checksum = self.calculate_directory_checksum(dir_path)?;
+        // Calculate directory checksum (content + metadata)
+        let directory_checksum = self.calculate_directory_checksum(dir_path)?;
+
+        // Mix configuration into the checksum to ensure cache invalidation on config change
+        let config_hash = {
+            let mut h = Sha256::new();
+            h.update(directory_checksum.as_bytes());
+            h.update(format!("{:?}", scan_mode).as_bytes()); // Hash ScanMode
+            for rule in whitelisted_rules {
+                h.update(rule.as_bytes()); // Hash Whitelist
+            }
+            format!("{:x}", h.finalize())
+        };
 
         // Check cache (unless force rescan)
         if !force_rescan {
             if let Ok(Some(cached)) = get_cached_report(skill_id) {
-                if cached.checksum == current_checksum {
+                // Compare against the full config hash
+                if cached.checksum == config_hash {
                     log::info!("Cache hit for skill: {}, returning cached report", skill_id);
                     return Ok(cached.report);
                 }
-                log::debug!("Cache miss for skill: {} (checksum changed)", skill_id);
+                log::debug!("Cache miss for skill: {} (checksum/config changed)", skill_id);
             }
         }
 
@@ -623,8 +653,8 @@ impl SecurityScanner {
         log::info!("Performing full scan for skill: {}", skill_id);
         let report = self.scan_directory(dir_path, skill_id, locale, scan_mode, whitelisted_rules)?;
 
-        // Save to cache
-        if let Err(e) = save_cached_report(skill_id, dir_path, &report, &current_checksum) {
+        // Save to cache using the config hash
+        if let Err(e) = save_cached_report(skill_id, dir_path, &report, &config_hash) {
             log::warn!("Failed to cache report for {}: {}", skill_id, e);
         }
 
@@ -1246,5 +1276,26 @@ result=$(cat $user_input)
         // 我们主要验证 API 调用是否成功以及基本逻辑是否正常。
         assert!(!report_strict.issues.is_empty(), "Strict mode should find issues");
         assert!(!report_standard.issues.is_empty(), "Standard mode should find issues");
+    }
+
+    #[test]
+    fn test_checksum_large_file_append() {
+        let scanner = SecurityScanner::new();
+        let dir = tempdir().expect("tempdir");
+        let file_path = dir.path().join("large_file.bin");
+
+        // Create a file larger than 1MB
+        let mut content = vec![b'a'; 1024 * 1024 + 100];
+        std::fs::write(&file_path, &content).expect("write large file");
+
+        let checksum1 = scanner.calculate_directory_checksum(dir.path().to_str().unwrap()).unwrap();
+
+        // Modify the end of the file (append)
+        content.push(b'b');
+        std::fs::write(&file_path, &content).expect("append to large file");
+
+        let checksum2 = scanner.calculate_directory_checksum(dir.path().to_str().unwrap()).unwrap();
+
+        assert_ne!(checksum1, checksum2, "Checksum should change when large file is modified at the end");
     }
 }

@@ -17,9 +17,9 @@ impl AsRef<str> for WhitelistType {
     }
 }
 
-impl ToString for WhitelistType {
-    fn to_string(&self) -> String {
-        self.as_ref().to_string()
+impl std::fmt::Display for WhitelistType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
     }
 }
 

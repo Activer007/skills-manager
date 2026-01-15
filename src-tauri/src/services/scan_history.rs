@@ -75,6 +75,7 @@ pub fn get_recent_scans(limit: usize) -> Result<Vec<ScanRecord>> {
 pub struct CachedReport {
     pub report: SecurityReport,
     pub checksum: String,
+    #[allow(dead_code)]
     pub cached_at: i64,
 }
 

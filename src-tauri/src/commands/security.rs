@@ -17,7 +17,12 @@ fn parse_scan_mode(mode: Option<&str>) -> ScanMode {
     match mode {
         Some("strict") => ScanMode::Strict,
         Some("relaxed") => ScanMode::Relaxed,
-        _ => ScanMode::Standard,  // 默认标准模式
+        Some("standard") => ScanMode::Standard,
+        Some(other) => {
+            log::warn!("Unknown scan mode '{}', defaulting to Standard", other);
+            ScanMode::Standard
+        }
+        None => ScanMode::Standard,
     }
 }
 
