@@ -1,5 +1,6 @@
 use crate::models::security::*;
 use crate::security::rules::{SecurityRules, Category, Severity};
+use crate::i18n::{t, validate_locale};
 use anyhow::Result;
 use sha2::{Sha256, Digest};
 use std::fs::File;
@@ -21,13 +22,25 @@ struct MatchResult {
 
 pub struct SecurityScanner;
 
+// 常见大目录（依赖/构建产物），默认不深入扫描
+const SKIP_DIR_NAMES: &[&str] = &[
+    ".git",
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    "__pycache__",
+    ".venv",
+    "venv",
+];
+
 impl SecurityScanner {
     pub fn new() -> Self {
         Self
     }
 
     /// 扫描目录下的所有文件，生成综合安全报告
-    pub fn scan_directory(&self, dir_path: &str, skill_id: &str, _locale: &str) -> Result<SecurityReport> {
+    pub fn scan_directory(&self, dir_path: &str, skill_id: &str, locale: &str) -> Result<SecurityReport> {
         use std::path::Path;
         use walkdir::WalkDir;
 
@@ -40,18 +53,6 @@ impl SecurityScanner {
         const MAX_SCAN_DEPTH: usize = 20;
         const MAX_FILES: usize = 2000;
         const MAX_BYTES_PER_FILE: u64 = 2 * 1024 * 1024; // 2MiB
-
-        // 常见大目录（依赖/构建产物），默认不深入扫描
-        const SKIP_DIR_NAMES: &[&str] = &[
-            ".git",
-            "node_modules",
-            "target",
-            "dist",
-            "build",
-            "__pycache__",
-            ".venv",
-            "venv",
-        ];
 
         let mut all_issues = Vec::new();
         let mut all_matches = Vec::new();
@@ -73,6 +74,14 @@ impl SecurityScanner {
                 Ok(e) => e,
                 Err(e) => {
                     eprintln!("Failed to read directory entry under {:?}: {}", path, e);
+                    all_issues.push(SecurityIssue {
+                        severity: IssueSeverity::Warning,
+                        category: IssueCategory::FileSystem,
+                        description: format!("Failed to read directory entry: {}", e),
+                        line_number: None,
+                        code_snippet: None,
+                        file_path: None,
+                    });
                     continue;
                 }
             };
@@ -248,7 +257,7 @@ impl SecurityScanner {
         let level = crate::models::security::SecurityLevel::from_score(score);
 
         // 生成建议
-        let recommendations = self.generate_recommendations(&all_matches, score);
+        let recommendations = self.generate_recommendations(&all_matches, score, locale);
 
         Ok(SecurityReport {
             skill_id: skill_id.to_string(),
@@ -264,7 +273,7 @@ impl SecurityScanner {
 
     /// 扫描文件内容，生成安全报告
     #[allow(dead_code)]
-    pub fn scan_file(&self, content: &str, file_path: &str, _locale: &str) -> Result<SecurityReport> {
+    pub fn scan_file(&self, content: &str, file_path: &str, locale: &str) -> Result<SecurityReport> {
         let mut matches = Vec::new();
         let skill_id = file_path.to_string();
 
@@ -319,7 +328,7 @@ impl SecurityScanner {
         let level = SecurityLevel::from_score(score);
 
         // 生成建议
-        let recommendations = self.generate_recommendations(&matches, score);
+        let recommendations = self.generate_recommendations(&matches, score, locale);
 
         Ok(SecurityReport {
             skill_id,
@@ -395,14 +404,15 @@ impl SecurityScanner {
         format!("{:x}", hasher.finalize())
     }
 
-    /// 生成安全建议（使用 MatchResult）
-    fn generate_recommendations(&self, matches: &[MatchResult], score: i32) -> Vec<String> {
+    /// 生成安全建议（使用 MatchResult，支持国际化）
+    fn generate_recommendations(&self, matches: &[MatchResult], score: i32, locale: &str) -> Vec<String> {
         let mut recommendations = Vec::new();
+        let loc = validate_locale(locale);
 
         // 检查是否有硬触发规则匹配
         let has_hard_trigger = matches.iter().any(|m| m.hard_trigger);
         if has_hard_trigger {
-            recommendations.push("⛔ This skill contains dangerous patterns that will block installation.".to_string());
+            recommendations.push(t!("blocked_message", locale = loc).to_string());
             let hard_triggers: Vec<String> = matches.iter()
                 .filter(|m| m.hard_trigger)
                 .map(|m| format!("  - {}", m.description))
@@ -413,9 +423,9 @@ impl SecurityScanner {
 
         // 基于分数的建议
         if score < 50 {
-            recommendations.push("⚠️ Warning: This skill has severe security risks. Use with caution.".to_string());
+            recommendations.push(t!("score_warning_severe", locale = loc).to_string());
         } else if score < 70 {
-            recommendations.push("⚠️ This skill has moderate security issues. Review before using.".to_string());
+            recommendations.push(t!("score_warning_medium", locale = loc).to_string());
         }
 
         // 按类别提供建议
@@ -429,35 +439,125 @@ impl SecurityScanner {
         let has_sensitive_file_access = matches.iter().any(|m| matches!(m.category, Category::SensitiveFileAccess));
 
         if has_destructive {
-            recommendations.push("💾 Contains destructive file system operations".to_string());
+            recommendations.push(format!("💾 {}", t!("recommendations.destructive", locale = loc)));
         }
         if has_remote_exec {
-            recommendations.push("🚀 Contains remote code execution patterns".to_string());
+            recommendations.push(format!("🚀 {}", t!("recommendations.remote_exec", locale = loc)));
         }
         if has_cmd_injection {
-            recommendations.push("⚡ Contains command injection risks".to_string());
+            recommendations.push(format!("⚡ {}", t!("recommendations.cmd_injection", locale = loc)));
         }
         if has_network {
-            recommendations.push("🌐 Contains network operations".to_string());
+            recommendations.push(format!("🌐 {}", t!("recommendations.network", locale = loc)));
         }
         if has_secrets {
-            recommendations.push("🔑 May contain sensitive credentials or secrets".to_string());
+            recommendations.push(format!("🔑 {}", t!("recommendations.secrets", locale = loc)));
         }
         if has_persistence {
-            recommendations.push("🔄 Contains persistence mechanisms".to_string());
+            recommendations.push(format!("🔄 {}", t!("recommendations.persistence", locale = loc)));
         }
         if has_privilege {
-            recommendations.push("⬆️ Contains privilege escalation patterns".to_string());
+            recommendations.push(format!("⬆️ {}", t!("recommendations.privilege", locale = loc)));
         }
         if has_sensitive_file_access {
-            recommendations.push("📁 Accesses sensitive system files".to_string());
+            recommendations.push(format!("📁 {}", t!("recommendations.sensitive_file", locale = loc)));
         }
 
         if recommendations.is_empty() {
-            recommendations.push("✅ No security issues detected. This skill appears safe.".to_string());
+            recommendations.push(t!("no_issues", locale = loc).to_string());
         }
 
         recommendations
+    }
+
+    /// 计算整个目录的 SHA-256 校验和（用于增量扫描）
+    pub fn calculate_directory_checksum(&self, dir_path: &str) -> Result<String> {
+        use std::path::Path;
+        use walkdir::WalkDir;
+
+        let path = Path::new(dir_path);
+        if !path.exists() {
+            anyhow::bail!("Directory does not exist: {}", dir_path);
+        }
+
+        let mut hasher = Sha256::new();
+        let mut file_count = 0;
+
+        for entry in WalkDir::new(path)
+            .follow_links(false)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            // Skip directories that should be excluded
+            if entry.file_type().is_dir() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if SKIP_DIR_NAMES.contains(&name) {
+                        continue;
+                    }
+                }
+                continue;
+            }
+
+            if !entry.file_type().is_file() {
+                continue;
+            }
+
+            // Hash the file path (for structure changes)
+            let rel_path = entry.path().strip_prefix(path).unwrap_or(entry.path());
+            hasher.update(rel_path.to_string_lossy().as_bytes());
+
+            // Hash the file content (limited to first 1MB for performance)
+            if let Ok(mut file) = File::open(entry.path()) {
+                let mut buffer = vec![0u8; 1024 * 1024]; // 1MB buffer
+                if let Ok(bytes_read) = file.read(&mut buffer) {
+                    hasher.update(&buffer[..bytes_read]);
+                }
+                // Even if read fails, we updated hasher with path, which is something. 
+                // We could choose to error out or log warnings, but checksum generation should be robust.
+                // In calculate_directory_checksum we traditionally just best-effort hash files.
+                // If a file is unreadable it won't contribute content, which changes checksum vs readable.
+                file_count += 1;
+            }
+        }
+
+        log::debug!("Calculated checksum for {} files in {}", file_count, dir_path);
+        Ok(format!("{:x}", hasher.finalize()))
+    }
+
+    /// 增量扫描：如果校验和匹配，返回缓存报告
+    pub fn scan_incremental(
+        &self,
+        dir_path: &str,
+        skill_id: &str,
+        locale: &str,
+        force_rescan: bool,
+    ) -> Result<SecurityReport> {
+        use crate::services::scan_history::{get_cached_report, save_cached_report};
+
+        // Calculate current checksum
+        let current_checksum = self.calculate_directory_checksum(dir_path)?;
+
+        // Check cache (unless force rescan)
+        if !force_rescan {
+            if let Ok(Some(cached)) = get_cached_report(skill_id) {
+                if cached.checksum == current_checksum {
+                    log::info!("Cache hit for skill: {}, returning cached report", skill_id);
+                    return Ok(cached.report);
+                }
+                log::debug!("Cache miss for skill: {} (checksum changed)", skill_id);
+            }
+        }
+
+        // Perform full scan
+        log::info!("Performing full scan for skill: {}", skill_id);
+        let report = self.scan_directory(dir_path, skill_id, locale)?;
+
+        // Save to cache
+        if let Err(e) = save_cached_report(skill_id, dir_path, &report, &current_checksum) {
+            log::warn!("Failed to cache report for {}: {}", skill_id, e);
+        }
+
+        Ok(report)
     }
 }
 

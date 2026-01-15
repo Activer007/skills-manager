@@ -52,7 +52,7 @@ fn get_db_path() -> Result<PathBuf> {
 }
 
 /// Current database schema version
-const CURRENT_DB_VERSION: i32 = 1;
+const CURRENT_DB_VERSION: i32 = 2;
 
 /// Run database migrations to ensure schema is up to date.
 /// This function creates a schema_migrations table to track version.
@@ -75,7 +75,7 @@ fn migrate(conn: &Connection) -> Result<()> {
 
     // Run migrations if needed
     if current_version < CURRENT_DB_VERSION {
-        println!("Database migration: v{} -> v{}", current_version, CURRENT_DB_VERSION);
+        log::info!("Database migration: v{} -> v{}", current_version, CURRENT_DB_VERSION);
 
         // Migration v1: Create initial schema
         if current_version < 1 {
@@ -87,8 +87,14 @@ fn migrate(conn: &Connection) -> Result<()> {
             )?;
         }
 
-        // Future migrations would go here:
-        // if current_version < 2 { migrate_v2(conn)?; ... }
+        // Migration v2: Create cached_reports table for incremental scanning
+        if current_version < 2 {
+            migrate_v2(conn)?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (2, ?)",
+                [chrono::Utc::now().timestamp_millis()],
+            )?;
+        }
     }
 
     Ok(())
@@ -121,5 +127,28 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
         [],
     )?;
 
+    Ok(())
+}
+
+/// Migration v2: Create cached_reports table for incremental scanning
+fn migrate_v2(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS cached_reports (
+            skill_id TEXT PRIMARY KEY,
+            skill_path TEXT NOT NULL,
+            report_json TEXT NOT NULL,
+            checksum TEXT NOT NULL,
+            cached_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+
+    // Create index on checksum for faster lookups
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_cached_reports_checksum ON cached_reports(checksum)",
+        [],
+    )?;
+
+    log::info!("Created cached_reports table for incremental scanning");
     Ok(())
 }
