@@ -461,6 +461,96 @@ impl SecurityScanner {
 
         recommendations
     }
+
+    /// 计算整个目录的 SHA-256 校验和（用于增量扫描）
+    pub fn calculate_directory_checksum(&self, dir_path: &str) -> Result<String> {
+        use std::path::Path;
+        use walkdir::WalkDir;
+
+        const SKIP_DIR_NAMES: &[&str] = &[
+            ".git", "node_modules", "target", "dist", "build", "__pycache__", ".venv", "venv",
+        ];
+
+        let path = Path::new(dir_path);
+        if !path.exists() {
+            anyhow::bail!("Directory does not exist: {}", dir_path);
+        }
+
+        let mut hasher = Sha256::new();
+        let mut file_count = 0;
+
+        for entry in WalkDir::new(path)
+            .follow_links(false)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            // Skip directories that should be excluded
+            if entry.file_type().is_dir() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if SKIP_DIR_NAMES.contains(&name) {
+                        continue;
+                    }
+                }
+                continue;
+            }
+
+            if !entry.file_type().is_file() {
+                continue;
+            }
+
+            // Hash the file path (for structure changes)
+            let rel_path = entry.path().strip_prefix(path).unwrap_or(entry.path());
+            hasher.update(rel_path.to_string_lossy().as_bytes());
+
+            // Hash the file content (limited to first 1MB for performance)
+            if let Ok(mut file) = File::open(entry.path()) {
+                let mut buffer = vec![0u8; 1024 * 1024]; // 1MB buffer
+                if let Ok(bytes_read) = file.read(&mut buffer) {
+                    hasher.update(&buffer[..bytes_read]);
+                    file_count += 1;
+                }
+            }
+        }
+
+        log::debug!("Calculated checksum for {} files in {}", file_count, dir_path);
+        Ok(format!("{:x}", hasher.finalize()))
+    }
+
+    /// 增量扫描：如果校验和匹配，返回缓存报告
+    pub fn scan_incremental(
+        &self,
+        dir_path: &str,
+        skill_id: &str,
+        locale: &str,
+        force_rescan: bool,
+    ) -> Result<SecurityReport> {
+        use crate::services::scan_history::{get_cached_report, save_cached_report};
+
+        // Calculate current checksum
+        let current_checksum = self.calculate_directory_checksum(dir_path)?;
+
+        // Check cache (unless force rescan)
+        if !force_rescan {
+            if let Ok(Some(cached)) = get_cached_report(skill_id) {
+                if cached.checksum == current_checksum {
+                    log::info!("Cache hit for skill: {}, returning cached report", skill_id);
+                    return Ok(cached.report);
+                }
+                log::debug!("Cache miss for skill: {} (checksum changed)", skill_id);
+            }
+        }
+
+        // Perform full scan
+        log::info!("Performing full scan for skill: {}", skill_id);
+        let report = self.scan_directory(dir_path, skill_id, locale)?;
+
+        // Save to cache
+        if let Err(e) = save_cached_report(skill_id, dir_path, &report, &current_checksum) {
+            log::warn!("Failed to cache report for {}: {}", skill_id, e);
+        }
+
+        Ok(report)
+    }
 }
 
 impl Default for SecurityScanner {

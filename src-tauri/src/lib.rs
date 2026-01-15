@@ -570,6 +570,8 @@ pub fn run() {
             commands::analyzer::batch_analyze_skills_detailed,
             commands::security::scan_skill_security,
             commands::security::batch_scan_skills,
+            commands::security::scan_skill_security_incremental,
+            commands::security::batch_scan_skills_incremental,
             commands::security::get_security_config,
             commands::security::update_security_config,
             commands::security::get_scan_history,
