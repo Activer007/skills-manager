@@ -1,5 +1,6 @@
 use crate::models::security::*;
 use crate::security::rules::{SecurityRules, Category, Severity};
+use crate::i18n::{t, validate_locale};
 use anyhow::Result;
 use sha2::{Sha256, Digest};
 use std::fs::File;
@@ -27,7 +28,7 @@ impl SecurityScanner {
     }
 
     /// 扫描目录下的所有文件，生成综合安全报告
-    pub fn scan_directory(&self, dir_path: &str, skill_id: &str, _locale: &str) -> Result<SecurityReport> {
+    pub fn scan_directory(&self, dir_path: &str, skill_id: &str, locale: &str) -> Result<SecurityReport> {
         use std::path::Path;
         use walkdir::WalkDir;
 
@@ -248,7 +249,7 @@ impl SecurityScanner {
         let level = crate::models::security::SecurityLevel::from_score(score);
 
         // 生成建议
-        let recommendations = self.generate_recommendations(&all_matches, score);
+        let recommendations = self.generate_recommendations(&all_matches, score, locale);
 
         Ok(SecurityReport {
             skill_id: skill_id.to_string(),
@@ -264,7 +265,7 @@ impl SecurityScanner {
 
     /// 扫描文件内容，生成安全报告
     #[allow(dead_code)]
-    pub fn scan_file(&self, content: &str, file_path: &str, _locale: &str) -> Result<SecurityReport> {
+    pub fn scan_file(&self, content: &str, file_path: &str, locale: &str) -> Result<SecurityReport> {
         let mut matches = Vec::new();
         let skill_id = file_path.to_string();
 
@@ -319,7 +320,7 @@ impl SecurityScanner {
         let level = SecurityLevel::from_score(score);
 
         // 生成建议
-        let recommendations = self.generate_recommendations(&matches, score);
+        let recommendations = self.generate_recommendations(&matches, score, locale);
 
         Ok(SecurityReport {
             skill_id,
@@ -395,14 +396,15 @@ impl SecurityScanner {
         format!("{:x}", hasher.finalize())
     }
 
-    /// 生成安全建议（使用 MatchResult）
-    fn generate_recommendations(&self, matches: &[MatchResult], score: i32) -> Vec<String> {
+    /// 生成安全建议（使用 MatchResult，支持国际化）
+    fn generate_recommendations(&self, matches: &[MatchResult], score: i32, locale: &str) -> Vec<String> {
         let mut recommendations = Vec::new();
+        let loc = validate_locale(locale);
 
         // 检查是否有硬触发规则匹配
         let has_hard_trigger = matches.iter().any(|m| m.hard_trigger);
         if has_hard_trigger {
-            recommendations.push("⛔ This skill contains dangerous patterns that will block installation.".to_string());
+            recommendations.push(t!("blocked_message", locale = loc).to_string());
             let hard_triggers: Vec<String> = matches.iter()
                 .filter(|m| m.hard_trigger)
                 .map(|m| format!("  - {}", m.description))
@@ -413,9 +415,9 @@ impl SecurityScanner {
 
         // 基于分数的建议
         if score < 50 {
-            recommendations.push("⚠️ Warning: This skill has severe security risks. Use with caution.".to_string());
+            recommendations.push(t!("score_warning_severe", locale = loc).to_string());
         } else if score < 70 {
-            recommendations.push("⚠️ This skill has moderate security issues. Review before using.".to_string());
+            recommendations.push(t!("score_warning_medium", locale = loc).to_string());
         }
 
         // 按类别提供建议
@@ -429,32 +431,32 @@ impl SecurityScanner {
         let has_sensitive_file_access = matches.iter().any(|m| matches!(m.category, Category::SensitiveFileAccess));
 
         if has_destructive {
-            recommendations.push("💾 Contains destructive file system operations".to_string());
+            recommendations.push(format!("💾 {}", t!("recommendations.destructive", locale = loc)));
         }
         if has_remote_exec {
-            recommendations.push("🚀 Contains remote code execution patterns".to_string());
+            recommendations.push(format!("🚀 {}", t!("recommendations.remote_exec", locale = loc)));
         }
         if has_cmd_injection {
-            recommendations.push("⚡ Contains command injection risks".to_string());
+            recommendations.push(format!("⚡ {}", t!("recommendations.cmd_injection", locale = loc)));
         }
         if has_network {
-            recommendations.push("🌐 Contains network operations".to_string());
+            recommendations.push(format!("🌐 {}", t!("recommendations.network", locale = loc)));
         }
         if has_secrets {
-            recommendations.push("🔑 May contain sensitive credentials or secrets".to_string());
+            recommendations.push(format!("🔑 {}", t!("recommendations.secrets", locale = loc)));
         }
         if has_persistence {
-            recommendations.push("🔄 Contains persistence mechanisms".to_string());
+            recommendations.push(format!("🔄 {}", t!("recommendations.persistence", locale = loc)));
         }
         if has_privilege {
-            recommendations.push("⬆️ Contains privilege escalation patterns".to_string());
+            recommendations.push(format!("⬆️ {}", t!("recommendations.privilege", locale = loc)));
         }
         if has_sensitive_file_access {
-            recommendations.push("📁 Accesses sensitive system files".to_string());
+            recommendations.push(format!("📁 {}", t!("recommendations.sensitive_file", locale = loc)));
         }
 
         if recommendations.is_empty() {
-            recommendations.push("✅ No security issues detected. This skill appears safe.".to_string());
+            recommendations.push(t!("no_issues", locale = loc).to_string());
         }
 
         recommendations

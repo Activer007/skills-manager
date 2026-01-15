@@ -1,3 +1,6 @@
+// Initialize i18n with locales directory
+rust_i18n::i18n!("locales", fallback = "en");
+
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -7,6 +10,7 @@ use walkdir::WalkDir;
 // Import modules
 mod analyzer;
 mod commands;
+mod i18n;
 mod models;
 mod security;
 mod services;
@@ -539,11 +543,16 @@ fn read_skill(skill_path: String) -> Result<String, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize logging
+    env_logger::init();
+    log::info!("Skills Manager starting...");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|_app| {
+            log::debug!("Initializing database...");
             if let Err(e) = crate::services::db::init_db() {
-                eprintln!("Failed to initialize database: {}", e);
+                log::error!("Failed to initialize database: {}", e);
             }
             Ok(())
         })
