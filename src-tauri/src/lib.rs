@@ -263,10 +263,25 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
 
         // Security scan after successful clone
         if !request.skip_security_check {
-            use crate::security::SecurityScanner;
-            let scanner = SecurityScanner::new();
+            use crate::security::{SecurityScanner, ScanMode};
+            use crate::services::whitelist_service::WhitelistService;
 
-            match scanner.scan_directory(target_dir.to_str().unwrap(), &skill_name, "en") {
+            // Check whitelist
+            let (is_whitelisted, whitelisted_rules) = if let Ok(service) = WhitelistService::new() {
+                (
+                    service.is_skill_whitelisted(&skill_name).unwrap_or(false), 
+                    service.get_whitelisted_rules().unwrap_or_default()
+                )
+            } else {
+                (false, Vec::new())
+            };
+
+            if is_whitelisted {
+                eprintln!("Skill {} is whitelisted, skipping security scan.", skill_name);
+            } else {
+                let scanner = SecurityScanner::new();
+
+                match scanner.scan_directory(target_dir.to_str().unwrap(), &skill_name, "en", ScanMode::Standard, &whitelisted_rules) {
                 Ok(report) => {
                     if report.blocked {
                         // Remove the skill if blocked by hard triggers
@@ -308,6 +323,7 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
                     // Continue installation even if scan fails (log warning only)
                 }
             }
+        }
         }
 
         ImportResult {
@@ -393,10 +409,25 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
 
     // Security scan after successful copy
     if !request.skip_security_check {
-        use crate::security::SecurityScanner;
-        let scanner = SecurityScanner::new();
+        use crate::security::{SecurityScanner, ScanMode};
+        use crate::services::whitelist_service::WhitelistService;
 
-        match scanner.scan_directory(target_dir.to_str().unwrap(), &request.skill_name, "en") {
+        // Check whitelist
+        let (is_whitelisted, whitelisted_rules) = if let Ok(service) = WhitelistService::new() {
+            (
+                service.is_skill_whitelisted(&request.skill_name).unwrap_or(false), 
+                service.get_whitelisted_rules().unwrap_or_default()
+            )
+        } else {
+            (false, Vec::new())
+        };
+
+        if is_whitelisted {
+            eprintln!("Skill {} is whitelisted, skipping security scan.", request.skill_name);
+        } else {
+            let scanner = SecurityScanner::new();
+
+            match scanner.scan_directory(target_dir.to_str().unwrap(), &request.skill_name, "en", ScanMode::Standard, &whitelisted_rules) {
             Ok(report) => {
                 if report.blocked {
                     // Remove the skill if blocked by hard triggers
@@ -438,6 +469,7 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
                 // Continue installation even if scan fails (log warning only)
             }
         }
+    }
     }
 
     Ok(ImportResult {
@@ -575,6 +607,9 @@ pub fn run() {
             commands::security::get_security_config,
             commands::security::update_security_config,
             commands::security::get_scan_history,
+            commands::security::add_whitelist_entry,
+            commands::security::remove_whitelist_entry,
+            commands::security::get_whitelist,
             commands::cache::get_cache_stats,
             commands::cache::clear_cache
         ])

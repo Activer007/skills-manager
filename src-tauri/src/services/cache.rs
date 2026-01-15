@@ -7,7 +7,7 @@ use sha2::{Sha256, Digest};
 use anyhow::Result;
 
 use crate::models::security::SecurityReport;
-use crate::security::SecurityScanner;
+use crate::security::{SecurityScanner, ScanMode};
 
 /// 缓存的 Skill 数据（内部使用，不需要序列化）
 #[derive(Debug, Clone)]
@@ -158,7 +158,7 @@ impl SkillCache {
             .unwrap_or("unknown");
 
         let report = scanner
-            .scan_directory(skill_path, skill_id, locale)
+            .scan_directory(skill_path, skill_id, locale, ScanMode::Standard, &[])
             .map_err(|e| e.to_string())?;
 
         // 计算校验和并缓存
@@ -290,6 +290,9 @@ mod tests {
 
         // 创建测试报告
         let report = SecurityReport {
+            scan_id: "test-scan".to_string(),
+            scanned_at: "now".to_string(),
+            scan_duration_ms: 0,
             skill_id: "test".to_string(),
             score: 100,
             level: crate::models::security::SecurityLevel::Safe,
@@ -326,6 +329,9 @@ mod tests {
         let dir_path = dir.path().to_str().unwrap().to_string();
 
         let report = SecurityReport {
+            scan_id: "test-scan".to_string(),
+            scanned_at: "now".to_string(),
+            scan_duration_ms: 0,
             skill_id: "test".to_string(),
             score: 100,
             level: crate::models::security::SecurityLevel::Safe,
@@ -364,6 +370,9 @@ mod tests {
         
         let checksum_v1 = SkillCache::calculate_directory_checksum(&dir_path).unwrap();
         let report = SecurityReport {
+            scan_id: "test-scan".to_string(),
+            scanned_at: "now".to_string(),
+            scan_duration_ms: 0,
             skill_id: "test".to_string(),
             score: 100,
             level: crate::models::security::SecurityLevel::Safe,
@@ -406,6 +415,9 @@ mod tests {
         let mut cache = SkillCache::with_default_config();
 
         let report = SecurityReport {
+            scan_id: "test-scan".to_string(),
+            scanned_at: "now".to_string(),
+            scan_duration_ms: 0,
             skill_id: "test".to_string(),
             score: 100,
             level: crate::models::security::SecurityLevel::Safe,
