@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 /// 安全检查结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityReport {
+    pub scan_id: String,
+    pub scanned_at: String,
     pub skill_id: String,
     pub score: i32,
     pub level: SecurityLevel,
@@ -11,6 +13,7 @@ pub struct SecurityReport {
     pub blocked: bool,  // 是否被硬触发规则阻止安装
     pub hard_trigger_issues: Vec<String>,  // 触发的硬阻止规则列表
     pub scanned_files: Vec<String>,  // 已扫描的文件列表
+    pub scan_duration_ms: u64,
 }
 
 /// 安全等级
@@ -48,6 +51,7 @@ impl SecurityLevel {
 /// 安全问题
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityIssue {
+    pub id: String, // Rule ID
     pub severity: IssueSeverity,
     pub category: IssueCategory,
     pub description: String,

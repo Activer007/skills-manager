@@ -52,7 +52,7 @@ fn get_db_path() -> Result<PathBuf> {
 }
 
 /// Current database schema version
-const CURRENT_DB_VERSION: i32 = 2;
+const CURRENT_DB_VERSION: i32 = 3;
 
 /// Run database migrations to ensure schema is up to date.
 /// This function creates a schema_migrations table to track version.
@@ -92,6 +92,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             migrate_v2(conn)?;
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (2, ?)",
+                [chrono::Utc::now().timestamp_millis()],
+            )?;
+        }
+
+        // Migration v3: Create whitelist table
+        if current_version < 3 {
+            migrate_v3(conn)?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (3, ?)",
                 [chrono::Utc::now().timestamp_millis()],
             )?;
         }
@@ -150,5 +159,33 @@ fn migrate_v2(conn: &Connection) -> Result<()> {
     )?;
 
     log::info!("Created cached_reports table for incremental scanning");
+    Ok(())
+}
+
+/// Migration v3: Create whitelist table
+fn migrate_v3(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS whitelist (
+            id TEXT PRIMARY KEY,
+            entry_type TEXT NOT NULL,
+            target TEXT NOT NULL,
+            reason TEXT,
+            added_at TEXT NOT NULL,
+            UNIQUE(entry_type, target)
+        )",
+        [],
+    )?;
+
+    // Create indexes
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_whitelist_target ON whitelist(target)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_whitelist_type ON whitelist(entry_type)",
+        [],
+    )?;
+
+    log::info!("Created whitelist table");
     Ok(())
 }
