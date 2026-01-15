@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill } from '../hooks/useSkills';
-import { Trash2, Eye, FolderOpen, X, Github, HardDrive, Plus } from 'lucide-react';
+import { Trash2, Eye, FolderOpen, X, Github, HardDrive, Plus, Shield } from 'lucide-react';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
 import SkillQualityCard from '../components/SkillQualityCard';
 import { SkeletonCard } from '../components/SkeletonCard';
+import SecurityReportCard from '../components/SecurityReportCard';
 import type { SkillScore } from '../types/scorer';
+import type { SecurityReport } from '../types/security';
 import { toast } from 'sonner';
 
 const getErrorMessage = (error: unknown) => {
@@ -38,9 +40,20 @@ const MySkills = () => {
   const [importType, setImportType] = useState<'github' | 'local' | null>(null);
   const [importUrl, setImportUrl] = useState('');
   const [importPath, setImportPath] = useState('');
+  const [securityReport, setSecurityReport] = useState<SecurityReport | null>(null);
+  const [isScanningSecurity, setIsScanningSecurity] = useState(false);
 
   const handleUninstall = async (skill: InstalledSkill) => {
     if (uninstallMutation.isPending) return;
+
+    // 显示确认对话框
+    const confirmed = window.confirm(
+      i18n.language === 'zh'
+        ? `⚠️ 确认删除\n\n你确定要删除 Skill "${skill.name}" 吗？\n\n此操作将删除以下内容：\n• Skill 文件夹及所有文件\n• 相关配置信息\n\n此操作无法撤销！`
+        : `⚠️ Confirm Deletion\n\nAre you sure you want to delete the skill "${skill.name}"?\n\nThis will remove:\n• Skill folder and all files\n• Related configuration\n\nThis action cannot be undone!`
+    );
+
+    if (!confirmed) return;
 
     try {
       await uninstallMutation.mutateAsync(skill.localPath);
@@ -91,6 +104,8 @@ const MySkills = () => {
     setSkillScore(null);
     setIsAnalyzing(true);
     setAnalysisError(null);
+    setSecurityReport(null);
+    setIsScanningSecurity(true);
 
     // Analyze skill quality
     invoke<SkillScore>('analyze_skill_quality', {
@@ -104,6 +119,20 @@ const MySkills = () => {
       console.error('Analysis failed:', err);
       setAnalysisError(typeof err === 'string' ? err : JSON.stringify(err));
       setIsAnalyzing(false);
+    });
+
+    // Scan security
+    invoke<SecurityReport>('scan_skill_security', {
+      skillPath: skill.localPath,
+      locale: i18n.language
+    })
+    .then(report => {
+      setSecurityReport(report);
+      setIsScanningSecurity(false);
+    })
+    .catch(err => {
+      console.error('Security scan failed:', err);
+      setIsScanningSecurity(false);
     });
 
     // 读取 SKILL.md 文件内容
@@ -177,7 +206,7 @@ const MySkills = () => {
               <th>{i18n.language === 'zh' ? '名称 / 路径' : 'Name / Path'}</th>
               <th>{t('description')}</th>
               <th>{t('type')}</th>
-              <th>{i18n.language === 'zh' ? '状态' : 'Status'}</th>
+              <th>{i18n.language === 'zh' ? '安全状态' : 'Security Status'}</th>
               <th className="text-right">{t('actions')}</th>
             </tr>
           </thead>
@@ -214,9 +243,32 @@ const MySkills = () => {
                   )}
                 </td>
                 <td>
-                  {skill.status === 'safe' && <div className="badge badge-success badge-sm gap-1">{i18n.language === 'zh' ? '安全' : 'Safe'}</div>}
-                  {skill.status === 'unsafe' && <div className="badge badge-error badge-sm gap-1">{i18n.language === 'zh' ? '风险' : 'Unsafe'}</div>}
-                  {skill.status === 'unknown' && <div className="badge badge-ghost badge-sm gap-1">{i18n.language === 'zh' ? '未扫描' : 'Unknown'}</div>}
+                  <div className="flex items-center gap-2">
+                    {/* Security Score */}
+                    {skill.securityScore !== undefined ? (
+                      <div className="flex items-center gap-1.5">
+                        <Shield size={14} className={
+                          skill.securityScore >= 90 ? 'text-success' :
+                          skill.securityScore >= 70 ? 'text-warning' :
+                          'text-error'
+                        } />
+                        <span className={`font-semibold ${
+                          skill.securityScore >= 90 ? 'text-success' :
+                          skill.securityScore >= 70 ? 'text-warning' :
+                          'text-error'
+                        }`}>
+                          {skill.securityScore}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-base-content/30 text-sm">未扫描</span>
+                    )}
+
+                    {/* Status Badge */}
+                    {skill.status === 'safe' && <div className="badge badge-success badge-sm gap-1">安全</div>}
+                    {skill.status === 'unsafe' && <div className="badge badge-error badge-sm gap-1">风险</div>}
+                    {skill.status === 'unknown' && <div className="badge badge-ghost badge-sm gap-1">未知</div>}
+                  </div>
                 </td>
                 <td>
                   <div className="flex justify-end gap-2">
@@ -277,6 +329,7 @@ const MySkills = () => {
                             setShowViewModal(false);
                             setSelectedSkill(null);
                             setSkillContent('');
+                            setSecurityReport(null);
                         }}
                     >
                         <X size={20} />
@@ -285,6 +338,12 @@ const MySkills = () => {
 
                 {/* Content */}
                 <div className="flex-1 overflow-auto bg-base-200 p-6 space-y-6">
+                    {/* Security Report Card */}
+                    <SecurityReportCard
+                      report={securityReport}
+                      loading={isScanningSecurity}
+                    />
+
                     {/* Quality Score Card */}
                     <SkillQualityCard
                       score={skillScore!}
@@ -307,6 +366,7 @@ const MySkills = () => {
                         setShowViewModal(false);
                         setSelectedSkill(null);
                         setSkillContent('');
+                        setSecurityReport(null);
                       }}
                     >
                       {i18n.language === 'zh' ? '关闭' : 'Close'}

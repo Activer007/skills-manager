@@ -1,51 +1,25 @@
-import { Shield, AlertTriangle, CheckCircle, XCircle, Info, FileWarning } from 'lucide-react';
+import { useState } from 'react';
+import { Shield, AlertTriangle, CheckCircle, XCircle, Info, FileWarning, ChevronDown, ChevronUp } from 'lucide-react';
+import type { SecurityReport, SecurityIssue, SecurityLevel } from '../types/security';
 
-interface SecurityIssue {
-  severity: 'critical' | 'error' | 'warning' | 'info';
-  category: string;
-  description: string;
-  lineNumber?: number;
-  codeSnippet?: string;
-  filePath?: string;
-  confidence?: 'high' | 'medium' | 'low';
-  remediation?: string;
-  cweId?: string;
-}
-
-interface SecurityReport {
-  skillId: string;
-  score: number;
-  level: 'safe' | 'low' | 'medium' | 'high' | 'critical';
-  issues: SecurityIssue[];
-  recommendations: string[];
-  blocked: boolean;
-  hardTriggerIssues?: Array<{
-    ruleName: string;
-    file: string;
-    line: number;
-    description: string;
-    code: string;
-  }>;
-  scannedFiles: string[];
-  summary?: {
-    totalIssues: number;
-    criticalCount: number;
-    highCount: number;
-    mediumCount: number;
-    lowCount: number;
-    score: number;
-    blocked: boolean;
-    level: string;
+const mapSeverity = (severity: SecurityIssue['severity']): 'critical' | 'error' | 'warning' | 'info' => {
+  const severityMap: Record<SecurityIssue['severity'], 'critical' | 'error' | 'warning' | 'info'> = {
+    'Critical': 'critical',
+    'Error': 'error',
+    'Warning': 'warning',
+    'Info': 'info'
   };
-}
+  return severityMap[severity] || 'info';
+};
 
 interface SecurityReportCardProps {
   report: SecurityReport | null;
   loading?: boolean;
-  onClose?: () => void;
 }
 
-export default function SecurityReportCard({ report, loading, onClose }: SecurityReportCardProps) {
+export default function SecurityReportCard({ report, loading }: SecurityReportCardProps) {
+  const [expanded, setExpanded] = useState(false);
+
   if (loading) {
     return (
       <div className="card bg-base-100 shadow-xl">
@@ -77,19 +51,20 @@ export default function SecurityReportCard({ report, loading, onClose }: Securit
     return 'badge-error';
   };
 
-  const getLevelText = (level: string) => {
+  const getLevelText = (level: SecurityLevel) => {
     const levels = {
-      safe: '安全',
-      low: '低风险',
-      medium: '中等风险',
-      high: '高风险',
-      critical: '严重风险'
+      'Safe': '安全',
+      'Low': '低风险',
+      'Medium': '中等风险',
+      'High': '高风险',
+      'Critical': '严重风险'
     };
-    return levels[level as keyof typeof levels] || level;
+    return levels[level] || level;
   };
 
-  const getSeverityIcon = (severity: string) => {
-    switch (severity) {
+  const getSeverityIcon = (severity: SecurityIssue['severity']) => {
+    const mappedSeverity = mapSeverity(severity);
+    switch (mappedSeverity) {
       case 'critical':
         return <XCircle className="w-5 h-5 text-error" />;
       case 'error':
@@ -103,35 +78,48 @@ export default function SecurityReportCard({ report, loading, onClose }: Securit
     }
   };
 
-  const getSeverityText = (severity: string) => {
-    const severities = {
-      critical: '严重',
-      error: '错误',
-      warning: '警告',
-      info: '信息'
+  const getSeverityText = (severity: SecurityIssue['severity']) => {
+    const severities: Record<SecurityIssue['severity'], string> = {
+      'Critical': '严重',
+      'Error': '错误',
+      'Warning': '警告',
+      'Info': '信息'
     };
-    return severities[severity as keyof typeof severities] || severity;
+    return severities[severity] || severity;
   };
 
   return (
-    <div className="card bg-base-100 shadow-xl border border-base-300">
-      <div className="card-body">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8 text-primary" />
-            <div>
-              <h3 className="card-title text-lg">安全扫描报告</h3>
-              <p className="text-sm text-base-content/60">{report.skillId}</p>
+    <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
+      {/* Summary Header - Always Visible */}
+      <div
+        className="p-4 flex items-center justify-between cursor-pointer hover:bg-base-200/50 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-4">
+          <Shield className="w-8 h-8 text-primary" />
+          <div>
+            <h3 className="font-bold text-lg">安全扫描报告</h3>
+            <div className="flex items-center gap-3 text-sm">
+              <span className={`font-mono font-bold ${getScoreColor(report.score)}`}>
+                {report.score} / 100
+              </span>
+              <span className={`badge ${getScoreBadge(report.score)} badge-sm`}>
+                {getLevelText(report.level)}
+              </span>
+              <span className="text-base-content/50">
+                {report.scanned_files.length} 个文件已扫描
+              </span>
             </div>
           </div>
-          {onClose && (
-            <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle">
-              ✕
-            </button>
-          )}
         </div>
+        <button className="btn btn-ghost btn-sm btn-circle">
+          {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        </button>
+      </div>
 
+      {/* Expanded Details */}
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-base-200 animate-in slide-in-from-top-2 duration-200">
         {/* Blocked Warning */}
         {report.blocked && (
           <div className="alert alert-error mb-4">
@@ -139,69 +127,11 @@ export default function SecurityReportCard({ report, loading, onClose }: Securit
             <div>
               <h4 className="font-bold">检测到严重安全风险，已阻止安装！</h4>
               <div className="text-sm mt-2">
-                {report.hardTriggerIssues?.map((issue, idx) => (
+                {report.hard_trigger_issues.map((issue, idx) => (
                   <div key={idx} className="mt-1">
-                    <strong>{issue.ruleName}</strong> ({issue.file}:{issue.line})
-                    <div className="text-xs opacity-80">{issue.description}</div>
-                    {issue.code && (
-                      <code className="block bg-base-300 px-2 py-1 rounded mt-1 text-xs">
-                        {issue.code}
-                      </code>
-                    )}
+                    <strong>{issue}</strong>
                   </div>
                 ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Score and Level */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="stat bg-base-200 rounded-box">
-            <div className="stat-title">安全评分</div>
-            <div className={`stat-value ${getScoreColor(report.score)}`}>
-              {report.score}
-            </div>
-            <div className="stat-desc">满分 100</div>
-          </div>
-          <div className="stat bg-base-200 rounded-box">
-            <div className="stat-title">风险等级</div>
-            <div className="stat-value text-2xl">
-              <span className={`badge ${getScoreBadge(report.score)} badge-lg`}>
-                {getLevelText(report.level)}
-              </span>
-            </div>
-            <div className="stat-desc">
-              {report.scannedFiles.length} 个文件已扫描
-            </div>
-          </div>
-        </div>
-
-        {/* Summary Stats */}
-        {report.summary && (
-          <div className="grid grid-cols-4 gap-2 mb-4">
-            <div className="stat bg-error/10 rounded-box py-2">
-              <div className="stat-title text-xs">严重</div>
-              <div className="stat-value text-lg text-error">
-                {report.summary.criticalCount}
-              </div>
-            </div>
-            <div className="stat bg-error/10 rounded-box py-2">
-              <div className="stat-title text-xs">高危</div>
-              <div className="stat-value text-lg text-error">
-                {report.summary.highCount}
-              </div>
-            </div>
-            <div className="stat bg-warning/10 rounded-box py-2">
-              <div className="stat-title text-xs">中危</div>
-              <div className="stat-value text-lg text-warning">
-                {report.summary.mediumCount}
-              </div>
-            </div>
-            <div className="stat bg-info/10 rounded-box py-2">
-              <div className="stat-title text-xs">低危</div>
-              <div className="stat-value text-lg text-info">
-                {report.summary.lowCount}
               </div>
             </div>
           </div>
@@ -248,40 +178,25 @@ export default function SecurityReportCard({ report, loading, onClose }: Securit
                             {issue.description}
                           </span>
                           <span className={`badge badge-sm ${
-                            issue.severity === 'critical' || issue.severity === 'error'
+                            issue.severity === 'Critical' || issue.severity === 'Error'
                               ? 'badge-error'
-                              : issue.severity === 'warning'
+                              : issue.severity === 'Warning'
                               ? 'badge-warning'
                               : 'badge-info'
                           }`}>
                             {getSeverityText(issue.severity)}
                           </span>
-                          {issue.confidence && (
-                            <span className="badge badge-sm badge-outline">
-                              置信度: {issue.confidence}
-                            </span>
-                          )}
                         </div>
-                        {issue.filePath && (
+                        {issue.file_path && (
                           <div className="text-xs text-base-content/60">
-                            📄 {issue.filePath}
-                            {issue.lineNumber && `:${issue.lineNumber}`}
+                            📄 {issue.file_path}
+                            {issue.line_number && `:${issue.line_number}`}
                           </div>
                         )}
-                        {issue.codeSnippet && (
+                        {issue.code_snippet && (
                           <code className="block bg-base-300 px-2 py-1 rounded mt-2 text-xs overflow-x-auto">
-                            {issue.codeSnippet}
+                            {issue.code_snippet}
                           </code>
-                        )}
-                        {issue.remediation && (
-                          <div className="mt-2 text-xs bg-info/10 p-2 rounded">
-                            <strong>修复建议:</strong> {issue.remediation}
-                          </div>
-                        )}
-                        {issue.cweId && (
-                          <div className="mt-1 text-xs text-base-content/40">
-                            {issue.cweId}
-                          </div>
                         )}
                       </div>
                     </div>
@@ -299,7 +214,8 @@ export default function SecurityReportCard({ report, loading, onClose }: Securit
             <span>未发现明显安全风险，该 Skill 看起来是安全的！</span>
           </div>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
