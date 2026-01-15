@@ -1,5 +1,4 @@
 use anyhow::{Result, Context};
-use rusqlite::OptionalExtension;
 use uuid::Uuid;
 use chrono::Utc;
 use std::sync::Arc;
@@ -78,6 +77,7 @@ impl WhitelistService {
     }
 
     /// Check if a rule is whitelisted (globally)
+    #[allow(dead_code)]
     pub fn is_rule_whitelisted(&self, rule_id: &str) -> Result<bool> {
         self.is_whitelisted(WhitelistType::Rule, rule_id)
     }

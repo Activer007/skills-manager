@@ -280,8 +280,10 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
                 eprintln!("Skill {} is whitelisted, skipping security scan.", skill_name);
             } else {
                 let scanner = SecurityScanner::new();
+                // TODO: Retrieve configured ScanMode from DB/Config instead of hardcoding Standard
+                let scan_mode = ScanMode::Standard;
 
-                match scanner.scan_directory(target_dir.to_str().unwrap(), &skill_name, "en", ScanMode::Standard, &whitelisted_rules) {
+                match scanner.scan_directory(target_dir.to_str().unwrap(), &skill_name, "en", scan_mode, &whitelisted_rules) {
                 Ok(report) => {
                     if report.blocked {
                         // Remove the skill if blocked by hard triggers
@@ -426,8 +428,10 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
             eprintln!("Skill {} is whitelisted, skipping security scan.", request.skill_name);
         } else {
             let scanner = SecurityScanner::new();
+            // TODO: Retrieve configured ScanMode from DB/Config instead of hardcoding Standard
+            let scan_mode = ScanMode::Standard;
 
-            match scanner.scan_directory(target_dir.to_str().unwrap(), &request.skill_name, "en", ScanMode::Standard, &whitelisted_rules) {
+            match scanner.scan_directory(target_dir.to_str().unwrap(), &request.skill_name, "en", scan_mode, &whitelisted_rules) {
             Ok(report) => {
                 if report.blocked {
                     // Remove the skill if blocked by hard triggers
