@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill } from '../hooks/useSkills';
+import { useBatchSkillQuality } from '../hooks/useSkillQuality';
 import { Trash2, Eye, FolderOpen, X, Github, HardDrive, Plus, Shield } from 'lucide-react';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
-import SkillQualityCard from '../components/SkillQualityCard';
+import { QualityScoreCard } from '../components/SkillQuality/QualityScoreCard';
+import { QualityBadge } from '../components/SkillQuality/QualityBadge';
 import { SkeletonCard } from '../components/SkeletonCard';
 import SecurityReportCard from '../components/SecurityReportCard';
 import type { SkillScore } from '../types/scorer';
@@ -29,6 +31,10 @@ const MySkills = () => {
   const importGithubMutation = useImportSkill();
   const importLocalMutation = useImportLocalSkill();
 
+  // Fetch quality scores for all skills
+  const skillPaths = React.useMemo(() => installedSkills.map(s => s.localPath), [installedSkills]);
+  const { data: qualityScores = [], isLoading: isBatchLoading } = useBatchSkillQuality(skillPaths);
+
   const [activeTab, setActiveTab] = useState<'all' | 'system' | 'project'>('all');
   const [selectedSkill, setSelectedSkill] = useState<InstalledSkill | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -43,10 +49,21 @@ const MySkills = () => {
   const [securityReport, setSecurityReport] = useState<SecurityReport | null>(null);
   const [isScanningSecurity, setIsScanningSecurity] = useState(false);
 
+  // Create a map of path -> score
+  const scoreMap = React.useMemo(() => {
+    const map = new Map<string, SkillScore | null>();
+    qualityScores.forEach((score, index) => {
+      if (index < skillPaths.length) {
+        map.set(skillPaths[index], score);
+      }
+    });
+    return map;
+  }, [qualityScores, skillPaths]);
+
+
   const handleUninstall = async (skill: InstalledSkill) => {
     if (uninstallMutation.isPending) return;
 
-    // 显示确认对话框
     const confirmed = window.confirm(
       i18n.language === 'zh'
         ? `⚠️ 确认删除\n\n你确定要删除 Skill "${skill.name}" 吗？\n\n此操作将删除以下内容：\n• Skill 文件夹及所有文件\n• 相关配置信息\n\n此操作无法撤销！`
@@ -64,7 +81,6 @@ const MySkills = () => {
   };
 
   const handleImport = async () => {
-    // 显示安全警告
     const confirmed = window.confirm(
       i18n.language === 'zh'
         ? `⚠️ 安全提示\n\n当前版本已启用安全检查功能。\n\n导入前会自动扫描 Skill 内容，检测以下危险模式：\n• 破坏性操作（如 rm -rf /）\n• 远程代码执行（如 curl | sh）\n• 命令注入（如 eval()）\n• 数据泄露风险\n\n如检测到硬触发危险代码，将阻止导入。\n\n是否继续导入？`
@@ -83,7 +99,6 @@ const MySkills = () => {
         await importLocalMutation.mutateAsync(importPath);
         toast.success('成功从本地导入 Skill！');
       }
-      // 重置状态
       setShowImportModal(false);
       setImportUrl('');
       setImportPath('');
@@ -101,27 +116,34 @@ const MySkills = () => {
   const handleViewSkill = async (skill: InstalledSkill) => {
     setSelectedSkill(skill);
     setShowViewModal(true);
-    setSkillScore(null);
-    setIsAnalyzing(true);
-    setAnalysisError(null);
+    
+    // Check if we already have the score from batch analysis
+    const cachedScore = scoreMap.get(skill.localPath);
+    if (cachedScore) {
+      setSkillScore(cachedScore);
+      setIsAnalyzing(false);
+    } else {
+      setSkillScore(null);
+      setIsAnalyzing(true);
+      setAnalysisError(null);
+      
+      invoke<SkillScore>('analyze_skill_quality', {
+        skillPath: skill.localPath
+      })
+      .then(score => {
+        setSkillScore(score);
+        setIsAnalyzing(false);
+      })
+      .catch(err => {
+        console.error('Analysis failed:', err);
+        setAnalysisError(typeof err === 'string' ? err : JSON.stringify(err));
+        setIsAnalyzing(false);
+      });
+    }
+
     setSecurityReport(null);
     setIsScanningSecurity(true);
 
-    // Analyze skill quality
-    invoke<SkillScore>('analyze_skill_quality', {
-      skillPath: skill.localPath
-    })
-    .then(score => {
-      setSkillScore(score);
-      setIsAnalyzing(false);
-    })
-    .catch(err => {
-      console.error('Analysis failed:', err);
-      setAnalysisError(typeof err === 'string' ? err : JSON.stringify(err));
-      setIsAnalyzing(false);
-    });
-
-    // Scan security
     invoke<SecurityReport>('scan_skill_security', {
       skillPath: skill.localPath,
       locale: i18n.language
@@ -135,7 +157,6 @@ const MySkills = () => {
       setIsScanningSecurity(false);
     });
 
-    // 读取 SKILL.md 文件内容
     try {
       const content = await invoke<string>('read_skill', {
         skillPath: skill.localPath
@@ -174,7 +195,6 @@ const MySkills = () => {
         </button>
       </div>
 
-      {/* Tabs */}
       <div role="tablist" className="tabs tabs-boxed bg-base-100 p-1 w-fit">
         <a
             role="tab"
@@ -206,7 +226,7 @@ const MySkills = () => {
               <th>{i18n.language === 'zh' ? '名称 / 路径' : 'Name / Path'}</th>
               <th>{t('description')}</th>
               <th>{t('type')}</th>
-              <th>{i18n.language === 'zh' ? '安全状态' : 'Security Status'}</th>
+              <th>{i18n.language === 'zh' ? '安全与质量' : 'Security & Quality'}</th>
               <th className="text-right">{t('actions')}</th>
             </tr>
           </thead>
@@ -220,77 +240,90 @@ const MySkills = () => {
                 </td>
               </tr>
             ) : (
-              filteredSkills.map((skill) => (
-              <tr key={skill.id} className="hover">
-                <td>
-                  <div className="font-bold flex items-center gap-2">
-                    {skill.name}
-                  </div>
-                  <div className="text-xs text-base-content/40 font-mono truncate max-w-[200px]" title={skill.localPath}>
-                    {skill.localPath}
-                  </div>
-                </td>
-                <td className="max-w-xs">
-                    <div className="line-clamp-3" title={getLocalizedDescription(skill, i18n.language)}>
-                      {getLocalizedDescription(skill, i18n.language)}
-                    </div>
-                </td>
-                <td>
-                  {skill.type === 'system' ? (
-                      <span className="badge badge-neutral badge-sm">{t('system')}</span>
-                  ) : (
-                      <span className="badge badge-accent badge-outline badge-sm">{t('project')}</span>
-                  )}
-                </td>
-                <td>
-                  <div className="flex items-center gap-2">
-                    {/* Security Score */}
-                    {skill.securityScore !== undefined ? (
-                      <div className="flex items-center gap-1.5">
-                        <Shield size={14} className={
-                          skill.securityScore >= 90 ? 'text-success' :
-                          skill.securityScore >= 70 ? 'text-warning' :
-                          'text-error'
-                        } />
-                        <span className={`font-semibold ${
-                          skill.securityScore >= 90 ? 'text-success' :
-                          skill.securityScore >= 70 ? 'text-warning' :
-                          'text-error'
-                        }`}>
-                          {skill.securityScore}
-                        </span>
+              filteredSkills.map((skill) => {
+                const score = scoreMap.get(skill.localPath);
+                return (
+                  <tr key={skill.id} className="hover">
+                    <td>
+                      <div className="font-bold flex items-center gap-2">
+                        {skill.name}
                       </div>
-                    ) : (
-                      <span className="text-base-content/30 text-sm">未扫描</span>
-                    )}
+                      <div className="text-xs text-base-content/40 font-mono truncate max-w-[200px]" title={skill.localPath}>
+                        {skill.localPath}
+                      </div>
+                    </td>
+                    <td className="max-w-xs">
+                        <div className="line-clamp-3" title={getLocalizedDescription(skill, i18n.language)}>
+                          {getLocalizedDescription(skill, i18n.language)}
+                        </div>
+                    </td>
+                    <td>
+                      {skill.type === 'system' ? (
+                          <span className="badge badge-neutral badge-sm">{t('system')}</span>
+                      ) : (
+                          <span className="badge badge-accent badge-outline badge-sm">{t('project')}</span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="flex flex-col gap-1.5">
+                        {/* Security */}
+                        <div className="flex items-center gap-2">
+                          {skill.securityScore !== undefined ? (
+                            <div className="flex items-center gap-1.5" title={`Security Score: ${skill.securityScore}`}>
+                              <Shield size={14} className={
+                                skill.securityScore >= 90 ? 'text-success' :
+                                skill.securityScore >= 70 ? 'text-warning' :
+                                'text-error'
+                              } />
+                              <span className={`text-xs font-semibold ${ 
+                                skill.securityScore >= 90 ? 'text-success' :
+                                skill.securityScore >= 70 ? 'text-warning' :
+                                'text-error'
+                              }`}>
+                                {skill.securityScore}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-base-content/30 text-xs">未扫描</span>
+                          )}
+                          {skill.status === 'safe' && <div className="badge badge-success badge-xs">安全</div>}
+                          {skill.status === 'unsafe' && <div className="badge badge-error badge-xs">风险</div>}
+                        </div>
 
-                    {/* Status Badge */}
-                    {skill.status === 'safe' && <div className="badge badge-success badge-sm gap-1">安全</div>}
-                    {skill.status === 'unsafe' && <div className="badge badge-error badge-sm gap-1">风险</div>}
-                    {skill.status === 'unknown' && <div className="badge badge-ghost badge-sm gap-1">未知</div>}
-                  </div>
-                </td>
-                <td>
-                  <div className="flex justify-end gap-2">
-                    <button
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => handleViewSkill(skill)}
-                    >
-                        <Eye size={16} />
-                        {t('view')}
-                    </button>
-                    <button
-                        className="btn btn-sm btn-ghost text-error hover:bg-error/10"
-                        onClick={() => handleUninstall(skill)}
-                        disabled={uninstallMutation.isPending}
-                    >
-                        <Trash2 size={16} />
-                        {t('remove')}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))
+                        {/* Quality */}
+                        <div className="flex items-center gap-2">
+                          {isBatchLoading ? (
+                            <span className="loading loading-spinner loading-xs text-base-content/30"></span>
+                          ) : score ? (
+                            <QualityBadge grade={score.grade} score={score.total_score} size="sm" />
+                          ) : (
+                            <span className="text-xs text-base-content/30" title="Score not available">-</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex justify-end gap-2">
+                        <button
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => handleViewSkill(skill)}
+                        >
+                            <Eye size={16} />
+                            {t('view')}
+                        </button>
+                        <button
+                            className="btn btn-sm btn-ghost text-error hover:bg-error/10"
+                            onClick={() => handleUninstall(skill)}
+                            disabled={uninstallMutation.isPending}
+                        >
+                            <Trash2 size={16} />
+                            {t('remove')}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -313,7 +346,6 @@ const MySkills = () => {
       {showViewModal && selectedSkill && (
           <div className="modal modal-open">
             <div className="modal-box w-11/12 max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-                {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-base-200 bg-base-100 shrink-0">
                     <div>
                       <h3 className="font-bold text-xl flex items-center gap-2">
@@ -336,20 +368,28 @@ const MySkills = () => {
                     </button>
                 </div>
 
-                {/* Content */}
                 <div className="flex-1 overflow-auto bg-base-200 p-6 space-y-6">
-                    {/* Security Report Card */}
                     <SecurityReportCard
                       report={securityReport}
                       loading={isScanningSecurity}
                     />
 
-                    {/* Quality Score Card */}
-                    <SkillQualityCard
-                      score={skillScore!}
-                      isLoading={isAnalyzing}
-                      error={analysisError}
-                    />
+                    {isAnalyzing ? (
+                      <div className="card bg-base-100 shadow-sm p-8">
+                        <div className="flex flex-col items-center gap-4">
+                          <span className="loading loading-spinner loading-lg text-primary"></span>
+                          <p className="text-base-content/60">Analyzing skill quality...</p>
+                        </div>
+                      </div>
+                    ) : analysisError ? (
+                      <div className="alert alert-error">
+                        <span>Analysis Failed: {analysisError}</span>
+                      </div>
+                    ) : skillScore && (
+                      <QualityScoreCard
+                        score={skillScore}
+                      />
+                    )}
 
                     <div className="prose prose-sm max-w-none bg-base-100 p-6 rounded-lg shadow-sm">
                       <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed font-mono bg-transparent">
@@ -358,7 +398,6 @@ const MySkills = () => {
                     </div>
                 </div>
 
-                {/* Footer */}
                 <div className="p-4 border-t border-base-200 bg-base-100 flex justify-end gap-2 shrink-0">
                     <button
                       className="btn"
@@ -391,7 +430,6 @@ const MySkills = () => {
             </div>
 
             {!importType ? (
-              /* 选择导入方式 */
               <div className="space-y-3">
                 <p className="text-sm text-base-content/60 mb-4">
                   {i18n.language === 'zh' ? '选择导入方式：' : 'Select import method:'}
@@ -436,7 +474,6 @@ const MySkills = () => {
                 </div>
               </div>
             ) : (
-              /* 导入表单 */
               <div className="space-y-6">
                 <div
                   className="alert alert-info"
@@ -481,7 +518,7 @@ const MySkills = () => {
                     </label>
                     <input
                       type="text"
-                      placeholder="C:\Users\User\Downloads\my-skill"
+                      placeholder="C:\\Users\\User\\Downloads\\my-skill"
                       className="input input-bordered w-full"
                       value={importPath}
                       onChange={(e) => setImportPath(e.target.value)}

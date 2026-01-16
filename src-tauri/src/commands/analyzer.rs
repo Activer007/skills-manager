@@ -73,11 +73,11 @@ pub async fn analyze_skill_quality(
 /// * `skill_paths` - Vector of paths to SKILL.md files
 ///
 /// # Returns
-/// * `Result<Vec<SkillScore>, AnalyzerCommandError>` - Vector of skill scores
+/// * `Result<Vec<Option<SkillScore>>, AnalyzerCommandError>` - Vector of skill scores (None if analysis failed)
 #[tauri::command]
 pub async fn batch_analyze_skills(
     skill_paths: Vec<String>,
-) -> Result<Vec<SkillScore>, AnalyzerCommandError> {
+) -> Result<Vec<Option<SkillScore>>, AnalyzerCommandError> {
     // Create analyzer
     let analyzer = SkillAnalyzer::with_default_config()
         .map_err(|e| AnalyzerCommandError::from(e))?;
@@ -92,10 +92,10 @@ pub async fn batch_analyze_skills(
     .await
     .map_err(|e| AnalyzerCommandError { message: e.to_string() })?;
 
-    // Collect successful results, skip errors
-    let scores: Vec<SkillScore> = results
+    // Map results to Options to preserve order
+    let scores: Vec<Option<SkillScore>> = results
         .into_iter()
-        .filter_map(|result| result.ok())
+        .map(|result| result.ok())
         .collect();
 
     Ok(scores)
