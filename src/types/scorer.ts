@@ -77,3 +77,16 @@ export interface ScoreMetadata {
   analyzed_at: string;
   analyzer_version: string;
 }
+
+export interface BatchAnalysisResult {
+  scores: SkillScore[];
+  errors: AnalysisError[];
+  total: number;
+  successful: number;
+  failed: number;
+}
+
+export interface AnalysisError {
+  path: string;
+  error: string;
+}
