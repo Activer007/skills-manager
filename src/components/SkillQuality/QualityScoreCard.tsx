@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import type { SkillScore } from '../../types/scorer';
 import { QualityBadge } from './QualityBadge';
 import { ScoreRadar } from './ScoreRadar';
 import { SuggestionList } from './SuggestionList';
-import { FileText, Code, Wrench, Users, Calendar } from 'lucide-react';
 
 interface QualityScoreCardProps {
   score: SkillScore;
@@ -60,14 +59,6 @@ export const QualityScoreCard: React.FC<QualityScoreCardProps> = ({ score, isLoa
   }
 
   if (!score) return null;
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString();
-    } catch {
-      return dateStr;
-    }
-  };
 
   return (
     <div className={`card bg-base-100 border border-base-200 shadow-sm overflow-hidden ${className || ''}`}>

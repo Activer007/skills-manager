@@ -142,7 +142,20 @@ Rust 版本的 Skill 质量评分系统已实现，提供高性能的本地分�
 ## 测试
 
 ### 前端测试
-当前没有配置前端测试框架。
+使用 Vitest + React Testing Library 进行组件和 Hook 测试。
+
+```bash
+npm run test              # 运行测试（watch 模式）
+npm run test:run          # 运行测试（单次）
+npm run test:ui           # 启动测试 UI
+npm run test:coverage     # 生成覆盖率报告
+```
+
+测试文件位置：
+- 组件测试：`src/components/**/*.test.tsx`
+- Hook 测试：`src/hooks/**/*.test.tsx`
+- 测试配置：`vitest.config.ts`
+- 测试设置：`src/test/setup.ts`
 
 ### Rust 测试
 ```bash

@@ -52,9 +52,9 @@ const MySkills = () => {
   // Create a map of path -> score
   const scoreMap = React.useMemo(() => {
     const map = new Map<string, SkillScore | null>();
-    qualityScores.forEach((score, index) => {
-      if (index < skillPaths.length) {
-        map.set(skillPaths[index], score);
+    skillPaths.forEach((path, index) => {
+      if (index < qualityScores.length) {
+        map.set(path, qualityScores[index]);
       }
     });
     return map;
