@@ -63,7 +63,7 @@ export const ScoreRadar: React.FC<ScoreRadarProps> = ({ score, className }) => {
               borderRadius: '0.5rem',
               color: 'oklch(var(--bc))'
             }}
-            formatter={(value: any) => [`${Number(value).toFixed(1)}%`, 'Score']}
+            formatter={(value: number | undefined) => [value != null ? `${value.toFixed(1)}%` : '', 'Score']}
           />
         </RadarChart>
       </ResponsiveContainer>

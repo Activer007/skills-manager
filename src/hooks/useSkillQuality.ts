@@ -16,7 +16,7 @@ export function useSkillQuality(skillPath: string) {
 
 export function useBatchSkillQuality(skillPaths: string[]) {
   return useQuery({
-    queryKey: ['batch-skill-quality', skillPaths.length], // Simple key, could be better hashed
+    queryKey: ['batch-skill-quality', skillPaths], // Simple key, could be better hashed
     queryFn: async () => {
       if (skillPaths.length === 0) return [];
       return await invoke<(SkillScore | null)[]>('batch_analyze_skills', { skillPaths });
@@ -29,7 +29,7 @@ export function useBatchSkillQuality(skillPaths: string[]) {
 // For detailed results with errors
 export function useBatchSkillQualityDetailed(skillPaths: string[]) {
   return useQuery({
-    queryKey: ['batch-skill-quality-detailed', skillPaths.length],
+    queryKey: ['batch-skill-quality-detailed', skillPaths],
     queryFn: async () => {
       if (skillPaths.length === 0) return null;
       return await invoke<BatchAnalysisResult>('batch_analyze_skills_detailed', { skillPaths });
