@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QualityScoreCard } from './QualityScoreCard';
-import { SkillScore } from '../../types/scorer';
+import type { SkillScore } from '../../types/scorer';
 
 // Mock ScoreRadar since Recharts can be tricky in tests and we want to test the card logic
 vi.mock('./ScoreRadar', () => ({

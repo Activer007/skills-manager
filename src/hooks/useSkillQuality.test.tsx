@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
 import { useSkillQuality, useBatchSkillQuality, useBatchSkillQualityDetailed } from './useSkillQuality';
-import { SkillScore } from '../types/scorer';
+import type { SkillScore } from '../types/scorer';
 
 // Mock data
 const mockScore: SkillScore = {
