@@ -5,6 +5,7 @@ import type { CSSProperties } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import type { ScanRecord } from '../types/security';
+import { isSafeScore, isRiskScore } from '../types/security';
 import { ShieldAlert, ShieldCheck, ShieldBan, RefreshCw, Search, Download, Filter } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -54,9 +55,9 @@ export default function ScanHistory() {
       
       let matchesLevel = true;
       if (levelFilter === 'Safe') {
-        matchesLevel = record.score >= 70 && !record.blocked;
+        matchesLevel = isSafeScore(record.score) && !record.blocked;
       } else if (levelFilter === 'Risk') {
-        matchesLevel = record.score < 70 && !record.blocked;
+        matchesLevel = isRiskScore(record.score) && !record.blocked;
       } else if (levelFilter === 'Blocked') {
         matchesLevel = record.blocked;
       }
@@ -214,7 +215,7 @@ export default function ScanHistory() {
                             <div className="badge badge-error gap-1 badge-sm">
                                 <ShieldBan size={12} /> Blocked
                             </div>
-                        ) : record.score >= 70 ? (
+                        ) : isSafeScore(record.score) ? (
                             <div className="badge badge-success gap-1 badge-sm">
                                 <ShieldCheck size={12} /> Safe
                             </div>

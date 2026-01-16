@@ -31,3 +31,11 @@ export interface ScanRecord {
   issues_count: number;
   blocked: boolean;
 }
+
+export const SCORE_THRESHOLDS = {
+  SAFE: 70,
+  CRITICAL: 30,
+};
+
+export const isSafeScore = (score: number) => score >= SCORE_THRESHOLDS.SAFE;
+export const isRiskScore = (score: number) => score < SCORE_THRESHOLDS.SAFE;
