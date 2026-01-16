@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QualityScoreCard } from './QualityScoreCard';
-import type { SkillScore } from '../../types/scorer';
+import type { SkillScore, ClarityScore, TechnicalDepthScore, DocumentationScore, CodeQualityScore, MaintenanceScore, UxScore } from '../../types/scorer';
 
 // Mock ScoreRadar since Recharts can be tricky in tests and we want to test the card logic
 vi.mock('./ScoreRadar', () => ({
@@ -11,21 +11,21 @@ vi.mock('./ScoreRadar', () => ({
 const mockScore: SkillScore = {
   total_score: 85.5,
   grade: 'A',
-  content_score: { 
+  content_score: {
     total: 40,
-    clarity: { total: 10 } as any,
-    technical_depth: { total: 15 } as any,
-    documentation: { total: 10 } as any,
+    clarity: { total: 10, has_when_to_use: false, use_cases_count: 0, scenario_clarity: 0 } as ClarityScore,
+    technical_depth: { total: 15, code_examples_count: 0, has_best_practices: false, has_patterns: false, has_io_examples: false } as TechnicalDepthScore,
+    documentation: { total: 10, sections_count: 0, has_quick_start: false, avg_line_length: 0 } as DocumentationScore,
     actionability: 5
   },
   technical_score: {
     total: 25,
-    code_quality: { total: 13 } as any,
+    code_quality: { total: 13, code_blocks_count: 0, language_diversity: 0, has_security_keywords: false } as CodeQualityScore,
     pattern_design: 8,
     error_handling: 4
   },
-  maintenance_score: { total: 8 } as any,
-  ux_score: { total: 8 } as any,
+  maintenance_score: { total: 8, update_frequency: 0, community_activity: 0, compatibility: 0, last_update_days: null } as MaintenanceScore,
+  ux_score: { total: 8, ease_of_use: 0, readability: 0 } as UxScore,
   suggestions: ['Suggestion 1'],
   metadata: {
     skill_name: 'Test Skill',
