@@ -22,6 +22,9 @@ pub struct SkillInfo {
     pub path: String,
     #[serde(rename = "skillType")]
     pub skill_type: String,
+    #[serde(rename = "isMcp")]
+    pub is_mcp: bool,
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -81,24 +84,41 @@ fn get_config_path() -> Option<PathBuf> {
 }
 
 fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
-    let content = fs::read_to_string(path).ok()?;
-    let name = path.parent()?.file_name()?.to_string_lossy().to_string();
+    // Use the analyzer's parser for robust frontmatter extraction
+    use crate::analyzer::skill_document::SkillDocument;
 
-    let description = content
-        .lines()
-        .skip_while(|l| l.starts_with('#') || l.trim().is_empty())
-        .take_while(|l| !l.trim().is_empty())
-        .collect::<Vec<_>>()
-        .join(" ")
-        .chars()
-        .take(200)
-        .collect::<String>();
+    let doc = SkillDocument::from_file(path).ok()?;
+
+    let name = if !doc.metadata.name.is_empty() {
+        doc.metadata.name
+    } else {
+        path.parent()?.file_name()?.to_string_lossy().to_string()
+    };
+
+    let description = doc.metadata.description.unwrap_or_else(|| {
+        // Fallback to first 200 chars of content if no description in frontmatter
+        doc.content
+            .lines()
+            .take(5) // Take first few lines
+            .collect::<Vec<_>>()
+            .join(" ")
+            .chars()
+            .take(200)
+            .collect::<String>()
+    });
+
+    let tags = doc.metadata.tags.unwrap_or_default();
+
+    // Check if it's an MCP skill based on tags
+    let is_mcp = tags.iter().any(|t| t.to_lowercase() == "mcp" || t.to_lowercase() == "mcp-server");
 
     Some(SkillInfo {
         name,
         description,
         path: path.parent()?.to_string_lossy().to_string(),
         skill_type: skill_type.to_string(),
+        is_mcp,
+        tags,
     })
 }
 
