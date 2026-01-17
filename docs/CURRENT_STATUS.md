@@ -52,10 +52,13 @@ Skills Manager 已成功完成 Phase 1 和 Phase 2 的全部开发目标，当�
 - ✅ **浏览 Skills**: 53,000+ 开源 Skills
 - ✅ **搜索功能**: 按名称、描述搜索
 - ✅ **一键安装**: 直接从市场安装到本地
+- ✅ **自定义导入**: 支持通过 GitHub URL 导入任意 Skill (支持子目录)
+- ✅ **高性能列表**: 使用虚拟滚动 (Virtual Scrolling) 优化大量数据渲染
 
 #### 技术实现
 - **前端**: `src/pages/Marketplace.tsx`
 - **数据源**: GitHub API (静态 JSON)
+- **组件**: `ImportSkillModal`, `react-window`
 
 ---
 

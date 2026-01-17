@@ -28,7 +28,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             error && 'input-error focus:ring-error/20',
             className
           )}
-          {...props}
+          aria-invalid={!!error} {...props}
         />
         {helperText && !error && (
           <label className="label pt-1">

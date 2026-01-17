@@ -15,7 +15,7 @@ const ICON_SIZE = {
     LIST: { width: 'w-12', height: 'h-12', text: 'text-xl', margin: '' }
 } as const;
 
-// 预定义的颜色池，确保可访问性和视觉一致性
+// Predefined color palette for consistent and accessible colors
 const COLOR_PALETTE = [
     '#3b82f6', // blue-500
     '#10b981', // green-500
@@ -27,14 +27,28 @@ const COLOR_PALETTE = [
     '#84cc16', // lime-500
 ] as const;
 
-// 颜色生成函数（从字符串生成一致的颜色）
+// Function to generate a consistent color from a string
 const stringToColor = (str: string): string => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
         hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
+    // Use the generated hash to pick a color from the palette
     return COLOR_PALETTE[Math.abs(hash) % COLOR_PALETTE.length];
 };
+
+// Helper function to calculate perceived brightness of a color
+const getBrightness = (hexColor: string): number => {
+    // Remove '#' if present
+    const color = hexColor.startsWith('#') ? hexColor.slice(1) : hexColor;
+    // Parse hex to RGB
+    const r = parseInt(color.substring(0, 2), 16);
+    const g = parseInt(color.substring(2, 4), 16);
+    const b = parseInt(color.substring(4, 6), 16);
+    // Return perceived brightness using luminosity method (YIQ)
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+};
+
 interface SkillCardProps {
     skill: MarketplaceSkill | InstalledSkill;
     viewMode?: 'grid' | 'list';
@@ -81,16 +95,24 @@ export const SkillCard = ({
     const isMarketplace = 'stars' in skill;
     const isMcp = 'isMcp' in skill && skill.isMcp;
 
-    // 使用 useMemo 缓存颜色计算结果
+    // Memoize color calculation
     const iconColor = useMemo(() => stringToColor(skill.name), [skill.name]);
     const iconInitial = useMemo(() => skill.name.substring(0, 1).toUpperCase(), [skill.name]);
 
-    // 使用统一的安全分数转换工具函数
-    // 支持 Marketplace Skill 和 Installed Skill 的安全评分
+    // Use unified security score conversion utility
+    // Supports both Marketplace Skill and Installed Skill security scores
     const trustLevel = useMemo(() => {
         const score = skill.securityScore;
         return score !== undefined ? scoreToTrustLevel(score) : 'unknown';
     }, [skill.securityScore]);
+
+    // Determine text color based on background brightness
+    const textColor = useMemo(() => {
+        const brightness = getBrightness(iconColor);
+        // If brightness is high, use dark text; otherwise, use light text
+        return brightness > 0.5 ? 'text-slate-900' : 'text-slate-50';
+    }, [iconColor]);
+
 
     // Icon Placeholder Generator (based on name char)
     const renderIcon = () => {
@@ -98,11 +120,12 @@ export const SkillCard = ({
         return (
             <div
                 className={cn(
-                    "rounded-xl flex items-center justify-center font-bold text-white shadow-sm flex-shrink-0",
+                    "rounded-xl flex items-center justify-center font-bold shadow-sm flex-shrink-0",
                     sizeClass.width,
                     sizeClass.height,
                     sizeClass.text,
-                    sizeClass.margin
+                    sizeClass.margin,
+                    textColor // Apply calculated text color
                 )}
                 style={{ backgroundColor: iconColor }}
             >
@@ -113,7 +136,7 @@ export const SkillCard = ({
 
     if (viewMode === 'list') {
         return (
-            <div 
+            <div
                 className="group relative flex items-center gap-4 p-4 bg-white dark:bg-base-100 rounded-xl border border-gray-100 dark:border-base-200 hover:shadow-md transition-all duration-200 cursor-pointer"
                 onClick={onViewDetails}
             >
@@ -123,7 +146,7 @@ export const SkillCard = ({
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-slate-900 dark:text-slate-100 truncate">{skill.name}</h3>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100 truncate" title={skill.name}>{skill.name}</h3>
                         {isMcp && (
                             <Badge variant="info" size="xs" className="gap-1">
                                 <Plug size={10} /> MCP
@@ -134,7 +157,7 @@ export const SkillCard = ({
                                 {isActive ? "Active" : "Disabled"}
                             </Badge>
                         )}
-                        {/* 显示 TrustShield - 支持 Marketplace 和 Installed Skills */}
+                        {/* Display TrustShield - supports both Marketplace and Installed Skills */}
                         {skill.securityScore !== undefined && (
                             <TrustShield level={trustLevel} score={skill.securityScore} size="sm" showLabel={true} />
                         )}
@@ -188,7 +211,7 @@ export const SkillCard = ({
 
     // Grid View
     return (
-        <Card 
+        <Card
             className="group cursor-pointer hover:-translate-y-1 transition-transform duration-300 h-full flex flex-col"
             onClick={onViewDetails}
         >
@@ -202,7 +225,7 @@ export const SkillCard = ({
                                 MCP
                             </div>
                         )}
-                        {/* 显示 TrustShield - 支持 Marketplace 和 Installed Skills */}
+                        {/* Display TrustShield - supports both Marketplace and Installed Skills */}
                         {skill.securityScore !== undefined && (
                              <TrustShield level={trustLevel} score={skill.securityScore} size="sm" showLabel={false} />
                         )}
@@ -229,9 +252,9 @@ export const SkillCard = ({
                             Open
                         </Button>
                     ) : (
-                        <Button 
-                            size="sm" 
-                            variant="primary" 
+                        <Button
+                            size="sm"
+                            variant="primary"
                             className="rounded-full h-8 min-h-0 px-4 text-xs shadow-primary/20 hover:shadow-primary/40 hover:shadow-lg"
                             onClick={handleInstall}
                             isLoading={isLoading}

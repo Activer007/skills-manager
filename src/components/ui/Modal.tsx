@@ -1,0 +1,104 @@
+import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
+import { Button } from './Button';
+import { cn } from '../../utils/cn';
+
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  className?: string;
+}
+
+export const Modal = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+  footer,
+  className,
+}: ModalProps) => {
+  const modalRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    if (isOpen) {
+      modal.showModal();
+    } else {
+      modal.close();
+    }
+  }, [isOpen]);
+
+  // Handle ESC key and backdrop click
+  useEffect(() => {
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    const handleCancel = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    const handleBackdropClick = (e: MouseEvent) => {
+      if (e.target === modal) {
+        onClose();
+      }
+    };
+
+    modal.addEventListener('cancel', handleCancel);
+    modal.addEventListener('click', handleBackdropClick);
+
+    return () => {
+      modal.removeEventListener('cancel', handleCancel);
+      modal.removeEventListener('click', handleBackdropClick);
+    };
+  }, [onClose]);
+
+  if (!isOpen) return null;
+
+  return createPortal(
+    <dialog
+      ref={modalRef}
+      className={cn(
+        "modal modal-bottom sm:modal-middle",
+        isOpen && "modal-open"
+      )}
+    >
+      <div className={cn("modal-box bg-white dark:bg-base-100 p-0 overflow-hidden relative", className)}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-base-200">
+          <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100">{title}</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="btn-circle btn-sm"
+            onClick={onClose}
+          >
+            <X size={20} />
+          </Button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {children}
+        </div>
+
+        {/* Footer */}
+        {footer && (
+          <div className="px-6 py-4 bg-gray-50 dark:bg-base-200/50 flex justify-end gap-2 border-t border-gray-100 dark:border-base-200">
+            {footer}
+          </div>
+        )}
+      </div>
+      <form method="dialog" className="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>,
+    document.body
+  );
+};
