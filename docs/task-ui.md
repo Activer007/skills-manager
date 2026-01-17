@@ -116,22 +116,22 @@ Instead of navigating away, skill details open in a right-side drawer (Sheet).
 - [x] **Filter Logic:** Implement client-side filtering with Chip UI.
 - [x] **Hero Banner:** Add a visual header for the marketplace.
 
-### Phase 4: My Skills & Interactions [IN PROGRESS]
+### Phase 4: My Skills & Interactions [DONE]
 > **Goal:** Integrate Phase 2 components into the actual pages and finalize interactions.
 
 - [x] **My Skills Page:** Convert to List Layout.
-- [ ] **Interaction Integration (Fix the Gap):**
-    *   [ ] **SlideOver Integration:** Replace `ViewModal` (old `<div>` modal) with the new `SlideOver` component in `MySkills` and `Marketplace`.
-    *   [ ] **Switch Integration:** Replace `Play/Pause` buttons with the new `Switch` component in `SkillCard` (List Mode).
+- [x] **Interaction Integration (Fix the Gap):**
+    *   [x] **SlideOver Integration:** Replace `ViewModal` (old `<div>` modal) with the new `SlideOver` component in `MySkills` and `Marketplace`.
+    *   [x] **Switch Integration:** Replace `Play/Pause` buttons with the new `Switch` component in `SkillCard` (List Mode).
 - [x] **Animations:** Add `framer-motion` for basic page transitions.
-- [ ] **Settings Form (Schema UI):** Build the dynamic form generator for Skill Config.
-    *   [ ] **Schema Parser:** Logic to infer types from JSON or read schema from `SKILL.md`.
-    *   [ ] **ConfigForm Component:** Map types to `Switch`, `Input`, `Select`.
+- [x] **Settings Form (Schema UI):** Build the dynamic form generator for Skill Config.
+    *   [x] **Schema Parser:** Logic to infer types from JSON or read schema from `SKILL.md`.
+    *   [x] **ConfigForm Component:** Map types to `Switch`, `Input`, `Select`.
 
-### Phase 5: Intelligence & Visualization (2026 Trends) [PLANNED]
+### Phase 5: Intelligence & Visualization (2026 Trends) [IN PROGRESS]
 > **Goal:** Adapt to Agentic/MCP trends and enhance trust visualization.
 
-- [ ] **Skill Insights Dashboard:**
+- [x] **Skill Insights Dashboard:**
     *   Visual representation of installed skills (Categories, Security Scores).
     *   Charts using `Recharts`.
 - [ ] **MCP Integration:**
