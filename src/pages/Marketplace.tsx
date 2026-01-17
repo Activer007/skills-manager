@@ -13,7 +13,8 @@ import { Button } from '../components/ui/Button';
 import { cn } from '../utils/cn';
 import { Star, GitBranch, Github, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { FixedSizeGrid as Grid, GridChildComponentProps } from 'react-window';
+import { FixedSizeGrid as Grid } from 'react-window';
+import type { GridChildComponentProps } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 
 import { ImportSkillModal } from '../components/ImportSkillModal';
