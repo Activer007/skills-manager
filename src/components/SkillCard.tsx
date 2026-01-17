@@ -86,9 +86,11 @@ export const SkillCard = ({
     const iconInitial = useMemo(() => skill.name.substring(0, 1).toUpperCase(), [skill.name]);
 
     // 使用统一的安全分数转换工具函数
+    // 支持 Marketplace Skill 和 Installed Skill 的安全评分
     const trustLevel = useMemo(() => {
-        return isInstalled ? scoreToTrustLevel((skill as InstalledSkill).securityScore) : 'unknown';
-    }, [isInstalled, skill]);
+        const score = skill.securityScore;
+        return score !== undefined ? scoreToTrustLevel(score) : 'unknown';
+    }, [skill.securityScore]);
 
     // Icon Placeholder Generator (based on name char)
     const renderIcon = () => {
@@ -132,8 +134,9 @@ export const SkillCard = ({
                                 {isActive ? "Active" : "Disabled"}
                             </Badge>
                         )}
-                        {isInstalled && (
-                            <TrustShield level={trustLevel} score={(skill as InstalledSkill).securityScore} size="sm" showLabel={true} />
+                        {/* 显示 TrustShield - 支持 Marketplace 和 Installed Skills */}
+                        {skill.securityScore !== undefined && (
+                            <TrustShield level={trustLevel} score={skill.securityScore} size="sm" showLabel={true} />
                         )}
                         {'version' in skill && (
                              <Badge variant="outline" size="xs" className="text-slate-400 font-normal">
@@ -199,8 +202,9 @@ export const SkillCard = ({
                                 MCP
                             </div>
                         )}
-                        {isInstalled && (
-                             <TrustShield level={trustLevel} score={(skill as InstalledSkill).securityScore} size="sm" showLabel={false} />
+                        {/* 显示 TrustShield - 支持 Marketplace 和 Installed Skills */}
+                        {skill.securityScore !== undefined && (
+                             <TrustShield level={trustLevel} score={skill.securityScore} size="sm" showLabel={false} />
                         )}
                         {isMarketplace && (
                             <div className="flex items-center gap-1 text-xs font-medium bg-slate-100 dark:bg-base-200 px-2 py-1 rounded-full text-slate-600 dark:text-slate-400">

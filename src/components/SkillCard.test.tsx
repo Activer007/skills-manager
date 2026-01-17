@@ -269,9 +269,9 @@ describe('SkillCard', () => {
                 ...mockInstalledSkill,
                 securityScore: undefined
             };
-            render(<SkillCard skill={skillWithoutScore} viewMode="list" isInstalled={true} />);
-            // Should show unknown state
-            expect(screen.getByText(/Unknown/i)).toBeInTheDocument();
+            const { container } = render(<SkillCard skill={skillWithoutScore} viewMode="list" isInstalled={true} />);
+            // 没有 securityScore 时不应该显示 TrustShield
+            expect(container.querySelector('[role="status"]')).not.toBeInTheDocument();
         });
     });
 });
