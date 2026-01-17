@@ -4,6 +4,7 @@ import { Switch } from './ui/Switch';
 import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
+import { TrustShield, type TrustLevel } from './TrustShield';
 import { cn } from '../utils/cn';
 import { Star, GitBranch, Trash2, Settings, Plug } from 'lucide-react';
 
@@ -83,6 +84,16 @@ export const SkillCard = ({
     const iconColor = useMemo(() => stringToColor(skill.name), [skill.name]);
     const iconInitial = useMemo(() => skill.name.substring(0, 1).toUpperCase(), [skill.name]);
 
+    const getTrustLevel = (score?: number): TrustLevel => {
+        if (score === undefined) return 'unknown';
+        if (score >= 90) return 'verified';
+        if (score >= 70) return 'safe';
+        if (score >= 50) return 'warning';
+        return 'critical';
+    };
+
+    const trustLevel = isInstalled ? getTrustLevel((skill as InstalledSkill).securityScore) : 'unknown';
+
     // Icon Placeholder Generator (based on name char)
     const renderIcon = () => {
         const sizeClass = viewMode === 'grid' ? ICON_SIZE.GRID : ICON_SIZE.LIST;
@@ -124,6 +135,9 @@ export const SkillCard = ({
                             <Badge variant={isActive ? "success" : "neutral"} size="xs">
                                 {isActive ? "Active" : "Disabled"}
                             </Badge>
+                        )}
+                        {isInstalled && (
+                            <TrustShield level={trustLevel} score={(skill as InstalledSkill).securityScore} size="sm" showLabel={false} />
                         )}
                         {'version' in skill && (
                              <Badge variant="outline" size="xs" className="text-slate-400 font-normal">
@@ -188,6 +202,9 @@ export const SkillCard = ({
                                 <Plug size={12} />
                                 MCP
                             </div>
+                        )}
+                        {isInstalled && (
+                             <TrustShield level={trustLevel} score={(skill as InstalledSkill).securityScore} size="sm" />
                         )}
                         {isMarketplace && (
                             <div className="flex items-center gap-1 text-xs font-medium bg-slate-100 dark:bg-base-200 px-2 py-1 rounded-full text-slate-600 dark:text-slate-400">

@@ -1,0 +1,90 @@
+import { ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react';
+import { cn } from '../utils/cn';
+
+export type TrustLevel = 'verified' | 'safe' | 'warning' | 'critical' | 'unknown';
+
+interface TrustShieldProps {
+  level: TrustLevel;
+  score?: number;
+  size?: 'sm' | 'md' | 'lg';
+  showLabel?: boolean;
+  className?: string;
+}
+
+const levelConfig = {
+  verified: {
+    icon: ShieldCheck,
+    color: 'text-blue-500',
+    bg: 'bg-blue-50 dark:bg-blue-900/20',
+    border: 'border-blue-200 dark:border-blue-800',
+    label: 'Verified',
+  },
+  safe: {
+    icon: ShieldCheck,
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+    border: 'border-emerald-200 dark:border-emerald-800',
+    label: 'Safe',
+  },
+  warning: {
+    icon: ShieldAlert,
+    color: 'text-amber-500',
+    bg: 'bg-amber-50 dark:bg-amber-900/20',
+    border: 'border-amber-200 dark:border-amber-800',
+    label: 'Warning',
+  },
+  critical: {
+    icon: ShieldAlert,
+    color: 'text-red-500',
+    bg: 'bg-red-50 dark:bg-red-900/20',
+    border: 'border-red-200 dark:border-red-800',
+    label: 'Critical',
+  },
+  unknown: {
+    icon: ShieldQuestion,
+    color: 'text-slate-400',
+    bg: 'bg-slate-50 dark:bg-slate-800',
+    border: 'border-slate-200 dark:border-slate-700',
+    label: 'Unknown',
+  },
+};
+
+const sizeConfig = {
+  sm: { icon: 14, text: 'text-xs', p: 'px-2 py-0.5' },
+  md: { icon: 18, text: 'text-sm', p: 'px-3 py-1' },
+  lg: { icon: 24, text: 'text-base', p: 'px-4 py-2' },
+};
+
+export const TrustShield = ({
+  level,
+  score,
+  size = 'md',
+  showLabel = true,
+  className
+}: TrustShieldProps) => {
+  const config = levelConfig[level] || levelConfig.unknown;
+  const sizeClass = sizeConfig[size];
+  const Icon = config.icon;
+
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border font-medium transition-colors",
+        config.color,
+        config.bg,
+        config.border,
+        sizeClass.p,
+        className
+      )}
+      title={`Security Score: ${score !== undefined ? score : 'N/A'}`}
+    >
+      <Icon size={sizeClass.icon} />
+      {showLabel && (
+        <span className={sizeClass.text}>
+          {config.label}
+          {score !== undefined && <span className="opacity-75 ml-1">({score})</span>}
+        </span>
+      )}
+    </div>
+  );
+};
