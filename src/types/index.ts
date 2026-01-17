@@ -19,6 +19,9 @@ export interface MarketplaceSkill {
   isMcp?: boolean;
   configSchema?: Record<string, unknown>;
   previews?: string[];
+  // 安全评分（可选，来自缓存或预扫描）
+  securityScore?: number;
+  securityIssues?: SecurityIssue[];
 }
 
 export interface InstalledSkill extends Partial<MarketplaceSkill> {
