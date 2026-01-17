@@ -11,7 +11,8 @@ import { SkillCard } from '../components/SkillCard';
 import { SlideOver } from '../components/ui/SlideOver';
 import { Button } from '../components/ui/Button';
 import { cn } from '../utils/cn';
-import { Star, GitBranch, Github } from 'lucide-react';
+import { Star, GitBranch, Github, ExternalLink } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 // 常量定义
 const PAGE_SIZE = 12;
@@ -126,17 +127,32 @@ const Marketplace = () => {
       {/* Hero Section */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 dark:from-primary/5 dark:to-purple-500/5 p-8 md:p-12">
           <div className="relative z-10 max-w-2xl">
-              <h1 className="text-3xl md:text-4xl font-bold mb-4 text-slate-900 dark:text-slate-100">
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-3xl md:text-4xl font-bold mb-4 text-slate-900 dark:text-slate-100"
+              >
                   {i18n.language === 'zh' ? '发现强大的 Skills' : 'Discover Powerful Skills'}
-              </h1>
-              <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">
-                  {i18n.language === 'zh' 
-                    ? '通过社区构建的能力增强您的 Claude 体验。' 
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="text-lg text-slate-600 dark:text-slate-400 mb-8"
+              >
+                  {i18n.language === 'zh'
+                    ? '通过社区构建的能力增强您的 Claude 体验。'
                     : 'Supercharge your Claude experience with community-built capabilities.'}
-              </p>
-              
+              </motion.p>
+
               {/* Search Bar inside Hero */}
-              <div className="relative max-w-lg group">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="relative max-w-lg group"
+              >
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
                   <input
                       type="text"
@@ -148,12 +164,36 @@ const Marketplace = () => {
                           setPage(1);
                       }}
                   />
-              </div>
+              </motion.div>
           </div>
-          
+
           {/* Decorative Background Elements */}
-          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50 pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl opacity-50 pointer-events-none" />
+          <motion.div
+            animate={{
+                scale: [1, 1.2, 1],
+                opacity: [0.3, 0.5, 0.3],
+                rotate: [0, 90, 0]
+            }}
+            transition={{
+                duration: 20,
+                repeat: Infinity,
+                ease: "linear"
+            }}
+            className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl pointer-events-none"
+          />
+          <motion.div
+            animate={{
+                scale: [1, 1.1, 1],
+                opacity: [0.3, 0.5, 0.3],
+                x: [0, 50, 0]
+            }}
+            transition={{
+                duration: 15,
+                repeat: Infinity,
+                ease: "easeInOut"
+            }}
+            className="absolute bottom-0 left-0 -mb-20 -ml-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl pointer-events-none"
+          />
       </div>
 
       {/* Filter Chips */}
@@ -342,6 +382,24 @@ const Marketplace = () => {
                          </div>
                     </div>
                 </div>
+
+                {selectedSkill.previews && selectedSkill.previews.length > 0 && (
+                    <div>
+                        <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">Previews</h4>
+                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+                            {selectedSkill.previews.map((preview, index) => (
+                                <div key={index} className="flex-shrink-0 w-64 h-40 rounded-lg overflow-hidden border border-gray-100 dark:border-base-300 relative group cursor-pointer">
+                                    <img
+                                        src={preview}
+                                        alt={`Preview ${index + 1}`}
+                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <div>
                     <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">Description</h4>

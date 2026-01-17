@@ -18,6 +18,7 @@ export interface MarketplaceSkill {
   tags?: string[];
   isMcp?: boolean;
   configSchema?: Record<string, unknown>;
+  previews?: string[];
 }
 
 export interface InstalledSkill extends Partial<MarketplaceSkill> {
