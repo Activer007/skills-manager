@@ -19,6 +19,7 @@ import { QualityScoreCard } from '../components/SkillQuality/QualityScoreCard';
 import SecurityReportCard from '../components/SecurityReportCard';
 import type { SkillScore } from '../types/scorer';
 import type { SecurityReport } from '../types/security';
+import { inferSchemaFromValues } from '../utils/schemaInference';
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) {
@@ -84,6 +85,13 @@ const MySkills = () => {
 
   // Load config for selected skill
   const { config: skillConfig, updateConfig, isUpdating: isConfigUpdating } = useSkillConfig(selectedSkill ? selectedSkill.id : null);
+
+  const activeSchema = React.useMemo(() => {
+    if (skillConfig && Object.keys(skillConfig).length > 0) {
+      return inferSchemaFromValues(skillConfig);
+    }
+    return mockSchema;
+  }, [skillConfig]);
 
   // Create a map of path -> score
   const scoreMap = React.useMemo(() => {
@@ -421,7 +429,7 @@ const MySkills = () => {
                             This is a preview. The schema is currently mocked, but values are persisted to <code>~/.claude/skill-manager-config.json</code>.
                         </div>
                         <ConfigForm
-                            schema={mockSchema}
+                            schema={activeSchema}
                             initialValues={skillConfig || {}}
                             onSave={async (values) => {
                                 try {
