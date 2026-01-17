@@ -3,11 +3,34 @@ import { cn } from '../utils/cn';
 
 export type TrustLevel = 'verified' | 'safe' | 'warning' | 'critical' | 'unknown';
 
+/**
+ * TrustShield - 安全信任等级徽章组件
+ *
+ * 用于可视化展示 Skill 的安全等级和评分，支持多种尺寸和显示模式。
+ *
+ * @example
+ * ```tsx
+ * // 完整显示（带标签和评分）
+ * <TrustShield level="safe" score={85} size="md" showLabel={true} />
+ *
+ * // 紧凑显示（仅图标）
+ * <TrustShield level="verified" score={95} size="sm" showLabel={false} />
+ *
+ * // 未知状态
+ * <TrustShield level="unknown" />
+ * ```
+ */
+
 interface TrustShieldProps {
+  /** 安全信任等级 */
   level: TrustLevel;
+  /** 安全评分 (0-100) */
   score?: number;
+  /** 徽章尺寸 */
   size?: 'sm' | 'md' | 'lg';
+  /** 是否显示文字标签 */
   showLabel?: boolean;
+  /** 自定义 CSS 类名 */
   className?: string;
 }
 
@@ -66,6 +89,8 @@ export const TrustShield = ({
   const sizeClass = sizeConfig[size];
   const Icon = config.icon;
 
+  const ariaLabel = `Security level: ${config.label}. Score: ${score ?? 'N/A'}`;
+
   return (
     <div
       className={cn(
@@ -76,9 +101,11 @@ export const TrustShield = ({
         sizeClass.p,
         className
       )}
-      title={`Security Score: ${score !== undefined ? score : 'N/A'}`}
+      role="status"
+      aria-label={ariaLabel}
+      title={`Security Score: ${score ?? 'N/A'}`}
     >
-      <Icon size={sizeClass.icon} />
+      <Icon size={sizeClass.icon} aria-hidden="true" />
       {showLabel && (
         <span className={sizeClass.text}>
           {config.label}

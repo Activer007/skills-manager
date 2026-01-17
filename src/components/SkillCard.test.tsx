@@ -28,7 +28,29 @@ const mockInstalledSkill: InstalledSkill = {
     localPath: '/path/to/skill',
     type: 'system',
     installDate: Date.now(),
-    status: 'safe'
+    status: 'safe',
+    securityScore: 85
+};
+
+const mockHighSecuritySkill: InstalledSkill = {
+    ...mockInstalledSkill,
+    id: '2',
+    name: 'High Security Skill',
+    securityScore: 95
+};
+
+const mockWarningSkill: InstalledSkill = {
+    ...mockInstalledSkill,
+    id: '3',
+    name: 'Warning Skill',
+    securityScore: 60
+};
+
+const mockCriticalSkill: InstalledSkill = {
+    ...mockInstalledSkill,
+    id: '4',
+    name: 'Critical Skill',
+    securityScore: 40
 };
 describe('SkillCard', () => {
     it('renders in grid mode correctly', () => {
@@ -183,6 +205,73 @@ describe('SkillCard', () => {
 
         await waitFor(() => {
             expect(handleToggle).toHaveBeenCalled();
+        });
+    });
+
+    // TrustShield integration tests
+    describe('TrustShield integration', () => {
+        it('displays TrustShield with safe level for high security score in grid mode', () => {
+            const { container } = render(<SkillCard skill={mockInstalledSkill} viewMode="grid" isInstalled={true} />);
+            // Should display TrustShield (security score 85 = safe level)
+            expect(container.querySelector('.text-emerald-500')).toBeInTheDocument();
+        });
+
+        it('displays TrustShield with verified level for very high security score in list mode', () => {
+            render(<SkillCard skill={mockHighSecuritySkill} viewMode="list" isInstalled={true} />);
+            // Should show "Safe" or "Verified" text
+            expect(screen.getByText(/Verified/i)).toBeInTheDocument();
+        });
+
+        it('displays TrustShield with warning level for medium security score', () => {
+            const { container } = render(<SkillCard skill={mockWarningSkill} viewMode="list" isInstalled={true} />);
+            // Check for amber color which indicates warning level
+            expect(container.querySelector('.text-amber-500')).toBeInTheDocument();
+            // Check the score is displayed
+            expect(screen.getByText(/60/)).toBeInTheDocument();
+        });
+
+        it('displays TrustShield with critical level for low security score', () => {
+            const { container } = render(<SkillCard skill={mockCriticalSkill} viewMode="list" isInstalled={true} />);
+            // Check for red color which indicates critical level
+            expect(container.querySelector('.text-red-500')).toBeInTheDocument();
+            // Check the score is displayed
+            expect(screen.getByText(/40/)).toBeInTheDocument();
+        });
+
+        it('does not display TrustShield for non-installed skills', () => {
+            const { container } = render(<SkillCard skill={mockSkill} viewMode="grid" />);
+            // Should not have any security shield classes
+            expect(container.querySelector('.text-emerald-500')).not.toBeInTheDocument();
+            expect(container.querySelector('.text-blue-500')).not.toBeInTheDocument();
+            expect(container.querySelector('.text-amber-500')).not.toBeInTheDocument();
+            expect(container.querySelector('.text-red-500')).not.toBeInTheDocument();
+        });
+
+        it('hides label in grid mode (showLabel=false)', () => {
+            const { container } = render(<SkillCard skill={mockInstalledSkill} viewMode="grid" isInstalled={true} />);
+            // Grid mode should show TrustShield without label (icon only)
+            // Check that the shield icon exists
+            expect(container.querySelector('svg')).toBeInTheDocument();
+            // The text label should not be visible in grid mode
+            const safeLabel = screen.queryByText(/^Safe$/);
+            expect(safeLabel).not.toBeInTheDocument();
+        });
+
+        it('shows label and score in list mode (showLabel=true)', () => {
+            render(<SkillCard skill={mockInstalledSkill} viewMode="list" isInstalled={true} />);
+            // List mode should show TrustShield with label and score
+            expect(screen.getByText(/Safe/i)).toBeInTheDocument();
+            expect(screen.getByText(/85/)).toBeInTheDocument();
+        });
+
+        it('handles skill without security score', () => {
+            const skillWithoutScore: InstalledSkill = {
+                ...mockInstalledSkill,
+                securityScore: undefined
+            };
+            render(<SkillCard skill={skillWithoutScore} viewMode="list" isInstalled={true} />);
+            // Should show unknown state
+            expect(screen.getByText(/Unknown/i)).toBeInTheDocument();
         });
     });
 });
