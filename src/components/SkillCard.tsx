@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import type { MarketplaceSkill, InstalledSkill } from '../types';
+import { Switch } from './ui/Switch';
 import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../utils/cn';
-import { Star, GitBranch, Trash2, Play, Pause, Settings } from 'lucide-react';
+import { Star, GitBranch, Trash2, Settings, Plug } from 'lucide-react';
 
 // 常量定义
 const ICON_SIZE = {
@@ -69,14 +70,14 @@ export const SkillCard = ({
         }
     };
 
-    const handleToggle = async (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleToggle = async () => {
         if (onToggle) {
              await onToggle();
         }
     };
 
     const isMarketplace = 'stars' in skill;
+    const isMcp = 'isMcp' in skill && skill.isMcp;
 
     // 使用 useMemo 缓存颜色计算结果
     const iconColor = useMemo(() => stringToColor(skill.name), [skill.name]);
@@ -114,6 +115,11 @@ export const SkillCard = ({
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-bold text-slate-900 dark:text-slate-100 truncate">{skill.name}</h3>
+                        {isMcp && (
+                            <Badge variant="info" size="xs" className="gap-1">
+                                <Plug size={10} /> MCP
+                            </Badge>
+                        )}
                         {isInstalled && (
                             <Badge variant={isActive ? "success" : "neutral"} size="xs">
                                 {isActive ? "Active" : "Disabled"}
@@ -143,9 +149,13 @@ export const SkillCard = ({
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     {isInstalled ? (
                         <>
-                             <Button size="sm" variant="ghost" onClick={handleToggle} title={isActive ? "Disable" : "Enable"}>
-                                {isActive ? <Pause size={16} /> : <Play size={16} />}
-                             </Button>
+                             <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                                <Switch
+                                    checked={isActive}
+                                    onChange={handleToggle}
+                                    size="sm"
+                                />
+                             </div>
                              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onConfigure?.(); }}>
                                 <Settings size={16} />
                              </Button>
@@ -172,12 +182,20 @@ export const SkillCard = ({
             <CardContent className="flex-1 flex flex-col p-6">
                 <div className="flex justify-between items-start">
                     {renderIcon()}
-                    {isMarketplace && (
-                        <div className="flex items-center gap-1 text-xs font-medium bg-slate-100 dark:bg-base-200 px-2 py-1 rounded-full text-slate-600 dark:text-slate-400">
-                             <Star size={12} className="fill-yellow-400 text-yellow-400" />
-                             {(skill as MarketplaceSkill).stars}
-                        </div>
-                    )}
+                    <div className="flex flex-col items-end gap-1">
+                        {isMcp && (
+                            <div className="flex items-center gap-1 text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full border border-blue-200 dark:border-blue-800">
+                                <Plug size={12} />
+                                MCP
+                            </div>
+                        )}
+                        {isMarketplace && (
+                            <div className="flex items-center gap-1 text-xs font-medium bg-slate-100 dark:bg-base-200 px-2 py-1 rounded-full text-slate-600 dark:text-slate-400">
+                                <Star size={12} className="fill-yellow-400 text-yellow-400" />
+                                {(skill as MarketplaceSkill).stars}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <h3 className="font-bold text-lg mb-2 text-slate-900 dark:text-slate-100 line-clamp-1" title={skill.name}>{skill.name}</h3>

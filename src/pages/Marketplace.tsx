@@ -8,14 +8,25 @@ import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { SkeletonCard } from '../components/SkeletonCard';
 import { SkillCard } from '../components/SkillCard';
+import { SlideOver } from '../components/ui/SlideOver';
+import { Button } from '../components/ui/Button';
 import { cn } from '../utils/cn';
+import { Star, GitBranch, Github } from 'lucide-react';
 
 // 常量定义
 const PAGE_SIZE = 12;
 const TOP_RATED_THRESHOLD = 50; // Stars threshold for top-rated filter
 const MAX_VISIBLE_PAGES = 5;
 
-type FilterType = 'all' | 'top-rated';
+type FilterType = 'all' | 'top-rated' | 'productivity' | 'coding' | 'security' | 'data' | 'design';
+
+const CATEGORY_KEYWORDS: Record<Exclude<FilterType, 'all' | 'top-rated'>, string[]> = {
+    coding: ['code', 'programming', 'dev', 'git', 'react', 'typescript', 'python', 'rust', 'api', 'debug', 'test'],
+    security: ['security', 'scan', 'vuln', 'auth', 'token', 'audit', 'secret', 'password'],
+    productivity: ['task', 'todo', 'manage', 'organize', 'time', 'workflow', 'automate', 'note'],
+    data: ['data', 'sql', 'db', 'database', 'analytics', 'json', 'csv', 'chart', 'visualization'],
+    design: ['design', 'ui', 'css', 'color', 'icon', 'figma', 'theme', 'style']
+};
 
 const Marketplace = () => {
   const { t, i18n } = useTranslation();
@@ -25,6 +36,8 @@ const Marketplace = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [selectedSkill, setSelectedSkill] = useState<MarketplaceSkill | null>(null);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   const handleInstall = async (skill: MarketplaceSkill) => {
     if (installMutation.isPending) return;
@@ -68,6 +81,12 @@ const Marketplace = () => {
     if (!matchesSearch) return false;
 
     if (filter === 'top-rated') return skill.stars > TOP_RATED_THRESHOLD;
+
+    if (filter !== 'all') {
+        const keywords = CATEGORY_KEYWORDS[filter as keyof typeof CATEGORY_KEYWORDS];
+        const textToCheck = `${skill.name} ${skill.description} ${skill.tags?.join(' ') || ''}`.toLowerCase();
+        return keywords.some(k => textToCheck.includes(k));
+    }
 
     return true;
   });
@@ -141,23 +160,31 @@ const Marketplace = () => {
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {[
               { id: 'all' as const, label: i18n.language === 'zh' ? '全部' : 'All Skills' },
-              { id: 'top-rated' as const, label: i18n.language === 'zh' ? '高评分' : 'Top Rated' }
+              { id: 'top-rated' as const, label: i18n.language === 'zh' ? '高评分' : 'Top Rated' },
+              { id: 'coding' as const, label: i18n.language === 'zh' ? '编程开发' : 'Coding' },
+              { id: 'security' as const, label: i18n.language === 'zh' ? '安全相关' : 'Security' },
+              { id: 'productivity' as const, label: i18n.language === 'zh' ? '生产力' : 'Productivity' },
+              { id: 'data' as const, label: i18n.language === 'zh' ? '数据处理' : 'Data' },
+              { id: 'design' as const, label: i18n.language === 'zh' ? '设计' : 'Design' }
           ].map((chip) => (
               <button
                   key={chip.id}
-                  onClick={() => setFilter(chip.id)}
+                  onClick={() => {
+                      setFilter(chip.id);
+                      setPage(1);
+                  }}
                   className={cn(
                       "px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
                       filter === chip.id
                           ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md"
-                          : "bg-white dark:bg-base-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-base-100"
+                          : "bg-white dark:bg-base-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-base-100 border border-gray-100 dark:border-base-300"
                   )}
               >
                   {chip.label}
               </button>
           ))}
           <div className="flex-1" />
-          <div className="text-sm text-slate-500">
+          <div className="text-sm text-slate-500 whitespace-nowrap">
              {filteredSkills.length} skills
           </div>
       </div>
@@ -176,7 +203,10 @@ const Marketplace = () => {
                         viewMode="grid"
                         isInstalled={isInstalled(skill.id)}
                         onInstall={() => handleInstall(skill)}
-                        onViewDetails={() => handleOpenSource(skill.githubUrl)}
+                        onViewDetails={() => {
+                            setSelectedSkill(skill);
+                            setShowDrawer(true);
+                        }}
                     />
                 ))}
             </div>
@@ -247,6 +277,93 @@ const Marketplace = () => {
             )}
         </>
       )}
+
+      <SlideOver
+        isOpen={showDrawer}
+        onClose={() => {
+            setShowDrawer(false);
+            setSelectedSkill(null);
+        }}
+        title={selectedSkill?.name}
+        description={selectedSkill?.description}
+        width="lg"
+        footer={
+            <div className="flex justify-end gap-2">
+                <Button
+                    variant="ghost"
+                    onClick={() => {
+                        setShowDrawer(false);
+                        setSelectedSkill(null);
+                    }}
+                >
+                    {i18n.language === 'zh' ? '关闭' : 'Close'}
+                </Button>
+                {selectedSkill && (
+                     <Button
+                        variant="primary"
+                        onClick={() => handleInstall(selectedSkill)}
+                        disabled={isInstalled(selectedSkill.id) || installMutation.isPending}
+                        isLoading={installMutation.isPending}
+                    >
+                        {isInstalled(selectedSkill.id) ? (i18n.language === 'zh' ? '已安装' : 'Installed') : (i18n.language === 'zh' ? '安装' : 'Install')}
+                    </Button>
+                )}
+            </div>
+        }
+      >
+        {selectedSkill && (
+            <div className="space-y-6">
+                {/* Hero / Header info */}
+                <div className="flex items-center gap-4">
+                     <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary">
+                        {selectedSkill.name.charAt(0).toUpperCase()}
+                     </div>
+                     <div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{selectedSkill.name}</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm flex items-center gap-2">
+                            by {selectedSkill.author}
+                        </p>
+                     </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-50 dark:bg-base-200 rounded-xl border border-gray-100 dark:border-base-300">
+                         <div className="text-slate-500 text-xs mb-1">Stars</div>
+                         <div className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <Star className="text-yellow-400 fill-yellow-400" size={18} />
+                            {selectedSkill.stars}
+                         </div>
+                    </div>
+                    <div className="p-4 bg-slate-50 dark:bg-base-200 rounded-xl border border-gray-100 dark:border-base-300">
+                         <div className="text-slate-500 text-xs mb-1">Forks</div>
+                         <div className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <GitBranch className="text-slate-400" size={18} />
+                            {selectedSkill.forks}
+                         </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">Description</h4>
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        {getLocalizedDescription(selectedSkill, i18n.language)}
+                    </p>
+                </div>
+
+                <div>
+                    <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">Links</h4>
+                    <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => handleOpenSource(selectedSkill.githubUrl)}
+                    >
+                        <Github size={18} className="mr-2" />
+                        View on GitHub
+                    </Button>
+                </div>
+            </div>
+        )}
+      </SlideOver>
     </div>
   );
 };

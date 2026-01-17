@@ -46,11 +46,14 @@ describe('SkillCard', () => {
     });
 
     it('calls onInstall when clicked', async () => {
-        const handleInstall = vi.fn();
+        const handleInstall = vi.fn().mockResolvedValue(undefined);
         render(<SkillCard skill={mockSkill} viewMode="grid" onInstall={handleInstall} />);
 
         fireEvent.click(screen.getByRole('button', { name: /get/i }));
-        expect(handleInstall).toHaveBeenCalled();
+
+        await waitFor(() => {
+            expect(handleInstall).toHaveBeenCalled();
+        });
     });
 
     // Edge case: Long skill names
@@ -158,14 +161,28 @@ describe('SkillCard', () => {
         expect(handleViewDetails).toHaveBeenCalled();
     });
 
-    it('stops propagation when action buttons are clicked', () => {
+    it('stops propagation when action buttons are clicked', async () => {
         const handleViewDetails = vi.fn();
-        const handleInstall = vi.fn();
+        const handleInstall = vi.fn().mockResolvedValue(undefined);
         render(<SkillCard skill={mockSkill} viewMode="grid" onViewDetails={handleViewDetails} onInstall={handleInstall} />);
 
         fireEvent.click(screen.getByRole('button', { name: /get/i }));
 
-        expect(handleInstall).toHaveBeenCalled();
+        await waitFor(() => {
+            expect(handleInstall).toHaveBeenCalled();
+        });
         expect(handleViewDetails).not.toHaveBeenCalled(); // Should not bubble up
+    });
+
+    it('calls onToggle when switch is clicked in list mode', async () => {
+        const handleToggle = vi.fn().mockResolvedValue(undefined);
+        render(<SkillCard skill={mockInstalledSkill} viewMode="list" isInstalled={true} onToggle={handleToggle} />);
+
+        const switchElement = screen.getByRole('switch');
+        fireEvent.click(switchElement);
+
+        await waitFor(() => {
+            expect(handleToggle).toHaveBeenCalled();
+        });
     });
 });
