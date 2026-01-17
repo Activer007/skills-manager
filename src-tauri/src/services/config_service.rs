@@ -6,10 +6,10 @@ use std::sync::Mutex;
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppConfig {
-    #[serde(default)]
+    #[serde(default, rename = "projectPaths")]
     pub project_paths: Vec<String>,
 
-    #[serde(default)]
+    #[serde(default, rename = "skillConfigs")]
     pub skill_configs: HashMap<String, serde_json::Value>,
 }
 
@@ -67,6 +67,10 @@ impl ConfigService {
         }
 
         let json = serde_json::to_string_pretty(config).map_err(|e| e.to_string())?;
-        fs::write(&self.config_path, json).map_err(|e| e.to_string())
+        
+        // Write to temp file first, then rename for atomicity
+        let tmp_path = self.config_path.with_extension("tmp");
+        fs::write(&tmp_path, json).map_err(|e| e.to_string())?;
+        fs::rename(&tmp_path, &self.config_path).map_err(|e| e.to_string())
     }
 }
