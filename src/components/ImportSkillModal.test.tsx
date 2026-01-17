@@ -133,4 +133,12 @@ describe('ImportSkillModal', () => {
 
     expect(onCloseMock).toHaveBeenCalled();
   });
+
+  it('populates input with initialUrl', () => {
+    const initialUrl = 'https://github.com/initial/repo';
+    render(<ImportSkillModal isOpen={true} onClose={onCloseMock} initialUrl={initialUrl} />);
+
+    const input = screen.getByLabelText('GitHub Repository URL') as HTMLInputElement;
+    expect(input.value).toBe(initialUrl);
+  });
 });

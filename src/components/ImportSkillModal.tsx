@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './ui/Modal';
 import { Input } from './ui/Input';
@@ -11,13 +11,21 @@ import type { MarketplaceSkill } from '../types';
 interface ImportSkillModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialUrl?: string;
 }
 
-export const ImportSkillModal = ({ isOpen, onClose }: ImportSkillModalProps) => {
-  const { t, i18n } = useTranslation();
-  const [url, setUrl] = useState('');
+export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillModalProps) => {
+  const { i18n } = useTranslation();
+  const [url, setUrl] = useState(initialUrl || '');
   const [error, setError] = useState('');
   const installMutation = useInstallSkill();
+
+  useEffect(() => {
+    if (isOpen) {
+      setUrl(initialUrl || '');
+      setError('');
+    }
+  }, [isOpen, initialUrl]);
 
   const validateUrl = (value: string) => {
     if (!value) return false;
@@ -109,6 +117,7 @@ export const ImportSkillModal = ({ isOpen, onClose }: ImportSkillModalProps) => 
         </div>
 
         <Input
+          id="github-url-input"
           label={i18n.language === 'zh' ? 'GitHub 仓库链接' : 'GitHub Repository URL'}
           placeholder="https://github.com/username/repo/tree/main/path/to/skill"
           value={url}

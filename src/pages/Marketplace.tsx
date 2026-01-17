@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useMarketplaceSkills, useInstallSkill } from '../hooks/useSkills';
 import type { MarketplaceSkill } from '../types';
-import { Search } from 'lucide-react';
+import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
@@ -13,8 +13,8 @@ import { Button } from '../components/ui/Button';
 import { cn } from '../utils/cn';
 import { Star, GitBranch, Github, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { FixedSizeGrid as Grid, GridChildComponentProps } from 'react-window';
-import AutoSizer from 'react-virtualized-auto-sizer';
+import { FixedSizeGrid as Grid } from 'react-window';
+import { AutoSizer } from 'react-virtualized-auto-sizer';
 
 import { ImportSkillModal } from '../components/ImportSkillModal';
 
@@ -33,6 +33,8 @@ const CATEGORY_KEYWORDS: Record<Exclude<FilterType, 'all' | 'top-rated'>, string
     design: ['design', 'ui', 'css', 'color', 'icon', 'figma', 'theme', 'style']
 };
 
+const GITHUB_URL_REGEX = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/tree\/[\w.-]+(\/.*)?)?$/;
+
 const Marketplace = () => {
   const { t, i18n } = useTranslation();
   const { data: marketplaceSkills = [], isLoading: isLoadingMarketplace } = useMarketplaceSkills();
@@ -43,6 +45,10 @@ const Marketplace = () => {
   const [selectedSkill, setSelectedSkill] = useState<MarketplaceSkill | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+
+  const isGithubUrl = useMemo(() => {
+    return GITHUB_URL_REGEX.test(searchTerm);
+  }, [searchTerm]);
 
   const handleInstall = async (skill: MarketplaceSkill) => {
     if (installMutation.isPending) return;
@@ -98,7 +104,7 @@ const Marketplace = () => {
     });
   }, [marketplaceSkills, searchTerm, filter]);
 
-  const Cell = ({ columnIndex, rowIndex, style, data }: GridChildComponentProps) => {
+  const Cell = ({ columnIndex, rowIndex, style, data }: any) => {
     const { skills, columnCount } = data;
     const index = rowIndex * columnCount + columnIndex;
 
@@ -129,6 +135,40 @@ const Marketplace = () => {
         </div>
     );
   };
+
+  // State for scroll indicators
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
+  const filterChipsRef = useRef<HTMLDivElement>(null);
+
+  // Update arrow visibility based on scroll position
+  const handleScroll = () => {
+      if (filterChipsRef.current) {
+          setShowLeftArrow(filterChipsRef.current.scrollLeft > 0);
+          setShowRightArrow(
+              filterChipsRef.current.scrollWidth >
+              filterChipsRef.current.clientWidth + filterChipsRef.current.scrollLeft + 1
+          );
+      }
+  };
+
+  // Add event listener for scroll
+  useEffect(() => {
+      const currentRef = filterChipsRef.current;
+      if (currentRef) {
+          currentRef.addEventListener('scroll', handleScroll);
+          handleScroll(); // Initial check
+
+          // Re-check on window resize
+          window.addEventListener('resize', handleScroll);
+      }
+      return () => {
+          if (currentRef) {
+              currentRef.removeEventListener('scroll', handleScroll);
+          }
+          window.removeEventListener('resize', handleScroll);
+      };
+  }, []);
 
   return (
     <div className="space-y-8 h-full flex flex-col">
@@ -186,7 +226,9 @@ const Marketplace = () => {
                         onClick={() => setShowImportModal(true)}
                      >
                         <Download size={20} className="mr-2" />
-                        {i18n.language === 'zh' ? '导入' : 'Import'}
+                        {isGithubUrl
+                            ? (i18n.language === 'zh' ? '导入此链接' : 'Import URL')
+                            : (i18n.language === 'zh' ? '导入' : 'Import')}
                      </Button>
                   </motion.div>
               </div>
@@ -221,46 +263,95 @@ const Marketplace = () => {
           />
       </div>
 
-      {/* Filter Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {[
-              { id: 'all' as const, label: i18n.language === 'zh' ? '全部' : 'All Skills' },
-              { id: 'top-rated' as const, label: i18n.language === 'zh' ? '高评分' : 'Top Rated' },
-              { id: 'coding' as const, label: i18n.language === 'zh' ? '编程开发' : 'Coding' },
-              { id: 'security' as const, label: i18n.language === 'zh' ? '安全相关' : 'Security' },
-              { id: 'productivity' as const, label: i18n.language === 'zh' ? '生产力' : 'Productivity' },
-              { id: 'data' as const, label: i18n.language === 'zh' ? '数据处理' : 'Data' },
-              { id: 'design' as const, label: i18n.language === 'zh' ? '设计' : 'Design' }
-          ].map((chip) => (
-              <button
-                  key={chip.id}
-                  onClick={() => {
-                      setFilter(chip.id);
-                  }}
-                  className={cn(
-                      "px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
-                      filter === chip.id
-                          ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md"
-                          : "bg-white dark:bg-base-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-base-100 border border-gray-100 dark:border-base-300"
-                  )}
-              >
-                  {chip.label}
-              </button>
-          ))}
-          <div className="flex-1" />
-          <div className="text-sm text-slate-500 whitespace-nowrap">
-             {filteredSkills.length} skills
+      {/* Filter Chips with Scroll Indicators */}
+      <div className="relative">
+          {showLeftArrow && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-gradient-to-l from-white dark:from-base-100 to-transparent w-16 h-full flex items-center pointer-events-none pl-2">
+                  <ChevronLeft size={20} className="text-slate-500 dark:text-slate-400" />
+              </div>
+          )}
+          <div
+              ref={filterChipsRef}
+              className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide px-2"
+              onScroll={handleScroll}
+          >
+              {[
+                  { id: 'all' as const, label: i18n.language === 'zh' ? '全部' : 'All Skills' },
+                  { id: 'top-rated' as const, label: i18n.language === 'zh' ? '高评分' : 'Top Rated' },
+                  { id: 'coding' as const, label: i18n.language === 'zh' ? '编程开发' : 'Coding' },
+                  { id: 'security' as const, label: i18n.language === 'zh' ? '安全相关' : 'Security' },
+                  { id: 'productivity' as const, label: i18n.language === 'zh' ? '生产力' : 'Productivity' },
+                  { id: 'data' as const, label: i18n.language === 'zh' ? '数据处理' : 'Data' },
+                  { id: 'design' as const, label: i18n.language === 'zh' ? '设计' : 'Design' }
+              ].map((chip) => (
+                  <button
+                      key={chip.id}
+                      onClick={() => {
+                          setFilter(chip.id);
+                      }}
+                      className={cn(
+                          "px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
+                          filter === chip.id
+                              ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md"
+                              : "bg-white dark:bg-base-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-base-100 border border-gray-100 dark:border-base-300"
+                      )}
+                  >
+                      {chip.label}
+                  </button>
+              ))}
+              <div className="flex-1" />
+              <div className="text-sm text-slate-500 whitespace-nowrap hidden sm:block">
+                 {filteredSkills.length} skills
+              </div>
           </div>
+          {showRightArrow && (
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-gradient-to-r from-white dark:from-base-100 to-transparent w-16 h-full flex items-center justify-end pointer-events-none pr-2">
+                  <ChevronRight size={20} className="text-slate-500 dark:text-slate-400" />
+              </div>
+          )}
       </div>
+
 
       {isLoadingMarketplace ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <SkeletonCard count={8} />
         </div>
+      ) : filteredSkills.length === 0 ? (
+        // Empty State Component
+        <div className="flex flex-col items-center justify-center h-full py-16 text-center">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col items-center"
+            >
+                <div className="w-24 h-24 bg-slate-100 dark:bg-base-200 rounded-full flex items-center justify-center mb-6">
+                    <Search className="text-slate-300 dark:text-slate-600" size={48} />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">
+                    {i18n.language === 'zh' ? '未找到相关 Skill' : 'No skills found'}
+                </h2>
+                <p className="text-lg text-slate-600 dark:text-slate-400 mb-8 max-w-lg mx-auto">
+                    {i18n.language === 'zh'
+                        ? '尝试使用不同的关键词，或者直接导入 GitHub 仓库。'
+                        : 'Try searching with different keywords, or import directly from GitHub.'}
+                    <br />
+                    <Button
+                        variant="link"
+                        className="text-lg font-semibold text-primary mt-2"
+                        onClick={() => setShowImportModal(true)}
+                    >
+                        {i18n.language === 'zh' ? '从 GitHub 导入' : 'Import from GitHub'}
+                    </Button>
+                </p>
+            </motion.div>
+        </div>
       ) : (
         <div className="flex-1 min-h-[600px] w-full">
             <AutoSizer>
-                {({ height, width }) => {
+                {({ height, width }: any) => {
+                    if (!height || !width) return null;
+
                     const columnCount = Math.floor(width / (280 + GUTTER_SIZE)) || 1;
                     const columnWidth = width / columnCount;
                     const rowCount = Math.ceil(filteredSkills.length / columnCount);
@@ -391,6 +482,7 @@ const Marketplace = () => {
       <ImportSkillModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
+        initialUrl={isGithubUrl ? searchTerm : undefined}
       />
     </div>
   );
