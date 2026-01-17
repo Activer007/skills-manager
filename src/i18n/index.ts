@@ -59,6 +59,24 @@ const resources = {
       high: "High",
       critical: "Critical",
 
+      // TrustShield - Security Levels
+      trustShield: {
+        verified: "Verified",
+        safe: "Safe",
+        warning: "Warning",
+        critical: "Critical",
+        unknown: "Unknown",
+        // Descriptions
+        verifiedDesc: "This skill has passed security verification and is safe to use",
+        safeDesc: "This skill has good security and no obvious risks found",
+        warningDesc: "This skill has potential security risks, use with caution",
+        criticalDesc: "This skill has serious security issues, not recommended for use",
+        unknownDesc: "This skill has not been scanned for security",
+        // Aria labels
+        ariaLabel: "Security level: {{level}}. Score: {{score}}",
+        scoreLabel: "Security Score: {{score}}",
+      },
+
       // Settings
       generalSettings: "General Settings",
       defaultInstallLocation: "Default Install Location",
@@ -157,6 +175,24 @@ const resources = {
       medium: "中",
       high: "高",
       critical: "严重",
+
+      // TrustShield - 安全等级
+      trustShield: {
+        verified: "已验证",
+        safe: "安全",
+        warning: "警告",
+        critical: "危险",
+        unknown: "未知",
+        // 描述
+        verifiedDesc: "此 Skill 已通过安全验证，可以安全使用",
+        safeDesc: "此 Skill 安全性良好，未发现明显风险",
+        warningDesc: "此 Skill 存在潜在安全风险，请谨慎使用",
+        criticalDesc: "此 Skill 存在严重安全问题，不建议使用",
+        unknownDesc: "此 Skill 尚未进行安全扫描",
+        // Aria 标签
+        ariaLabel: "安全等级：{{level}}。评分：{{score}}",
+        scoreLabel: "安全评分：{{score}}",
+      },
 
       // 设置
       generalSettings: "通用设置",
