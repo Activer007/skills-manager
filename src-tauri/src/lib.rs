@@ -635,7 +635,9 @@ pub fn run() {
             commands::security::remove_whitelist_entry,
             commands::security::get_whitelist,
             commands::cache::get_cache_stats,
-            commands::cache::clear_cache
+            commands::cache::clear_cache,
+            commands::config::get_skill_config,
+            commands::config::set_skill_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
