@@ -87,11 +87,19 @@ const MySkills = () => {
   const { config: skillConfig, updateConfig, isUpdating: isConfigUpdating } = useSkillConfig(selectedSkill ? selectedSkill.id : null);
 
   const activeSchema = React.useMemo(() => {
+    // 1. Priority: Schema defined in SKILL.md (backend parsed)
+    if (selectedSkill?.configSchema && Object.keys(selectedSkill.configSchema).length > 0) {
+        return selectedSkill.configSchema as ConfigSchema;
+    }
+
+    // 2. Fallback: Infer from current config values
     if (skillConfig && Object.keys(skillConfig).length > 0) {
       return inferSchemaFromValues(skillConfig);
     }
+
+    // 3. Last resort: Mock schema (for dev/demo)
     return mockSchema;
-  }, [skillConfig]);
+  }, [skillConfig, selectedSkill]);
 
   // Create a map of path -> score
   const scoreMap = React.useMemo(() => {
