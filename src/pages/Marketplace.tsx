@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useMarketplaceSkills, useInstallSkill } from '../hooks/useSkills';
 import type { MarketplaceSkill } from '../types';
-import { Download, Search, Star, ExternalLink, Check } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { SkeletonCard } from '../components/SkeletonCard';
+import { SkillCard } from '../components/SkillCard';
+import { cn } from '../utils/cn';
 
 const Marketplace = () => {
   const { t, i18n } = useTranslation();
@@ -15,13 +17,13 @@ const Marketplace = () => {
   const installMutation = useInstallSkill();
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const [installingSkillId, setInstallingSkillId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'top-rated'>('all'); // Removed 'new' for simplicity unless data supports it
+  
   const pageSize = 12;
 
   const handleInstall = async (skill: MarketplaceSkill) => {
     if (installMutation.isPending) return;
 
-    // 显示安装前安全警告
     const confirmed = window.confirm(
       i18n.language === 'zh'
         ? `⚠️ 安全提示\n\n当前版本已启用安全检查功能。\n\n安装前会自动扫描 Skill 内容，检测以下危险模式：\n• 破坏性操作（如 rm -rf /）\n• 远程代码执行（如 curl | sh）\n• 命令注入（如 eval()）\n• 数据泄露风险\n\n如检测到硬触发危险代码，将阻止安装。\n\n是否继续安装 ${skill.name}？`
@@ -30,8 +32,6 @@ const Marketplace = () => {
 
     if (!confirmed) return;
 
-    setInstallingSkillId(skill.id);
-
     try {
         await installMutation.mutateAsync(skill);
         toast.success(i18n.language === 'zh' ? `${skill.name} 安装成功！` : `${skill.name} installed successfully!`);
@@ -39,8 +39,6 @@ const Marketplace = () => {
         console.error('Installation error:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         toast.error(i18n.language === 'zh' ? `安装失败: ${errorMessage}` : `Installation failed: ${errorMessage}`);
-    } finally {
-        setInstallingSkillId(null);
     }
   };
 
@@ -49,9 +47,7 @@ const Marketplace = () => {
         await invoke('open_url', { url });
     } catch (error) {
         console.error('Failed to open URL:', error);
-        toast.error(i18n.language === 'zh'
-            ? `无法打开链接: ${error}`
-            : `Failed to open URL: ${error}`);
+        toast.error(i18n.language === 'zh' ? `无法打开链接: ${error}` : `Failed to open URL: ${error}`);
     }
   };
 
@@ -59,31 +55,33 @@ const Marketplace = () => {
     return installedSkills.some(s => s.id === skillId);
   };
 
-  const filteredSkills = marketplaceSkills.filter(skill =>
-    skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    skill.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    skill.author.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSkills = marketplaceSkills.filter(skill => {
+    const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        skill.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        skill.author.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+
+    if (filter === 'top-rated') return skill.stars > 50; 
+
+    return true;
+  });
 
   const totalPages = Math.ceil(filteredSkills.length / pageSize);
   const currentSkills = filteredSkills.slice((page - 1) * pageSize, page * pageSize);
 
-  // 生成页码数组
   const getPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
 
     if (totalPages <= maxVisiblePages) {
-      // 如果总页数少于等于5，显示所有页码
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // 否则显示当前页附近的页码
       let start = Math.max(1, page - 2);
       let end = Math.min(totalPages, page + 2);
 
-      // 调整范围以确保总是显示5个页码
       if (end - start < maxVisiblePages - 1) {
         if (start === 1) {
           end = Math.min(totalPages, start + maxVisiblePages - 1);
@@ -101,33 +99,63 @@ const Marketplace = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <div>
-            <h2 className="text-2xl font-bold">{t('marketplace')}</h2>
-            <p className="text-base-content/60">
-              {i18n.language === 'zh'
-                ? `发现并安装社区贡献的 Claude Skills (${marketplaceSkills.length} 个)`
-                : `Discover and install community-contributed Claude Skills (${marketplaceSkills.length} skills)`}
-            </p>
-        </div>
-
-        <div className="join w-full md:w-auto">
-          <div className="relative w-full md:w-64">
-             <input
-                className="input input-bordered join-item w-full"
-                placeholder={t('searchSkills')}
-                value={searchTerm}
-                onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setPage(1);
-                }}
-             />
+    <div className="space-y-8">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 dark:from-primary/5 dark:to-purple-500/5 p-8 md:p-12">
+          <div className="relative z-10 max-w-2xl">
+              <h1 className="text-3xl md:text-4xl font-bold mb-4 text-slate-900 dark:text-slate-100">
+                  {i18n.language === 'zh' ? '发现强大的 Skills' : 'Discover Powerful Skills'}
+              </h1>
+              <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">
+                  {i18n.language === 'zh' 
+                    ? '通过社区构建的能力增强您的 Claude 体验。' 
+                    : 'Supercharge your Claude experience with community-built capabilities.'}
+              </p>
+              
+              {/* Search Bar inside Hero */}
+              <div className="relative max-w-lg group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
+                  <input
+                      type="text"
+                      placeholder={t('searchSkills')}
+                      className="w-full pl-12 pr-4 py-4 rounded-xl bg-white dark:bg-base-100 border-0 shadow-lg shadow-black/5 ring-1 ring-black/5 focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-slate-400 text-slate-900 dark:text-slate-100"
+                      value={searchTerm}
+                      onChange={(e) => {
+                          setSearchTerm(e.target.value);
+                          setPage(1);
+                      }}
+                  />
+              </div>
           </div>
-          <button className="btn join-item bg-base-200">
-            <Search size={18} />
-          </button>
-        </div>
+          
+          {/* Decorative Background Elements */}
+          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl opacity-50 pointer-events-none" />
+      </div>
+
+      {/* Filter Chips */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {[ 
+              { id: 'all', label: i18n.language === 'zh' ? '全部' : 'All Skills' },
+              { id: 'top-rated', label: i18n.language === 'zh' ? '高评分' : 'Top Rated' }
+          ].map((chip) => (
+              <button
+                  key={chip.id}
+                  onClick={() => setFilter(chip.id as any)}
+                  className={cn(
+                      "px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
+                      filter === chip.id
+                          ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md"
+                          : "bg-white dark:bg-base-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-base-100"
+                  )}
+              >
+                  {chip.label}
+              </button>
+          ))}
+          <div className="flex-1" />
+          <div className="text-sm text-slate-500">
+             {filteredSkills.length} skills
+          </div>
       </div>
 
       {isLoadingMarketplace ? (
@@ -136,66 +164,25 @@ const Marketplace = () => {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {currentSkills.map((skill) => {
-                    const installed = isInstalled(skill.id);
-                    return (
-                        <div key={skill.id} className="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-shadow h-full flex flex-col">
-                            <div className="card-body p-5 flex-1">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <img src={skill.authorAvatar} alt={skill.author} className="w-6 h-6 rounded-full" />
-                                        <span className="text-xs text-base-content/60">{skill.author}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1 text-warning text-xs font-medium">
-                                        <Star size={12} fill="currentColor" />
-                                        <span>{skill.stars.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                                <h3 className="card-title text-lg">{skill.name}</h3>
-                                <p className="text-sm text-base-content/70 line-clamp-3 mb-4 flex-1" title={getLocalizedDescription(skill, i18n.language)}>
-                                    {getLocalizedDescription(skill, i18n.language)}
-                                </p>
-
-                                <div className="card-actions justify-between items-center mt-auto pt-4 border-t border-base-200">
-                                    <button
-                                        onClick={() => handleOpenSource(skill.githubUrl)}
-                                        className="btn btn-ghost btn-xs gap-1 text-base-content/50"
-                                    >
-                                        <ExternalLink size={12} /> {i18n.language === 'zh' ? '源码' : 'Source'}
-                                    </button>
-
-                                    {installed ? (
-                                        <button className="btn btn-success btn-sm btn-outline gap-2 no-animation cursor-default">
-                                            <Check size={16} /> {t('installed')}
-                                        </button>
-                                    ) : (
-                                        <button
-                                            className="btn btn-primary btn-sm gap-2"
-                                            onClick={() => handleInstall(skill)}
-                                            disabled={!!installingSkillId}
-                                        >
-                                            {installingSkillId === skill.id ? (
-                                                <span className="loading loading-spinner loading-xs"></span>
-                                            ) : (
-                                                <Download size={16} />
-                                            )}
-                                            {installingSkillId === skill.id ? (i18n.language === 'zh' ? '安装中...' : 'Installing...') : t('install')}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {currentSkills.map((skill) => (
+                    <SkillCard
+                        key={skill.id}
+                        skill={{...skill, description: getLocalizedDescription(skill, i18n.language)}}
+                        viewMode="grid"
+                        isInstalled={isInstalled(skill.id)}
+                        onInstall={() => handleInstall(skill)}
+                        onViewDetails={() => handleOpenSource(skill.githubUrl)}
+                    />
+                ))}
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
                 <div className="flex justify-center mt-8 pb-8">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 bg-white dark:bg-base-100 p-2 rounded-xl shadow-sm border border-gray-100 dark:border-base-200">
                         <button
-                            className="btn btn-sm"
+                            className="btn btn-sm btn-ghost"
                             disabled={page === 1}
                             onClick={() => {
                                 setPage(1);
@@ -205,7 +192,7 @@ const Marketplace = () => {
                             ««
                         </button>
                         <button
-                            className="btn btn-sm"
+                            className="btn btn-sm btn-ghost"
                             disabled={page === 1}
                             onClick={() => {
                                 setPage(p => Math.max(1, p - 1));
@@ -218,7 +205,10 @@ const Marketplace = () => {
                         {getPageNumbers().map((pageNum) => (
                             <button
                                 key={pageNum}
-                                className={`btn btn-sm ${pageNum === page ? 'btn-primary' : 'btn-ghost'}`}
+                                className={cn(
+                                    "btn btn-sm min-w-[2rem]",
+                                    pageNum === page ? "btn-primary text-white" : "btn-ghost font-normal"
+                                )}
                                 onClick={() => {
                                     setPage(pageNum);
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -229,7 +219,7 @@ const Marketplace = () => {
                         ))}
 
                         <button
-                            className="btn btn-sm"
+                            className="btn btn-sm btn-ghost"
                             disabled={page === totalPages}
                             onClick={() => {
                                 setPage(p => Math.min(totalPages, p + 1));
@@ -239,7 +229,7 @@ const Marketplace = () => {
                             »
                         </button>
                         <button
-                            className="btn btn-sm"
+                            className="btn btn-sm btn-ghost"
                             disabled={page === totalPages}
                             onClick={() => {
                                 setPage(totalPages);
@@ -251,7 +241,7 @@ const Marketplace = () => {
                     </div>
                 </div>
             )}
-          </>
+        </>
       )}
     </div>
   );
