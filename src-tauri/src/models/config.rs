@@ -6,3 +6,9 @@ pub struct SkillConfig {
     #[serde(flatten)]
     pub settings: Value,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct SavePathsRequest {
+    pub paths: Vec<String>,
+}
+

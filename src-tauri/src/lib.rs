@@ -6,6 +6,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use walkdir::WalkDir;
+use tauri::{State, Manager};
+use crate::services::config_service::ConfigService;
 
 // Import modules
 mod analyzer;
@@ -70,17 +72,8 @@ pub struct ImportLocalRequest {
     pub skip_security_check: bool,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct SavePathsRequest {
-    pub paths: Vec<String>,
-}
-
 fn get_claude_skills_dir() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join(".claude").join("skills"))
-}
-
-fn get_config_path() -> Option<PathBuf> {
-    dirs::home_dir().map(|h| h.join(".claude").join("skill-manager-config.json"))
 }
 
 fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
@@ -123,7 +116,7 @@ fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
 }
 
 #[tauri::command]
-fn scan_skills() -> Result<ScanResult, String> {
+fn scan_skills(state: State<'_, ConfigService>) -> Result<ScanResult, String> {
     let mut system_skills = Vec::new();
     let mut project_skills = Vec::new();
 
@@ -140,16 +133,15 @@ fn scan_skills() -> Result<ScanResult, String> {
         }
     }
 
-    if let Ok(paths) = get_project_paths() {
-        for project_path in paths {
-            let skills_dir = PathBuf::from(&project_path).join(".claude").join("skills");
-            if skills_dir.exists() {
-                for entry in WalkDir::new(&skills_dir).max_depth(3).into_iter().flatten() {
-                    let path = entry.path();
-                    if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
-                        if let Some(skill) = parse_skill_md(&path.to_path_buf(), "project") {
-                            project_skills.push(skill);
-                        }
+    let paths = state.get_project_paths();
+    for project_path in paths {
+        let skills_dir = PathBuf::from(&project_path).join(".claude").join("skills");
+        if skills_dir.exists() {
+            for entry in WalkDir::new(&skills_dir).max_depth(3).into_iter().flatten() {
+                let path = entry.path();
+                if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
+                    if let Some(skill) = parse_skill_md(&path.to_path_buf(), "project") {
+                        project_skills.push(skill);
                     }
                 }
             }
@@ -420,7 +412,7 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
     let install_dir = if let Some(path) = &request.install_path {
         PathBuf::from(path).join(".claude").join("skills")
     } else {
-        get_claude_skills_dir().ok_or("Cannot determine skills directory")?
+        get_claude_skills_dir().ok_or("Cannot determine skills directory")? 
     };
 
     fs::create_dir_all(&install_dir).map_err(|e| e.to_string())?;
@@ -518,48 +510,6 @@ fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
 }
 
 #[tauri::command]
-fn get_project_paths() -> Result<Vec<String>, String> {
-    let config_path = get_config_path().ok_or("Cannot determine config path")?;
-
-    if !config_path.exists() {
-        return Ok(Vec::new());
-    }
-
-    let content = fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
-    let config: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-
-    let paths = config
-        .get("projectPaths")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str().map(String::from))
-                .collect()
-        })
-        .unwrap_or_default();
-
-    Ok(paths)
-}
-
-#[tauri::command]
-fn save_project_paths(request: SavePathsRequest) -> Result<(), String> {
-    let config_path = get_config_path().ok_or("Cannot determine config path")?;
-
-    if let Some(parent) = config_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-
-    let config = serde_json::json!({
-        "projectPaths": request.paths
-    });
-
-    fs::write(&config_path, serde_json::to_string_pretty(&config).unwrap())
-        .map_err(|e| e.to_string())?;
-
-    Ok(())
-}
-
-#[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
@@ -605,11 +555,24 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .setup(|_app| {
+        .setup(|app| {
             log::debug!("Initializing database...");
             if let Err(e) = crate::services::db::init_db() {
                 log::error!("Failed to initialize database: {}", e);
             }
+            
+            // Initialize and manage ConfigService
+            match ConfigService::new() {
+                Ok(config_service) => {
+                    app.manage(config_service);
+                }
+                Err(e) => {
+                    log::error!("Failed to initialize ConfigService: {}", e);
+                    // Decide if we should panic or continue. Continuing might mean config features are broken.
+                    // For now, log error.
+                }
+            }
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -617,8 +580,6 @@ pub fn run() {
             import_github_skill,
             uninstall_skill,
             import_local_skill,
-            get_project_paths,
-            save_project_paths,
             open_url,
             read_skill,
             commands::analyzer::analyze_skill_quality,
@@ -637,7 +598,9 @@ pub fn run() {
             commands::cache::get_cache_stats,
             commands::cache::clear_cache,
             commands::config::get_skill_config,
-            commands::config::set_skill_config
+            commands::config::set_skill_config,
+            commands::config::get_project_paths,
+            commands::config::save_project_paths
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
