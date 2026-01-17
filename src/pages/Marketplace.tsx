@@ -10,6 +10,13 @@ import { SkeletonCard } from '../components/SkeletonCard';
 import { SkillCard } from '../components/SkillCard';
 import { cn } from '../utils/cn';
 
+// 常量定义
+const PAGE_SIZE = 12;
+const TOP_RATED_THRESHOLD = 50; // Stars threshold for top-rated filter
+const MAX_VISIBLE_PAGES = 5;
+
+type FilterType = 'all' | 'top-rated';
+
 const Marketplace = () => {
   const { t, i18n } = useTranslation();
   const { data: marketplaceSkills = [], isLoading: isLoadingMarketplace } = useMarketplaceSkills();
@@ -17,9 +24,7 @@ const Marketplace = () => {
   const installMutation = useInstallSkill();
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const [filter, setFilter] = useState<'all' | 'top-rated'>('all'); // Removed 'new' for simplicity unless data supports it
-  
-  const pageSize = 12;
+  const [filter, setFilter] = useState<FilterType>('all');
 
   const handleInstall = async (skill: MarketplaceSkill) => {
     if (installMutation.isPending) return;
@@ -59,22 +64,21 @@ const Marketplace = () => {
     const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         skill.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         skill.author.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     if (!matchesSearch) return false;
 
-    if (filter === 'top-rated') return skill.stars > 50; 
+    if (filter === 'top-rated') return skill.stars > TOP_RATED_THRESHOLD;
 
     return true;
   });
 
-  const totalPages = Math.ceil(filteredSkills.length / pageSize);
-  const currentSkills = filteredSkills.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.ceil(filteredSkills.length / PAGE_SIZE);
+  const currentSkills = filteredSkills.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const getPageNumbers = () => {
     const pages = [];
-    const maxVisiblePages = 5;
 
-    if (totalPages <= maxVisiblePages) {
+    if (totalPages <= MAX_VISIBLE_PAGES) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
@@ -82,11 +86,11 @@ const Marketplace = () => {
       let start = Math.max(1, page - 2);
       let end = Math.min(totalPages, page + 2);
 
-      if (end - start < maxVisiblePages - 1) {
+      if (end - start < MAX_VISIBLE_PAGES - 1) {
         if (start === 1) {
-          end = Math.min(totalPages, start + maxVisiblePages - 1);
+          end = Math.min(totalPages, start + MAX_VISIBLE_PAGES - 1);
         } else {
-          start = Math.max(1, end - maxVisiblePages + 1);
+          start = Math.max(1, end - MAX_VISIBLE_PAGES + 1);
         }
       }
 
@@ -135,13 +139,13 @@ const Marketplace = () => {
 
       {/* Filter Chips */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {[ 
-              { id: 'all', label: i18n.language === 'zh' ? '全部' : 'All Skills' },
-              { id: 'top-rated', label: i18n.language === 'zh' ? '高评分' : 'Top Rated' }
+          {[
+              { id: 'all' as const, label: i18n.language === 'zh' ? '全部' : 'All Skills' },
+              { id: 'top-rated' as const, label: i18n.language === 'zh' ? '高评分' : 'Top Rated' }
           ].map((chip) => (
               <button
                   key={chip.id}
-                  onClick={() => setFilter(chip.id as any)}
+                  onClick={() => setFilter(chip.id)}
                   className={cn(
                       "px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
                       filter === chip.id

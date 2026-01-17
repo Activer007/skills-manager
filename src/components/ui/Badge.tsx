@@ -28,7 +28,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     };
 
     return (
-      <div
+      <span
         ref={ref}
         className={cn('badge', variants[variant], sizes[size], className)}
         {...props}

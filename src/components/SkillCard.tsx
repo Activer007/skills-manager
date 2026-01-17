@@ -1,10 +1,37 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { MarketplaceSkill, InstalledSkill } from '../types';
 import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { cn } from '../utils/cn';
 import { Star, GitBranch, Trash2, Play, Pause, Settings } from 'lucide-react';
+
+// 常量定义
+const ICON_SIZE = {
+    GRID: { width: 'w-16', height: 'h-16', text: 'text-3xl', margin: 'mb-4' },
+    LIST: { width: 'w-12', height: 'h-12', text: 'text-xl', margin: '' }
+} as const;
+
+// 预定义的颜色池，确保可访问性和视觉一致性
+const COLOR_PALETTE = [
+    '#3b82f6', // blue-500
+    '#10b981', // green-500
+    '#f59e0b', // amber-500
+    '#ef4444', // red-500
+    '#8b5cf6', // violet-500
+    '#ec4899', // pink-500
+    '#06b6d4', // cyan-500
+    '#84cc16', // lime-500
+] as const;
+
+// 颜色生成函数（从字符串生成一致的颜色）
+const stringToColor = (str: string): string => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return COLOR_PALETTE[Math.abs(hash) % COLOR_PALETTE.length];
+};
 
 interface SkillCardProps {
     skill: MarketplaceSkill | InstalledSkill;
@@ -51,27 +78,28 @@ export const SkillCard = ({
     };
 
     const isMarketplace = 'stars' in skill;
-    
-    // Icon Placeholder Generator (based on name char)
-    const renderIcon = () => (
-        <div className={cn(
-            "rounded-xl flex items-center justify-center font-bold text-white shadow-sm flex-shrink-0",
-            viewMode === 'grid' ? "w-16 h-16 text-3xl mb-4" : "w-12 h-12 text-xl"
-        )}
-        style={{ backgroundColor: stringToColor(skill.name) }}
-        >
-            {skill.name.substring(0, 1).toUpperCase()}
-        </div>
-    );
 
-    // Helper for color generation
-    const stringToColor = (str: string) => {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
-        return '#' + '00000'.substring(0, 6 - c.length) + c;
+    // 使用 useMemo 缓存颜色计算结果
+    const iconColor = useMemo(() => stringToColor(skill.name), [skill.name]);
+    const iconInitial = useMemo(() => skill.name.substring(0, 1).toUpperCase(), [skill.name]);
+
+    // Icon Placeholder Generator (based on name char)
+    const renderIcon = () => {
+        const sizeClass = viewMode === 'grid' ? ICON_SIZE.GRID : ICON_SIZE.LIST;
+        return (
+            <div
+                className={cn(
+                    "rounded-xl flex items-center justify-center font-bold text-white shadow-sm flex-shrink-0",
+                    sizeClass.width,
+                    sizeClass.height,
+                    sizeClass.text,
+                    sizeClass.margin
+                )}
+                style={{ backgroundColor: iconColor }}
+            >
+                {iconInitial}
+            </div>
+        );
     };
 
     if (viewMode === 'list') {
