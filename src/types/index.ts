@@ -15,6 +15,8 @@ export interface MarketplaceSkill {
   hasMarketplace: boolean;
   path: string;
   branch: string;
+  tags?: string[];
+  isMcp?: boolean;
 }
 
 export interface InstalledSkill extends Partial<MarketplaceSkill> {

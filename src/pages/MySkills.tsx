@@ -6,15 +6,18 @@ import { X, Github, HardDrive, Plus, FolderOpen } from 'lucide-react';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
-import { QualityScoreCard } from '../components/SkillQuality/QualityScoreCard';
-import { SkeletonCard } from '../components/SkeletonCard';
-import SecurityReportCard from '../components/SecurityReportCard';
-import type { SkillScore } from '../types/scorer';
-import type { SecurityReport } from '../types/security';
+import { ConfigForm, type ConfigSchema } from '../components/ConfigForm';
+import { FileText, Settings, Shield, History, ToyBrick } from 'lucide-react';
 import { toast } from 'sonner';
 import { SkillCard } from '../components/SkillCard';
 import { Button } from '../components/ui/Button';
+import { SlideOver } from '../components/ui/SlideOver';
 import { cn } from '../utils/cn';
+import { SkeletonCard } from '../components/SkeletonCard';
+import { QualityScoreCard } from '../components/SkillQuality/QualityScoreCard';
+import SecurityReportCard from '../components/SecurityReportCard';
+import type { SkillScore } from '../types/scorer';
+import type { SecurityReport } from '../types/security';
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) {
@@ -24,6 +27,32 @@ const getErrorMessage = (error: unknown) => {
     return error;
   }
   return JSON.stringify(error);
+};
+
+const mockSchema: ConfigSchema = {
+  enableFeature: {
+    type: 'boolean',
+    label: 'Enable Advanced Features',
+    description: 'Turn on experimental capabilities',
+    default: true
+  },
+  logLevel: {
+    type: 'enum',
+    label: 'Log Level',
+    options: ['info', 'warn', 'error', 'debug'],
+    default: 'info'
+  },
+  apiKey: {
+    type: 'string',
+    label: 'API Key',
+    description: 'Enter your API key here',
+    required: true
+  },
+  maxRetries: {
+    type: 'number',
+    label: 'Max Retries',
+    default: 3
+  }
 };
 
 const MySkills = () => {
@@ -40,6 +69,7 @@ const MySkills = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'system' | 'project'>('all');
   const [selectedSkill, setSelectedSkill] = useState<InstalledSkill | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [activeSlideTab, setActiveSlideTab] = useState<'overview' | 'config' | 'security' | 'hooks' | 'changelog'>('overview');
   const [skillContent, setSkillContent] = useState<string>('');
   const [skillScore, setSkillScore] = useState<SkillScore | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -118,7 +148,8 @@ const MySkills = () => {
   const handleViewSkill = async (skill: InstalledSkill) => {
     setSelectedSkill(skill);
     setShowViewModal(true);
-    
+    setActiveSlideTab('overview');
+
     // Check if we already have the score from batch analysis
     const cachedScore = scoreMap.get(skill.localPath);
     if (cachedScore) {
@@ -206,7 +237,7 @@ const MySkills = () => {
             ].map(tab => (
                  <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => setActiveTab(tab.id as 'all' | 'system' | 'project')}
                     className={cn(
                         "pb-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
                         activeTab === tab.id
@@ -257,77 +288,196 @@ const MySkills = () => {
         )}
       </div>
 
-      {/* View Modal */} 
-      {showViewModal && selectedSkill && (
-          <div className="modal modal-open">
-            <div className="modal-box w-11/12 max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-white dark:bg-base-100">
-                <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-base-200 shrink-0">
-                    <div>
-                      <h3 className="font-bold text-xl flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                          {selectedSkill.name}
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-1 font-mono">
-                        {selectedSkill.localPath}
-                      </p>
-                    </div>
-                    <button
-                        className="btn btn-sm btn-circle btn-ghost"
-                        onClick={() => {
-                            setShowViewModal(false);
-                            setSelectedSkill(null);
-                            setSkillContent('');
-                            setSecurityReport(null);
-                        }}
-                    >
-                        <X size={20} />
-                    </button>
-                </div>
-
-                <div className="flex-1 overflow-auto bg-slate-50 dark:bg-base-200/50 p-6 space-y-6">
-                    <SecurityReportCard
-                      report={securityReport}
-                      loading={isScanningSecurity}
-                    />
-
-                    {isAnalyzing ? (
-                      <div className="card bg-white dark:bg-base-100 shadow-sm p-8">
-                        <div className="flex flex-col items-center gap-4">
-                          <span className="loading loading-spinner loading-lg text-primary"></span>
-                          <p className="text-slate-500">Analyzing skill quality...</p>
-                        </div>
-                      </div>
-                    ) : analysisError ? (
-                      <div className="alert alert-error">
-                        <span>Analysis Failed: {analysisError}</span>
-                      </div>
-                    ) : skillScore && (
-                      <QualityScoreCard
-                        score={skillScore}
-                      />
-                    )}
-
-                    <div className="prose prose-sm max-w-none bg-white dark:bg-base-100 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-base-200">
-                      <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed font-mono bg-transparent">
-                        {skillContent || 'Loading...'}
-                      </pre>
-                    </div>
-                </div>
-
-                <div className="p-4 border-t border-gray-100 dark:border-base-200 bg-white dark:bg-base-100 flex justify-end gap-2 shrink-0">
-                    <Button
-                      onClick={() => {
+      {/* View SlideOver */}
+      <SlideOver
+        isOpen={showViewModal}
+        onClose={() => {
+            setShowViewModal(false);
+            setSelectedSkill(null);
+            setSkillContent('');
+            setSecurityReport(null);
+        }}
+        title={selectedSkill?.name}
+        description={selectedSkill?.localPath}
+        width="2xl"
+        footer={
+            <div className="flex justify-end gap-2">
+                <Button
+                    variant="outline"
+                    onClick={() => {
                         setShowViewModal(false);
                         setSelectedSkill(null);
                         setSkillContent('');
                         setSecurityReport(null);
-                      }}
-                    >
-                      {i18n.language === 'zh' ? '关闭' : 'Close'}
-                    </Button>
-                </div>
+                    }}
+                >
+                    {i18n.language === 'zh' ? '关闭' : 'Close'}
+                </Button>
             </div>
-          </div>
-      )}
+        }
+      >
+        {selectedSkill && (
+            <div className="space-y-6">
+                {/* Tabs Header */}
+                <div className="flex items-center gap-1 border-b border-gray-100 dark:border-base-200 mb-6">
+                    <button
+                        onClick={() => setActiveSlideTab('overview')}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                            activeSlideTab === 'overview'
+                                ? "border-primary text-primary"
+                                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                        )}
+                    >
+                        <FileText size={16} />
+                        Overview
+                    </button>
+                    <button
+                        onClick={() => setActiveSlideTab('config')}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                            activeSlideTab === 'config'
+                                ? "border-primary text-primary"
+                                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                        )}
+                    >
+                        <Settings size={16} />
+                        Configuration
+                    </button>
+                     <button
+                        onClick={() => setActiveSlideTab('security')}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                            activeSlideTab === 'security'
+                                ? "border-primary text-primary"
+                                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                        )}
+                    >
+                        <Shield size={16} />
+                        Security
+                    </button>
+                     <button
+                        onClick={() => setActiveSlideTab('hooks')}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                            activeSlideTab === 'hooks'
+                                ? "border-primary text-primary"
+                                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                        )}
+                    >
+                        <ToyBrick size={16} />
+                        Hooks
+                        <span className="bg-slate-100 dark:bg-base-200 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded text-[10px]">New</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveSlideTab('changelog')}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                            activeSlideTab === 'changelog'
+                                ? "border-primary text-primary"
+                                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                        )}
+                    >
+                        <History size={16} />
+                        Changelog
+                    </button>
+                </div>
+
+                {/* Tab Content */}
+                {activeSlideTab === 'overview' && (
+                    <div className="space-y-6 animate-in fade-in duration-200">
+                        {isAnalyzing ? (
+                          <div className="card bg-white dark:bg-base-100 shadow-sm p-8 border border-gray-100 dark:border-base-200">
+                            <div className="flex flex-col items-center gap-4">
+                              <span className="loading loading-spinner loading-lg text-primary"></span>
+                              <p className="text-slate-500">Analyzing skill quality...</p>
+                            </div>
+                          </div>
+                        ) : analysisError ? (
+                          <div className="alert alert-error">
+                            <span>Analysis Failed: {analysisError}</span>
+                          </div>
+                        ) : skillScore && (
+                          <QualityScoreCard
+                            score={skillScore}
+                          />
+                        )}
+
+                        <div className="prose prose-sm max-w-none bg-white dark:bg-base-100 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-base-200">
+                          <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed font-mono bg-transparent">
+                            {skillContent || 'Loading...'}
+                          </pre>
+                        </div>
+                    </div>
+                )}
+
+                {activeSlideTab === 'config' && (
+                    <div className="animate-in fade-in duration-200">
+                        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-xl text-sm border border-blue-100 dark:border-blue-900/50">
+                            This is a preview of the Schema-based UI Generator. These settings are currently using a mock schema.
+                        </div>
+                        <ConfigForm
+                            schema={mockSchema}
+                            initialValues={{ enableFeature: true, logLevel: 'info', maxRetries: 3 }}
+                            onSave={async (values) => {
+                                console.log('Saved values:', values);
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                                toast.success('Configuration saved successfully');
+                            }}
+                        />
+                    </div>
+                )}
+
+                {activeSlideTab === 'security' && (
+                    <div className="animate-in fade-in duration-200">
+                        <SecurityReportCard
+                            report={securityReport}
+                            loading={isScanningSecurity}
+                        />
+                    </div>
+                )}
+
+                {activeSlideTab === 'hooks' && (
+                     <div className="animate-in fade-in duration-200">
+                        <div className="text-center py-12 bg-slate-50 dark:bg-base-200 rounded-xl border border-dashed border-gray-200 dark:border-base-300">
+                            <ToyBrick size={48} className="mx-auto text-slate-300 mb-4" />
+                            <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Hook Management Coming Soon</h3>
+                            <p className="text-slate-500 max-w-sm mx-auto mt-2">
+                                Manage lifecycle hooks like <code>pre-commit</code>, <code>post-install</code>, and MCP server integrations.
+                            </p>
+                        </div>
+                     </div>
+                )}
+
+                {activeSlideTab === 'changelog' && (
+                    <div className="animate-in fade-in duration-200 space-y-6">
+                        <div className="relative pl-4 border-l-2 border-gray-100 dark:border-base-300 space-y-8">
+                            {[
+                                { version: '1.2.0', date: '2023-10-25', changes: ['Added support for new API endpoints', 'Fixed bug in authentication flow', 'Improved error handling'] },
+                                { version: '1.1.5', date: '2023-10-10', changes: ['Performance optimizations', 'Updated dependencies'] },
+                                { version: '1.0.0', date: '2023-09-01', changes: ['Initial release', 'Basic skill functionality'] },
+                            ].map((release, i) => (
+                                <div key={i} className="relative">
+                                    <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-primary ring-4 ring-white dark:ring-base-100"></div>
+                                    <div className="flex flex-col gap-1 mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-slate-900 dark:text-slate-100">v{release.version}</span>
+                                            <span className="text-xs text-slate-400 bg-slate-100 dark:bg-base-200 px-2 py-0.5 rounded-full">{release.date}</span>
+                                        </div>
+                                    </div>
+                                    <ul className="list-disc list-outside ml-4 text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                                        {release.changes.map((change, j) => (
+                                            <li key={j}>{change}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        )}
+      </SlideOver>
 
       {/* Import Modal */} 
       {showImportModal && (

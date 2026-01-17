@@ -279,6 +279,5 @@ cargo test -- --nocapture  # 显示测试输出
 
 ## 参考资源
 
-- Python 评分系统实现：`~/workspace/ordinary-claude-skills/tools/analyzer/`
 - Tauri 文档：https://tauri.app/v2/guides/
 - React Router v7 文档：https://reactrouter.com/

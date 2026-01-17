@@ -99,15 +99,15 @@ Instead of navigating away, skill details open in a right-side drawer (Sheet).
 - [x] **Layout:** Refactor `MainLayout` to match Antigravity's Sidebar + DragRegion structure.
 - [x] **Global Styles:** Update `index.css` for base font and background colors.
 
-### Phase 2: Core Components [IN PROGRESS]
+### Phase 2: Core Components [DONE]
 - [x] **Button Kit:** Create `Button`, `Badge`.
 - [x] **Card Kit:** Create `Card` container with hover effects.
 - [x] **SkillCard:** Implement the Grid/List hybrid component.
-- [ ] **Drawer:** Implement a `SlideOver` component to replace Modals for Skill Details.
+- [x] **Drawer:** Implement a `SlideOver` component to replace Modals for Skill Details.
     *   **Spec:** Right-aligned, fixed height (100vh), `w-1/3` to `w-1/2` responsive width.
     *   **Animation:** Slide in from right (`x: '100%' -> 0`) using `framer-motion`.
     *   **Backdrop:** Blur backdrop with click-to-dismiss.
-- [ ] **Toggle Switch:** Create a dedicated `Switch` component.
+- [x] **Toggle Switch:** Create a dedicated `Switch` component.
     *   **Spec:** iOS-style toggle. Green for active, Gray for inactive.
     *   **Animation:** Smooth knob transition.
 
@@ -116,17 +116,21 @@ Instead of navigating away, skill details open in a right-side drawer (Sheet).
 - [x] **Filter Logic:** Implement client-side filtering with Chip UI.
 - [x] **Hero Banner:** Add a visual header for the marketplace.
 
-### Phase 4: My Skills & Interactions [IN PROGRESS]
+### Phase 4: My Skills & Interactions [DONE]
 - [x] **My Skills Page:** Convert to List Layout.
-- [ ] **Interaction Refinement:**
+- [x] **Interaction Refinement:**
     *   Replace `Play/Pause` buttons with the new `Switch` component in `SkillCard` (List Mode).
     *   Replace `ViewModal` with `SlideOver Drawer` in `MySkills` and `Marketplace`.
 - [x] **Animations:** Add `framer-motion` for basic page transitions.
-- [ ] **Settings Form:** Build the dynamic form generator for Skill Config.
+- [x] **Settings Form:** Build the dynamic form generator for Skill Config.
     *   **Schema:** Define a simple JSON schema for skill configs (e.g., `{ "key": { "type": "boolean", "label": "Enable Feature" } }`).
     *   **Generator:** Create `ConfigForm` component that maps schema types to UI components (`Switch`, `Input`, `Select`).
 
-## 5. Technical Stack Additions
+## 5. New Additions (Trend-Driven)
+- [x] **MCP Integration:** Added "MCP" badge to Skill Cards for Model Context Protocol readiness.
+- [x] **Extended Filtering:** Added category filters (Coding, Security, Productivity, etc.) to Marketplace.
+- [x] **Hooks Management:** Added "Hooks" tab in Skill Details (SlideOver) for future hook configuration.
+- [x] **Changelog:** Added "Changelog" tab in Skill Details to track version history.
 *   `clsx`, `tailwind-merge`: For dynamic class names.
 *   `framer-motion`: For fluid UI transitions (already used in Antigravity).
 *   `@headlessui/react` (Optional): For accessible Drawers/Dialogs if needed.
