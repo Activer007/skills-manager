@@ -69,7 +69,13 @@ const Cell = memo(({ columnIndex, rowIndex, style, data }: GridChildComponentPro
 
 const Marketplace = () => {
   const { t, i18n } = useTranslation();
-  const { data: marketplaceSkills = [], isLoading: isLoadingMarketplace } = useMarketplaceSkills();
+  const {
+    data: marketplaceSkills = [],
+    isLoading: isLoadingMarketplace,
+    isError: isMarketplaceError,
+    error: marketplaceError,
+    refetch: refetchMarketplace,
+  } = useMarketplaceSkills();
   const { data: installedSkills = [] } = useSkills();
   const installMutation = useInstallSkill();
   const [searchTerm, setSearchTerm] = useState('');
@@ -119,9 +125,12 @@ const Marketplace = () => {
 
   const filteredSkills = useMemo(() => {
     return marketplaceSkills.filter(skill => {
-        const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            skill.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            skill.author.toLowerCase().includes(searchTerm.toLowerCase());
+        const name = skill.name ?? '';
+        const description = skill.description ?? '';
+        const author = skill.author ?? '';
+        const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            author.toLowerCase().includes(searchTerm.toLowerCase());
 
         if (!matchesSearch) return false;
 
@@ -129,7 +138,7 @@ const Marketplace = () => {
 
         if (filter !== 'all') {
             const keywords = CATEGORY_KEYWORDS[filter as keyof typeof CATEGORY_KEYWORDS];
-            const textToCheck = `${skill.name} ${skill.description} ${skill.tags?.join(' ') || ''}`.toLowerCase();
+            const textToCheck = `${name} ${description} ${skill.tags?.join(' ') || ''}`.toLowerCase();
             return keywords.some(k => textToCheck.includes(k));
         }
 
@@ -325,6 +334,20 @@ const Marketplace = () => {
       {isLoadingMarketplace ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <SkeletonCard count={8} />
+        </div>
+      ) : isMarketplaceError ? (
+        <div className="flex flex-col items-center justify-center h-full py-16 text-center">
+          <div className="max-w-lg space-y-4">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {i18n.language === 'zh' ? '市场数据加载失败' : 'Failed to load marketplace data'}
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400">
+              {marketplaceError instanceof Error ? marketplaceError.message : String(marketplaceError)}
+            </p>
+            <Button variant="primary" onClick={() => refetchMarketplace()}>
+              {i18n.language === 'zh' ? '重试加载' : 'Retry'}
+            </Button>
+          </div>
         </div>
       ) : filteredSkills.length === 0 ? (
         // Empty State Component

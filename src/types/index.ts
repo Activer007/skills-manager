@@ -35,6 +35,8 @@ export interface InstalledSkill extends Partial<MarketplaceSkill> {
   status: 'safe' | 'unsafe' | 'unknown';
   type: 'system' | 'project';
   version?: string;
+  enabled?: boolean;
+  config?: Record<string, unknown>;
   securityScore?: number;
   securityIssues?: SecurityIssue[];
 }

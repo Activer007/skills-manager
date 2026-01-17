@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Input } from './ui/Input';
 import { Select, type SelectOption } from './ui/Select';
 import { Switch } from './ui/Switch';
@@ -37,21 +37,19 @@ export const ConfigForm = ({
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const initialSignature = useMemo(() => JSON.stringify(initialValues ?? {}), [initialValues]);
+  const stableInitialValues = useMemo(() => initialValues ?? {}, [initialSignature]);
+
   useEffect(() => {
     // Initialize values with defaults if not present in initialValues
-    const newValues = { ...initialValues };
+    const newValues = { ...stableInitialValues };
     Object.keys(schema).forEach((key) => {
       if (newValues[key] === undefined && schema[key].default !== undefined) {
         newValues[key] = schema[key].default;
       }
     });
-    // Only update if different to avoid infinite loops if this effect runs too often
-    // But honestly, for this simple form, just setting it is fine if dependencies are stable.
-    // To suppress lint warning properly, we should probably not set state in effect if we can avoid it,
-    // or use a ref to track initialization.
     setValues(newValues);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schema]); // Only run when schema changes or on mount. ignoring initialValues deep changes for now
+  }, [schema, initialSignature, stableInitialValues]);
 
   const handleChange = (key: string, value: unknown) => {
     setValues((prev) => ({ ...prev, [key]: value }));

@@ -35,14 +35,29 @@ export function useSkills() {
         return [];
       }
 
-      const securityReports = await invoke<SecurityReport[]>('batch_scan_skills', {
+      const [securityReports, skillConfigs] = await Promise.all([
+        invoke<SecurityReport[]>('batch_scan_skills', {
         skillPaths: allSkillPaths,
         locale: window.localStorage.getItem('i18nextLng') || 'en'
-      });
+        }),
+        Promise.all(
+          allSkillPaths.map(async (skillPath) => {
+            try {
+              const config = await invoke<Record<string, unknown>>('get_skill_config', { skillId: skillPath });
+              return [skillPath, config] as const;
+            } catch {
+              return [skillPath, {}] as const;
+            }
+          })
+        ),
+      ]);
       const securityMap = new Map(securityReports.map(report => [report.skill_id, report]));
+      const configMap = new Map(skillConfigs);
 
       const mapSkill = (skill: ScanSkillEntry): InstalledSkill => {
         const report = securityMap.get(skill.path.split(/[\\/]/).pop() || '');
+        const config = configMap.get(skill.path) ?? {};
+        const enabled = typeof config.enabled === 'boolean' ? config.enabled : true;
         return {
           id: skill.path,
           name: skill.name,
@@ -54,6 +69,8 @@ export function useSkills() {
           version: '1.0.0',
           author: 'Unknown',
           stars: 0,
+          enabled,
+          config,
           securityScore: report?.score,
           securityIssues: report?.issues,
           isMcp: skill.isMcp,
@@ -166,7 +183,10 @@ export function useMarketplaceSkills() {
   return useQuery({
     queryKey: ['marketplace-skills'],
     queryFn: async () => {
-      const response = await fetch('/data/marketplace.json');
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+      const url = new URL(`${normalizedBase}data/marketplace.json`, window.location.origin);
+      const response = await fetch(url.toString());
       if (!response.ok) {
         throw new Error(`Failed to load marketplace data (${response.status})`);
       }
