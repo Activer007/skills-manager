@@ -2,17 +2,19 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill } from '../hooks/useSkills';
 import { useBatchSkillQuality } from '../hooks/useSkillQuality';
-import { Trash2, Eye, FolderOpen, X, Github, HardDrive, Plus, Shield } from 'lucide-react';
+import { X, Github, HardDrive, Plus, FolderOpen } from 'lucide-react';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
 import { QualityScoreCard } from '../components/SkillQuality/QualityScoreCard';
-import { QualityBadge } from '../components/SkillQuality/QualityBadge';
 import { SkeletonCard } from '../components/SkeletonCard';
 import SecurityReportCard from '../components/SecurityReportCard';
 import type { SkillScore } from '../types/scorer';
 import type { SecurityReport } from '../types/security';
 import { toast } from 'sonner';
+import { SkillCard } from '../components/SkillCard';
+import { Button } from '../components/ui/Button';
+import { cn } from '../utils/cn';
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) {
@@ -179,159 +181,72 @@ const MySkills = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h2 className="text-2xl font-bold">{t('mySkills')}</h2>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('mySkills')}</h2>
             <p className="text-base-content/60">
               {i18n.language === 'zh'
                 ? '管理本地安装的系统级和项目级 Skills'
                 : 'Manage locally installed system and project Skills'}
             </p>
         </div>
-        <button
-          className="btn btn-primary gap-2"
+        <Button
+          variant="primary"
           onClick={() => setShowImportModal(true)}
         >
-            <Plus size={18} />
+            <Plus size={18} className="mr-2" />
             {t('importSkill')}
-        </button>
+        </Button>
       </div>
 
-      <div role="tablist" className="tabs tabs-boxed bg-base-100 p-1 w-fit">
-        <a
-            role="tab"
-            className={`tab ${activeTab === 'all' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('all')}
-        >
-            {i18n.language === 'zh' ? '全部' : 'All'} ({installedSkills.length})
-        </a>
-        <a
-            role="tab"
-            className={`tab ${activeTab === 'system' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('system')}
-        >
-            {t('systemLevel')} ({installedSkills.filter(s => s.type === 'system').length})
-        </a>
-        <a
-            role="tab"
-            className={`tab ${activeTab === 'project' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('project')}
-        >
-            {t('projectLevel')} ({installedSkills.filter(s => s.type === 'project').length})
-        </a>
+      <div className="border-b border-gray-200 dark:border-base-300">
+        <div className="flex gap-6 overflow-x-auto">
+            {[ 
+                { id: 'all', label: i18n.language === 'zh' ? '全部' : 'All' },
+                { id: 'system', label: t('systemLevel') },
+                { id: 'project', label: t('projectLevel') }
+            ].map(tab => (
+                 <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={cn(
+                        "pb-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
+                        activeTab === tab.id
+                            ? "border-primary text-primary"
+                            : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                >
+                    {tab.label}
+                    <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-base-200 text-xs text-slate-600 dark:text-slate-400">
+                        {tab.id === 'all' ? installedSkills.length : installedSkills.filter(s => s.type === tab.id).length}
+                    </span>
+                </button>
+            ))}
+        </div>
       </div>
 
-      <div className="overflow-x-auto bg-base-100 rounded-xl shadow-sm border border-base-200">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>{i18n.language === 'zh' ? '名称 / 路径' : 'Name / Path'}</th>
-              <th>{t('description')}</th>
-              <th>{t('type')}</th>
-              <th>{i18n.language === 'zh' ? '安全与质量' : 'Security & Quality'}</th>
-              <th className="text-right">{t('actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={5}>
-                  <div className="space-y-3 p-4">
-                    <SkeletonCard count={3} />
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              filteredSkills.map((skill) => {
-                const score = scoreMap.get(skill.localPath);
-                return (
-                  <tr key={skill.id} className="hover">
-                    <td>
-                      <div className="font-bold flex items-center gap-2">
-                        {skill.name}
-                      </div>
-                      <div className="text-xs text-base-content/40 font-mono truncate max-w-[200px]" title={skill.localPath}>
-                        {skill.localPath}
-                      </div>
-                    </td>
-                    <td className="max-w-xs">
-                        <div className="line-clamp-3" title={getLocalizedDescription(skill, i18n.language)}>
-                          {getLocalizedDescription(skill, i18n.language)}
-                        </div>
-                    </td>
-                    <td>
-                      {skill.type === 'system' ? (
-                          <span className="badge badge-neutral badge-sm">{t('system')}</span>
-                      ) : (
-                          <span className="badge badge-accent badge-outline badge-sm">{t('project')}</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="flex flex-col gap-1.5">
-                        {/* Security */}
-                        <div className="flex items-center gap-2">
-                          {skill.securityScore !== undefined ? (
-                            <div className="flex items-center gap-1.5" title={`Security Score: ${skill.securityScore}`}>
-                              <Shield size={14} className={
-                                skill.securityScore >= 90 ? 'text-success' :
-                                skill.securityScore >= 70 ? 'text-warning' :
-                                'text-error'
-                              } />
-                              <span className={`text-xs font-semibold ${ 
-                                skill.securityScore >= 90 ? 'text-success' :
-                                skill.securityScore >= 70 ? 'text-warning' :
-                                'text-error'
-                              }`}>
-                                {skill.securityScore}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-base-content/30 text-xs">未扫描</span>
-                          )}
-                          {skill.status === 'safe' && <div className="badge badge-success badge-xs">安全</div>}
-                          {skill.status === 'unsafe' && <div className="badge badge-error badge-xs">风险</div>}
-                        </div>
-
-                        {/* Quality */}
-                        <div className="flex items-center gap-2">
-                          {isBatchLoading ? (
-                            <span className="loading loading-spinner loading-xs text-base-content/30"></span>
-                          ) : score ? (
-                            <QualityBadge grade={score.grade} score={score.total_score} size="sm" />
-                          ) : (
-                            <span className="text-xs text-base-content/30" title="Score not available">-</span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex justify-end gap-2">
-                        <button
-                            className="btn btn-sm btn-ghost"
-                            onClick={() => handleViewSkill(skill)}
-                        >
-                            <Eye size={16} />
-                            {t('view')}
-                        </button>
-                        <button
-                            className="btn btn-sm btn-ghost text-error hover:bg-error/10"
-                            onClick={() => handleUninstall(skill)}
-                            disabled={uninstallMutation.isPending}
-                        >
-                            <Trash2 size={16} />
-                            {t('remove')}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-        {filteredSkills.length === 0 && (
-            <div className="text-center py-12 text-base-content/50">
-                <div className="flex flex-col items-center gap-2">
-                    <FolderOpen size={48} strokeWidth={1} />
-                    <p>
+      <div className="space-y-3">
+        {isLoading ? (
+           <div className="space-y-4">
+             <SkeletonCard count={3} />
+           </div>
+        ) : filteredSkills.length > 0 ? (
+            filteredSkills.map(skill => (
+                <SkillCard 
+                    key={skill.id}
+                    skill={{...skill, description: getLocalizedDescription(skill, i18n.language)}}
+                    viewMode="list"
+                    isInstalled={true}
+                    isActive={true} 
+                    onUninstall={() => handleUninstall(skill)}
+                    onViewDetails={() => handleViewSkill(skill)}
+                />
+            ))
+        ) : (
+             <div className="text-center py-20 bg-white dark:bg-base-100 rounded-xl border border-dashed border-gray-200 dark:border-base-300">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="p-4 rounded-full bg-slate-50 dark:bg-base-200 text-slate-400">
+                        <FolderOpen size={32} />
+                    </div>
+                    <p className="text-slate-500 font-medium">
                       {i18n.language === 'zh'
                         ? `暂无 ${activeTab !== 'all' && (activeTab === 'system' ? '系统级' : '项目级')} Skills`
                         : `No ${activeTab !== 'all' ? activeTab : ''} Skills found`
@@ -342,16 +257,16 @@ const MySkills = () => {
         )}
       </div>
 
-      {/* View Modal */}
+      {/* View Modal */} 
       {showViewModal && selectedSkill && (
           <div className="modal modal-open">
-            <div className="modal-box w-11/12 max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-                <div className="flex justify-between items-center p-6 border-b border-base-200 bg-base-100 shrink-0">
+            <div className="modal-box w-11/12 max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-white dark:bg-base-100">
+                <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-base-200 shrink-0">
                     <div>
-                      <h3 className="font-bold text-xl flex items-center gap-2">
+                      <h3 className="font-bold text-xl flex items-center gap-2 text-slate-900 dark:text-slate-100">
                           {selectedSkill.name}
                       </h3>
-                      <p className="text-xs text-base-content/50 mt-1 font-mono">
+                      <p className="text-xs text-slate-500 mt-1 font-mono">
                         {selectedSkill.localPath}
                       </p>
                     </div>
@@ -368,17 +283,17 @@ const MySkills = () => {
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-auto bg-base-200 p-6 space-y-6">
+                <div className="flex-1 overflow-auto bg-slate-50 dark:bg-base-200/50 p-6 space-y-6">
                     <SecurityReportCard
                       report={securityReport}
                       loading={isScanningSecurity}
                     />
 
                     {isAnalyzing ? (
-                      <div className="card bg-base-100 shadow-sm p-8">
+                      <div className="card bg-white dark:bg-base-100 shadow-sm p-8">
                         <div className="flex flex-col items-center gap-4">
                           <span className="loading loading-spinner loading-lg text-primary"></span>
-                          <p className="text-base-content/60">Analyzing skill quality...</p>
+                          <p className="text-slate-500">Analyzing skill quality...</p>
                         </div>
                       </div>
                     ) : analysisError ? (
@@ -391,16 +306,15 @@ const MySkills = () => {
                       />
                     )}
 
-                    <div className="prose prose-sm max-w-none bg-base-100 p-6 rounded-lg shadow-sm">
+                    <div className="prose prose-sm max-w-none bg-white dark:bg-base-100 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-base-200">
                       <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed font-mono bg-transparent">
-                        {skillContent || '加载中...'}
+                        {skillContent || 'Loading...'}
                       </pre>
                     </div>
                 </div>
 
-                <div className="p-4 border-t border-base-200 bg-base-100 flex justify-end gap-2 shrink-0">
-                    <button
-                      className="btn"
+                <div className="p-4 border-t border-gray-100 dark:border-base-200 bg-white dark:bg-base-100 flex justify-end gap-2 shrink-0">
+                    <Button
                       onClick={() => {
                         setShowViewModal(false);
                         setSelectedSkill(null);
@@ -409,18 +323,18 @@ const MySkills = () => {
                       }}
                     >
                       {i18n.language === 'zh' ? '关闭' : 'Close'}
-                    </button>
+                    </Button>
                 </div>
             </div>
           </div>
       )}
 
-      {/* Import Modal */}
+      {/* Import Modal */} 
       {showImportModal && (
         <div className="modal modal-open">
-          <div className="modal-box max-w-lg">
+          <div className="modal-box max-w-lg bg-white dark:bg-base-100">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-xl">{t('importSkill')}</h3>
+              <h3 className="font-bold text-xl text-slate-900 dark:text-slate-100">{t('importSkill')}</h3>
               <button
                 className="btn btn-sm btn-circle btn-ghost"
                 onClick={closeImportModal}
@@ -431,21 +345,21 @@ const MySkills = () => {
 
             {!importType ? (
               <div className="space-y-3">
-                <p className="text-sm text-base-content/60 mb-4">
+                <p className="text-sm text-slate-500 mb-4">
                   {i18n.language === 'zh' ? '选择导入方式：' : 'Select import method:'}
                 </p>
 
                 <div
-                  className="card bg-base-200 hover:bg-base-300 cursor-pointer transition-colors p-4"
+                  className="card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
                   onClick={() => setImportType('github')}
                 >
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-base-100 flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
                       <Github size={24} />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-base mb-1">{t('importFromGitHub')}</div>
-                      <div className="text-sm text-base-content/60">
+                      <div className="font-semibold text-base mb-1 text-slate-900 dark:text-slate-100">{t('importFromGitHub')}</div>
+                      <div className="text-sm text-slate-500">
                         {i18n.language === 'zh'
                           ? '输入 GitHub 仓库 URL，支持完整仓库或子目录'
                           : 'Enter GitHub repository URL, supports full repo or subdirectory'}
@@ -455,16 +369,16 @@ const MySkills = () => {
                 </div>
 
                 <div
-                  className="card bg-base-200 hover:bg-base-300 cursor-pointer transition-colors p-4"
+                  className="card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
                   onClick={() => setImportType('local')}
                 >
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-base-100 flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
                       <HardDrive size={24} />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-base mb-1">{t('importFromLocal')}</div>
-                      <div className="text-sm text-base-content/60">
+                      <div className="font-semibold text-base mb-1 text-slate-900 dark:text-slate-100">{t('importFromLocal')}</div>
+                      <div className="text-sm text-slate-500">
                         {i18n.language === 'zh'
                           ? '选择本地文件夹路径，必须包含 SKILL.md 文件'
                           : 'Select local folder path, must contain SKILL.md file'}
@@ -476,11 +390,11 @@ const MySkills = () => {
             ) : (
               <div className="space-y-6">
                 <div
-                  className="alert alert-info"
+                  className="alert alert-info bg-info/10 text-info border-info/20"
                 >
                   <div className="flex items-center gap-3">
                     {importType === 'github' ? <Github size={20} /> : <HardDrive size={20} />}
-                    <span className="text-sm">
+                    <span className="text-sm font-medium">
                       {importType === 'github' ? t('importFromGitHub') : t('importFromLocal')}
                     </span>
                   </div>
@@ -489,20 +403,20 @@ const MySkills = () => {
                 {importType === 'github' ? (
                   <div className="form-control">
                     <label className="label">
-                      <span className="label-text font-semibold">
+                      <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
                         {i18n.language === 'zh' ? 'GitHub 仓库 URL' : 'GitHub Repository URL'}
                       </span>
                     </label>
                     <input
                       type="text"
                       placeholder="https://github.com/username/skill-name"
-                      className="input input-bordered w-full"
+                      className="input input-bordered w-full bg-white dark:bg-base-100"
                       value={importUrl}
                       onChange={(e) => setImportUrl(e.target.value)}
                       autoFocus
                     />
                     <label className="label">
-                      <span className="label-text-alt text-base-content/50">
+                      <span className="label-text-alt text-slate-400">
                         {i18n.language === 'zh'
                           ? '仓库必须包含 SKILL.md 文件'
                           : 'Repository must contain SKILL.md file'}
@@ -512,20 +426,20 @@ const MySkills = () => {
                 ) : (
                   <div className="form-control">
                     <label className="label">
-                      <span className="label-text font-semibold">
+                      <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
                         {i18n.language === 'zh' ? '本地文件夹路径' : 'Local Folder Path'}
                       </span>
                     </label>
                     <input
                       type="text"
                       placeholder="C:\\Users\\User\\Downloads\\my-skill"
-                      className="input input-bordered w-full"
+                      className="input input-bordered w-full bg-white dark:bg-base-100"
                       value={importPath}
                       onChange={(e) => setImportPath(e.target.value)}
                       autoFocus
                     />
                     <label className="label">
-                      <span className="label-text-alt text-base-content/50">
+                      <span className="label-text-alt text-slate-400">
                         {i18n.language === 'zh'
                           ? '文件夹必须包含 SKILL.md 文件'
                           : 'Folder must contain SKILL.md file'}
@@ -535,8 +449,8 @@ const MySkills = () => {
                 )}
 
                 <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    className="btn btn-ghost"
+                  <Button
+                    variant="ghost"
                     onClick={() => {
                       setImportType(null);
                       setImportUrl('');
@@ -544,24 +458,22 @@ const MySkills = () => {
                     }}
                   >
                     {i18n.language === 'zh' ? '返回' : 'Back'}
-                  </button>
-                  <button
-                    className="btn btn-primary"
+                  </Button>
+                  <Button
+                    variant="primary"
                     onClick={handleImport}
                     disabled={importGithubMutation.isPending || importLocalMutation.isPending || (importType === 'github' ? !importUrl.trim() : !importPath.trim())}
+                    isLoading={importGithubMutation.isPending || importLocalMutation.isPending}
                   >
                     {(importGithubMutation.isPending || importLocalMutation.isPending) ? (
-                      <>
-                        <span className="loading loading-spinner loading-sm"></span>
-                        {t('importing')}
-                      </>
+                      t('importing')
                     ) : (
                       <>
-                        <Plus size={18} />
+                        <Plus size={18} className="mr-2" />
                         {i18n.language === 'zh' ? '确认导入' : 'Confirm Import'}
                       </>
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

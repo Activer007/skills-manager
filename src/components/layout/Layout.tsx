@@ -1,17 +1,38 @@
 import { Outlet } from 'react-router-dom';
-import Navbar from './Navbar';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import Sidebar from './Sidebar';
 
 const Layout = () => {
-  return (
-    <div className="min-h-screen flex flex-col bg-[#FAFBFC] dark:bg-base-300 transition-colors duration-200">
-      <Navbar />
-      <main className="flex-1 overflow-auto flex flex-col relative pt-6">
-        <div className="max-w-7xl mx-auto w-full px-4 md:px-8 pb-10">
-            <Outlet />
+    return (
+        <div className="flex h-screen bg-[#FAFBFC] dark:bg-base-300 font-sans text-slate-900 dark:text-slate-100 overflow-hidden selection:bg-primary/20 selection:text-primary">
+            {/* Global Drag Region */}
+            <div
+                className="fixed top-0 left-0 right-0 h-8 z-[9999]"
+                style={{
+                    backgroundColor: 'transparent',
+                    cursor: 'default',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none'
+                }}
+                data-tauri-drag-region
+                onMouseDown={() => {
+                    // Start dragging the window
+                    getCurrentWindow().startDragging();
+                }}
+            />
+
+            <Sidebar />
+
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative transition-all duration-300 ease-in-out">
+                {/* Content Area */}
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 scroll-smooth">
+                    <div className="max-w-7xl mx-auto space-y-8 pb-12 animate-in fade-in duration-500 slide-in-from-bottom-2">
+                        <Outlet />
+                    </div>
+                </div>
+            </main>
         </div>
-      </main>
-    </div>
-  );
+    );
 };
 
 export default Layout;
