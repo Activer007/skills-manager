@@ -103,7 +103,13 @@ Instead of navigating away, skill details open in a right-side drawer (Sheet).
 - [x] **Button Kit:** Create `Button`, `Badge`.
 - [x] **Card Kit:** Create `Card` container with hover effects.
 - [x] **SkillCard:** Implement the Grid/List hybrid component.
-- [ ] **Drawer:** Implement a `SlideOver` component (using standard fixed positioning or Headless UI).
+- [ ] **Drawer:** Implement a `SlideOver` component to replace Modals for Skill Details.
+    *   **Spec:** Right-aligned, fixed height (100vh), `w-1/3` to `w-1/2` responsive width.
+    *   **Animation:** Slide in from right (`x: '100%' -> 0`) using `framer-motion`.
+    *   **Backdrop:** Blur backdrop with click-to-dismiss.
+- [ ] **Toggle Switch:** Create a dedicated `Switch` component.
+    *   **Spec:** iOS-style toggle. Green for active, Gray for inactive.
+    *   **Animation:** Smooth knob transition.
 
 ### Phase 3: Marketplace Overhaul [DONE]
 - [x] **Marketplace Page:** Replace current list with Grid Layout.
@@ -112,9 +118,13 @@ Instead of navigating away, skill details open in a right-side drawer (Sheet).
 
 ### Phase 4: My Skills & Interactions [IN PROGRESS]
 - [x] **My Skills Page:** Convert to List Layout.
-- [ ] **Toggle Switches:** Refine enable/disable toggle UI on the list item.
+- [ ] **Interaction Refinement:**
+    *   Replace `Play/Pause` buttons with the new `Switch` component in `SkillCard` (List Mode).
+    *   Replace `ViewModal` with `SlideOver Drawer` in `MySkills` and `Marketplace`.
 - [x] **Animations:** Add `framer-motion` for basic page transitions.
 - [ ] **Settings Form:** Build the dynamic form generator for Skill Config.
+    *   **Schema:** Define a simple JSON schema for skill configs (e.g., `{ "key": { "type": "boolean", "label": "Enable Feature" } }`).
+    *   **Generator:** Create `ConfigForm` component that maps schema types to UI components (`Switch`, `Input`, `Select`).
 
 ## 5. Technical Stack Additions
 *   `clsx`, `tailwind-merge`: For dynamic class names.
