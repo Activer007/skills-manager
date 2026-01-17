@@ -370,4 +370,25 @@ fn main() {
         let doc = SkillDocument::from_string(good_content, "test.md".to_string()).unwrap();
         assert!(doc.is_well_structured());
     }
+
+    #[test]
+    fn test_parse_frontmatter_with_config_schema() {
+        let content = r#"---
+name: test-skill
+configSchema:
+  enableFeature:
+    type: boolean
+    label: Enable Feature
+---
+
+# Test Skill
+"#;
+
+        let (metadata, _) = SkillDocument::parse_frontmatter(content).unwrap();
+        assert_eq!(metadata.name, "test-skill");
+        assert!(metadata.config_schema.is_some());
+
+        let schema = metadata.config_schema.unwrap();
+        assert_eq!(schema["enableFeature"]["type"], "boolean");
+    }
 }

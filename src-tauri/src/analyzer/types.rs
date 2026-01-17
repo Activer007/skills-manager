@@ -169,6 +169,8 @@ pub struct SkillMetadata {
     pub version: Option<String>,
     pub tags: Option<Vec<String>>,
     pub last_updated: Option<String>,
+    #[serde(rename = "configSchema")]
+    pub config_schema: Option<serde_json::Value>,
 }
 
 /// Error types for the analyzer
@@ -260,6 +262,7 @@ impl Default for SkillMetadata {
             version: None,
             tags: None,
             last_updated: None,
+            config_schema: None,
         }
     }
 }
