@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Library, ShoppingBag, ShieldCheck, Settings, Box, Sun, Moon, Globe } from 'lucide-react';
+import { Library, ShoppingBag, ShieldCheck, Settings, Box, Sun, Moon, Globe } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';

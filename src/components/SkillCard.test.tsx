@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { SkillCard } from './SkillCard';
-import { MarketplaceSkill, InstalledSkill } from '../types';
+import type { MarketplaceSkill, InstalledSkill } from '../types';
 
 const mockSkill: MarketplaceSkill = {
     id: '1',
@@ -26,7 +26,9 @@ const mockInstalledSkill: InstalledSkill = {
     description: 'Installed Description',
     version: '1.0.0',
     localPath: '/path/to/skill',
-    type: 'system'
+    type: 'system',
+    installDate: Date.now(),
+    status: 'safe'
 };
 describe('SkillCard', () => {
     it('renders in grid mode correctly', () => {
@@ -97,7 +99,7 @@ describe('SkillCard', () => {
 
     // Async operation: Loading state
     it('shows loading state during installation', async () => {
-        const handleInstall = vi.fn(() => new Promise(resolve => setTimeout(resolve, 100)));
+        const handleInstall = vi.fn(() => new Promise<void>(resolve => setTimeout(resolve, 100)));
         render(<SkillCard skill={mockSkill} viewMode="grid" onInstall={handleInstall} />);
 
         const installButton = screen.getByRole('button', { name: /get/i });

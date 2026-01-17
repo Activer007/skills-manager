@@ -35,7 +35,7 @@ const MySkills = () => {
 
   // Fetch quality scores for all skills
   const skillPaths = React.useMemo(() => installedSkills.map(s => s.localPath), [installedSkills]);
-  const { data: qualityScores = [], isLoading: isBatchLoading } = useBatchSkillQuality(skillPaths);
+  const { data: qualityScores = [] } = useBatchSkillQuality(skillPaths);
 
   const [activeTab, setActiveTab] = useState<'all' | 'system' | 'project'>('all');
   const [selectedSkill, setSelectedSkill] = useState<InstalledSkill | null>(null);
