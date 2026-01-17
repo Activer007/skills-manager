@@ -32,7 +32,6 @@ const stringToColor = (str: string): string => {
     }
     return COLOR_PALETTE[Math.abs(hash) % COLOR_PALETTE.length];
 };
-
 interface SkillCardProps {
     skill: MarketplaceSkill | InstalledSkill;
     viewMode?: 'grid' | 'list';

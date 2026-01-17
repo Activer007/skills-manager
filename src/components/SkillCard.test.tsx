@@ -18,6 +18,7 @@ const mockSkill: MarketplaceSkill = {
     branch: ''
 };
 
+
 const mockInstalledSkill: InstalledSkill = {
     id: '1',
     name: 'Installed Skill',
@@ -27,7 +28,6 @@ const mockInstalledSkill: InstalledSkill = {
     localPath: '/path/to/skill',
     type: 'system'
 };
-
 describe('SkillCard', () => {
     it('renders in grid mode correctly', () => {
         render(<SkillCard skill={mockSkill} viewMode="grid" />);
