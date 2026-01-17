@@ -93,26 +93,27 @@ Instead of navigating away, skill details open in a right-side drawer (Sheet).
 
 ## 4. Implementation Roadmap
 
-### Phase 1: Foundation (Design System)
-- [ ] **Tailwind Config:** Port `tailwind.config.js` themes from Antigravity.
-- [ ] **Utility:** Create `src/utils/cn.ts` (`clsx` + `tailwind-merge`).
-- [ ] **Layout:** Refactor `MainLayout` to match Antigravity's Sidebar + DragRegion structure.
-- [ ] **Global Styles:** Update `index.css` for base font and background colors.
+### Phase 1: Foundation (Design System) [DONE]
+- [x] **Tailwind Config:** Port `tailwind.config.js` themes from Antigravity.
+- [x] **Utility:** Create `src/utils/cn.ts` (`clsx` + `tailwind-merge`).
+- [x] **Layout:** Refactor `MainLayout` to match Antigravity's Sidebar + DragRegion structure.
+- [x] **Global Styles:** Update `index.css` for base font and background colors.
 
-### Phase 2: Core Components
-- [ ] **Button Kit:** Create `Button`, `IconButton`, `Badge`.
-- [ ] **Card Kit:** Create `Card` container with hover effects.
-- [ ] **SkillCard:** Implement the Grid/List hybrid component.
+### Phase 2: Core Components [IN PROGRESS]
+- [x] **Button Kit:** Create `Button`, `Badge`.
+- [x] **Card Kit:** Create `Card` container with hover effects.
+- [x] **SkillCard:** Implement the Grid/List hybrid component.
 - [ ] **Drawer:** Implement a `SlideOver` component (using standard fixed positioning or Headless UI).
 
-### Phase 3: Marketplace Overhaul
-- [ ] **Marketplace Page:** Replace current list with Grid Layout.
-- [ ] **Filter Logic:** Implement client-side filtering with Chip UI.
-- [ ] **Hero Banner:** Add a visual header for the marketplace.
+### Phase 3: Marketplace Overhaul [DONE]
+- [x] **Marketplace Page:** Replace current list with Grid Layout.
+- [x] **Filter Logic:** Implement client-side filtering with Chip UI.
+- [x] **Hero Banner:** Add a visual header for the marketplace.
 
-### Phase 4: My Skills & Interactions
-- [ ] **My Skills Page:** Convert to List Layout with Toggle Switches.
-- [ ] **Animations:** Add `framer-motion` for list reordering and page transitions.
+### Phase 4: My Skills & Interactions [IN PROGRESS]
+- [x] **My Skills Page:** Convert to List Layout.
+- [ ] **Toggle Switches:** Refine enable/disable toggle UI on the list item.
+- [x] **Animations:** Add `framer-motion` for basic page transitions.
 - [ ] **Settings Form:** Build the dynamic form generator for Skill Config.
 
 ## 5. Technical Stack Additions
