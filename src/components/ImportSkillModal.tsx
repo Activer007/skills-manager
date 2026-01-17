@@ -15,7 +15,7 @@ interface ImportSkillModalProps {
 }
 
 export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillModalProps) => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [url, setUrl] = useState(initialUrl || '');
   const [error, setError] = useState('');
   const installMutation = useInstallSkill();
@@ -30,21 +30,20 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
   const validateUrl = (value: string) => {
     if (!value) return false;
     // Basic GitHub URL validation
-    const githubRegex = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/tree\/[\w.-]+(\/.*)?)?$/;
+    const githubRegex = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/(tree|blob)\/[\w.-]+(\/.*)?)?$/;
     return githubRegex.test(value);
   };
 
   const handleInstall = async () => {
     if (!validateUrl(url)) {
-      setError(i18n.language === 'zh' ? '请输入有效的 GitHub 仓库链接' : 'Please enter a valid GitHub repository URL');
+      setError(t('invalidUrl', { defaultValue: i18n.language === 'zh' ? '请输入有效的 GitHub 仓库链接' : 'Please enter a valid GitHub repository URL' }));
       return;
     }
 
     setError('');
 
     // Extract name from URL for confirmation message
-    const nameMatch = url.match(/\/([^\/]+)(\/tree\/|$)/);
-    const skillName = nameMatch ? nameMatch[1] : 'Skill';
+    const skillName = url.split('/').filter(Boolean).pop()?.replace(/\.git$/, '') || 'Skill';
 
     // Construct a temporary MarketplaceSkill object
     // Since we're importing directly, we don't have all metadata yet
@@ -88,11 +87,11 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={i18n.language === 'zh' ? '导入 GitHub Skill' : 'Import GitHub Skill'}
+      title={t('importGithubSkill', { defaultValue: i18n.language === 'zh' ? '导入 GitHub Skill' : 'Import GitHub Skill' })}
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={installMutation.isPending}>
-            {i18n.language === 'zh' ? '取消' : 'Cancel'}
+            {t('cancel', { defaultValue: i18n.language === 'zh' ? '取消' : 'Cancel' })}
           </Button>
           <Button
             variant="primary"
@@ -101,7 +100,7 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
             disabled={!url || !!error}
           >
             <Download size={16} className="mr-2" />
-            {i18n.language === 'zh' ? '导入并安装' : 'Import & Install'}
+            {t('importAndInstall', { defaultValue: i18n.language === 'zh' ? '导入并安装' : 'Import & Install' })}
           </Button>
         </>
       }
@@ -110,15 +109,15 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-start gap-3">
             <AlertTriangle className="text-blue-500 shrink-0 mt-0.5" size={18} />
             <div className="text-sm text-blue-700 dark:text-blue-300">
-                {i18n.language === 'zh'
+                {t('githubImportNotice', { defaultValue: i18n.language === 'zh'
                     ? '请输入 GitHub 仓库链接。支持完整仓库链接或子目录链接。安装前会自动进行安全扫描。'
-                    : 'Enter the GitHub repository URL. Full repository URLs or subdirectory links are supported. Security scan will be performed before installation.'}
+                    : 'Enter the GitHub repository URL. Full repository URLs or subdirectory links are supported. Security scan will be performed before installation.' })}
             </div>
         </div>
 
         <Input
           id="github-url-input"
-          label={i18n.language === 'zh' ? 'GitHub 仓库链接' : 'GitHub Repository URL'}
+          label={t('githubRepoUrl', { defaultValue: i18n.language === 'zh' ? 'GitHub 仓库链接' : 'GitHub Repository URL' })}
           placeholder="https://github.com/username/repo/tree/main/path/to/skill"
           value={url}
           onChange={(e) => {
@@ -131,7 +130,7 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
         />
 
         <div className="text-xs text-slate-400">
-            {i18n.language === 'zh' ? '示例:' : 'Example:'} <br/>
+            {t('example', { defaultValue: i18n.language === 'zh' ? '示例:' : 'Example:' })} <br/>
             <code className="bg-slate-100 dark:bg-base-200 px-1 py-0.5 rounded">https://github.com/example/skills/tree/main/my-skill</code>
         </div>
       </div>

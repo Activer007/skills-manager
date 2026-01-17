@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useMarketplaceSkills, useInstallSkill } from '../hooks/useSkills';
 import type { MarketplaceSkill } from '../types';
@@ -13,7 +13,7 @@ import { Button } from '../components/ui/Button';
 import { cn } from '../utils/cn';
 import { Star, GitBranch, Github, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { FixedSizeGrid as Grid } from 'react-window';
+import { FixedSizeGrid as Grid, GridChildComponentProps } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 
 import { ImportSkillModal } from '../components/ImportSkillModal';
@@ -34,6 +34,37 @@ const CATEGORY_KEYWORDS: Record<Exclude<FilterType, 'all' | 'top-rated'>, string
 };
 
 const GITHUB_URL_REGEX = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/tree\/[\w.-]+(\/.*)?)?$/;
+
+// Cell defined outside to prevent re-creation on render
+const Cell = memo(({ columnIndex, rowIndex, style, data }: GridChildComponentProps) => {
+    const { skills, columnCount, isInstalled, handleInstall, setSelectedSkill, setShowDrawer, language } = data as any;
+    const index = rowIndex * columnCount + columnIndex;
+
+    if (index >= skills.length) return null;
+
+    const skill = skills[index];
+
+    // Adjust style to add gaps (gutter)
+    const left = parseFloat(style.left?.toString() || '0') + GUTTER_SIZE / 2;
+    const top = parseFloat(style.top?.toString() || '0') + GUTTER_SIZE / 2;
+    const width = parseFloat(style.width?.toString() || '0') - GUTTER_SIZE;
+    const height = parseFloat(style.height?.toString() || '0') - GUTTER_SIZE;
+
+    return (
+        <div style={{ ...style, left, top, width, height }}>
+            <SkillCard
+                skill={{...skill, description: getLocalizedDescription(skill, language)}}
+                viewMode="grid"
+                isInstalled={isInstalled(skill.id)}
+                onInstall={() => handleInstall(skill)}
+                onViewDetails={() => {
+                    setSelectedSkill(skill);
+                    setShowDrawer(true);
+                }}
+            />
+        </div>
+    );
+});
 
 const Marketplace = () => {
   const { t, i18n } = useTranslation();
@@ -81,7 +112,8 @@ const Marketplace = () => {
   };
 
   const isInstalled = (skillId: string) => {
-    return installedSkills.some(s => s.id === skillId);
+    // Compare by name or githubUrl as paths (ids) won't match marketplace slugs
+    return installedSkills.some(s => s.id === skillId || s.name === skillId || (s.githubUrl && s.githubUrl.includes(skillId)));
   };
 
   const filteredSkills = useMemo(() => {
@@ -103,38 +135,6 @@ const Marketplace = () => {
         return true;
     });
   }, [marketplaceSkills, searchTerm, filter]);
-
-  const Cell = ({ columnIndex, rowIndex, style, data }: any) => {
-    const { skills, columnCount } = data;
-    const index = rowIndex * columnCount + columnIndex;
-
-    if (index >= skills.length) return null;
-
-    const skill = skills[index];
-
-    // Adjust style to add gaps (gutter)
-    // We subtract GUTTER_SIZE from width and height and add half gutter to left/top
-    // This is a simplified approach. A better one is to use padding in the inner div.
-    const left = parseFloat(style.left?.toString() || '0') + GUTTER_SIZE / 2;
-    const top = parseFloat(style.top?.toString() || '0') + GUTTER_SIZE / 2;
-    const width = parseFloat(style.width?.toString() || '0') - GUTTER_SIZE;
-    const height = parseFloat(style.height?.toString() || '0') - GUTTER_SIZE;
-
-    return (
-        <div style={{ ...style, left, top, width, height }}>
-            <SkillCard
-                skill={{...skill, description: getLocalizedDescription(skill, i18n.language)}}
-                viewMode="grid"
-                isInstalled={isInstalled(skill.id)}
-                onInstall={() => handleInstall(skill)}
-                onViewDetails={() => {
-                    setSelectedSkill(skill);
-                    setShowDrawer(true);
-                }}
-            />
-        </div>
-    );
-  };
 
   // State for scroll indicators
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -169,6 +169,15 @@ const Marketplace = () => {
           window.removeEventListener('resize', handleScroll);
       };
   }, []);
+
+  // Memoize stable parts of itemData
+  const baseItemData = useMemo(() => ({
+      isInstalled,
+      handleInstall,
+      setSelectedSkill,
+      setShowDrawer,
+      language: i18n.language
+  }), [isInstalled, i18n.language]); // handleInstall, setSelectedSkill, setShowDrawer are stable
 
   return (
     <div className="space-y-8 h-full flex flex-col">
@@ -364,7 +373,11 @@ const Marketplace = () => {
                             rowCount={rowCount}
                             rowHeight={ROW_HEIGHT}
                             width={width}
-                            itemData={{ skills: filteredSkills, columnCount }}
+                            itemData={{
+                                ...baseItemData,
+                                skills: filteredSkills,
+                                columnCount
+                            }}
                         >
                             {Cell}
                         </Grid>

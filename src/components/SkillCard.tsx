@@ -110,7 +110,7 @@ export const SkillCard = ({
     const textColor = useMemo(() => {
         const brightness = getBrightness(iconColor);
         // If brightness is high, use dark text; otherwise, use light text
-        return brightness > 0.5 ? 'text-black' : 'text-white';
+        return brightness > 0.5 ? 'text-slate-900' : 'text-slate-50';
     }, [iconColor]);
 
 

@@ -6,19 +6,21 @@ import userEvent from '@testing-library/user-event';
 // Mock dependencies
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, options?: any) => options?.defaultValue || key,
     i18n: { language: 'en' },
   }),
 }));
 
 const mockMutateAsync = vi.fn();
-const mockIsPending = false;
+// We need to be able to change this for different tests, so we might need a more flexible mock
+// But for now let's keep it simple and override implementation in tests if needed
+const mockUseInstallSkill = {
+  mutateAsync: mockMutateAsync,
+  isPending: false,
+};
 
 vi.mock('../hooks/useSkills', () => ({
-  useInstallSkill: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending: mockIsPending,
-  }),
+  useInstallSkill: () => mockUseInstallSkill,
 }));
 
 // Mock sonner toast
@@ -34,13 +36,21 @@ describe('ImportSkillModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset mock implementation
+    mockMutateAsync.mockImplementation(() => Promise.resolve({}));
+    
     // Mock HTMLDialogElement methods to toggle 'open' attribute
-    HTMLDialogElement.prototype.showModal = function() {
-      this.setAttribute('open', '');
-    };
-    HTMLDialogElement.prototype.close = function() {
-      this.removeAttribute('open');
-    };
+    // This is needed because the Modal component likely uses <dialog>
+    if (!HTMLDialogElement.prototype.showModal) {
+      HTMLDialogElement.prototype.showModal = function() {
+        this.setAttribute('open', '');
+      };
+    }
+    if (!HTMLDialogElement.prototype.close) {
+      HTMLDialogElement.prototype.close = function() {
+        this.removeAttribute('open');
+      };
+    }
   });
 
   it('renders correctly when open', () => {
@@ -69,21 +79,14 @@ describe('ImportSkillModal', () => {
 
     // Expect install not to be called
     expect(mockMutateAsync).not.toHaveBeenCalled();
-    // Expect error message (validation is handled inside component)
-    // Note: The component sets error state which might appear as helper text or separate error
-    // Let's check if we can find the error message text
-    // "Please enter a valid GitHub repository URL"
-    // Since state update is async, we might need waitFor, but fireEvent is synchronous for state updates usually in RTL
-    // except for userEvent.
-
-    // Actually the component sets a local error state that is passed to Input error prop
-    // which renders it.
-    // We can check for text "Please enter a valid GitHub repository URL"
+    
+    // Check for error message (localized default value)
+    expect(screen.getByDisplayValue('invalid-url')).toHaveAttribute('aria-invalid', 'true');
+    // Note: The specific error message might be rendered in a way that's hard to target directly without knowing the structure
+    // But we know validation failed if mutateAsync wasn't called
   });
 
   it('calls install on valid URL submission', async () => {
-    mockMutateAsync.mockResolvedValueOnce({});
-
     render(<ImportSkillModal isOpen={true} onClose={onCloseMock} />);
 
     const input = screen.getByLabelText('GitHub Repository URL');
@@ -119,9 +122,13 @@ describe('ImportSkillModal', () => {
         expect(mockMutateAsync).toHaveBeenCalled();
     });
 
-    // Error should be displayed
+    // We can't easily check for the toast or error message since implementation details might vary
+    // But checking that it was called is a start. 
+    // If the component sets a local error state that is displayed:
     await waitFor(() => {
-         expect(screen.getByText((content) => content.includes(errorMsg))).toBeInTheDocument();
+       // The component sets error state which should be visible
+       // We search for the error message part
+       expect(screen.getByText((content) => content.includes(errorMsg))).toBeInTheDocument();
     });
   });
 
