@@ -213,6 +213,15 @@ Rust 版本的 Skill 质量评分系统已实现，提供高性能的本地分�
 
 ## 重要注意事项
 
+### 分支管理规范
+- **严禁直接在 master 分支上修改代码**
+- 所有代码修改必须在功能分支上进行
+- 完成开发后通过 Pull Request 合并到 master
+- 功能分支命名规范：
+  - `feature/功能名称` - 新功能开发
+  - `fix/问题描述` - Bug 修复
+  - `refactor/描述` - 代码重构
+
 ### Git 命令使用
 - 使用 `docker compose` 而非 `docker-compose`
 

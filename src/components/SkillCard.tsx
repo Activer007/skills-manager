@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { MarketplaceSkill, InstalledSkill } from '../types';
+import type { MarketplaceSkill, InstalledSkill } from '../types';
 import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
