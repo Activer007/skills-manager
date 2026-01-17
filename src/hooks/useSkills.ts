@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
+import { fetchMarketplaceData } from '../utils/marketplace';
 import type { SecurityReport } from '../types/security';
 
 type ScanSkillEntry = {
@@ -183,14 +184,8 @@ export function useMarketplaceSkills() {
   return useQuery({
     queryKey: ['marketplace-skills'],
     queryFn: async () => {
-      const baseUrl = import.meta.env.BASE_URL || '/';
-      const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-      const url = new URL(`${normalizedBase}data/marketplace.json`, window.location.origin);
-      const response = await fetch(url.toString());
-      if (!response.ok) {
-        throw new Error(`Failed to load marketplace data (${response.status})`);
-      }
-      return await response.json() as MarketplaceSkill[];
+      const data = await fetchMarketplaceData();
+      return data as MarketplaceSkill[];
     },
     staleTime: 1000 * 60 * 10, // 10 minutes (marketplace data changes less frequently)
     gcTime: 1000 * 60 * 30, // 30 minutes
