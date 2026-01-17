@@ -8,6 +8,8 @@ type ScanSkillEntry = {
   description?: string;
   path: string;
   skillType: 'system' | 'project' | string;
+  isMcp?: boolean;
+  tags?: string[];
 };
 
 type ScanSkillsResult = {
@@ -52,7 +54,9 @@ export function useSkills() {
           author: 'Unknown',
           stars: 0,
           securityScore: report?.score,
-          securityIssues: report?.issues
+          securityIssues: report?.issues,
+          isMcp: skill.isMcp,
+          tags: skill.tags
         };
       };
 

@@ -39,6 +39,7 @@ A versatile component that supports two display modes.
     *   Title (Bold, truncate 2 lines).
     *   Author / Category (Small, Grey).
     *   **Action Area:** A prominent "Get" or "Install" button at the bottom.
+    *   **Badges:** MCP Capabilities (Tools, Resources), Security Rating.
 *   **Interaction:** Hover lifts the card slightly (`transform: translateY(-2px)`).
 
 #### Mode B: List Row (My Skills)
@@ -46,7 +47,7 @@ A versatile component that supports two display modes.
 *   **Layout:** Horizontal Flex.
 *   **Elements:**
     *   Left: Icon (40x40px).
-    *   Middle: Title + Description (1 line) + Version Badge.
+    *   Middle: Title + Description (1 line) + Version Badge + Security Shield.
     *   Right: Toggle Switch (Enable/Disable) + Context Menu (...) + Manage Button.
 
 ### 2.2 Smart Install Button
@@ -59,8 +60,12 @@ A stateful button component handling the entire lifecycle.
 
 ### 2.3 Context Drawer (Slide-over)
 Instead of navigating away, skill details open in a right-side drawer (Sheet).
-*   **Header:** Icon + Title + Big Action Button.
-*   **Tabs:** `Overview` (README), `Configuration` (Settings UI), `Changelog`.
+*   **Header:** Icon + Title + Big Action Button + Trust Badge.
+*   **Tabs:** 
+    *   `Overview` (README + Visual Previews).
+    *   `Configuration` (Schema-based UI).
+    *   `Capabilities` (MCP Tools/Resources list).
+    *   `Changelog`.
 *   **Content:** Markdown renderer for README, Auto-generated form for Config.
 
 ---
@@ -71,15 +76,15 @@ Instead of navigating away, skill details open in a right-side drawer (Sheet).
 *   **Hero Section:** A featured banner area at the top for "Trending Skills" or "Editor's Choice".
 *   **Search & Filter:**
     *   Unified Search Bar (Spotlight style).
-    *   **Filter Chips:** [All] [Productivity] [Coding] [Security] - Horizontal scrollable list.
+    *   **Filter Chips:** [All] [Productivity] [Coding] [Security] [Agentic] - Horizontal scrollable list.
 *   **Grid Layout:** Responsive grid (`grid-cols-1 md:grid-cols-2 lg:grid-cols-3`).
 
 ### 3.2 My Skills (The "Manager" Experience)
 *   **Layout:** Vertical list view for higher information density.
 *   **Quick Actions:**
-    *   Enable/Disable toggle directly on the list item.
+    *   Enable/Disable toggle directly on the list item using the **Switch** component.
     *   Bulk actions (Select multiple -> Update All / Delete).
-*   **Sorting:** Sort by Name, Install Date, Last Updated.
+*   **Sorting:** Sort by Name, Install Date, Last Updated, Security Score.
 
 ### 3.3 Skill Configuration (Settings)
 *   **Problem:** Editing raw JSON is error-prone.
@@ -104,33 +109,37 @@ Instead of navigating away, skill details open in a right-side drawer (Sheet).
 - [x] **Card Kit:** Create `Card` container with hover effects.
 - [x] **SkillCard:** Implement the Grid/List hybrid component.
 - [x] **Drawer:** Implement a `SlideOver` component to replace Modals for Skill Details.
-    *   **Spec:** Right-aligned, fixed height (100vh), `w-1/3` to `w-1/2` responsive width.
-    *   **Animation:** Slide in from right (`x: '100%' -> 0`) using `framer-motion`.
-    *   **Backdrop:** Blur backdrop with click-to-dismiss.
-- [x] **Toggle Switch:** Create a dedicated `Switch` component.
-    *   **Spec:** iOS-style toggle. Green for active, Gray for inactive.
-    *   **Animation:** Smooth knob transition.
+- [x] **Toggle Switch:** Create a dedicated `Switch` component (iOS style).
 
 ### Phase 3: Marketplace Overhaul [DONE]
 - [x] **Marketplace Page:** Replace current list with Grid Layout.
 - [x] **Filter Logic:** Implement client-side filtering with Chip UI.
 - [x] **Hero Banner:** Add a visual header for the marketplace.
 
-### Phase 4: My Skills & Interactions [DONE]
-- [x] **My Skills Page:** Convert to List Layout.
-- [x] **Interaction Refinement:**
-    *   Replace `Play/Pause` buttons with the new `Switch` component in `SkillCard` (List Mode).
-    *   Replace `ViewModal` with `SlideOver Drawer` in `MySkills` and `Marketplace`.
-- [x] **Animations:** Add `framer-motion` for basic page transitions.
-- [x] **Settings Form:** Build the dynamic form generator for Skill Config.
-    *   **Schema:** Define a simple JSON schema for skill configs (e.g., `{ "key": { "type": "boolean", "label": "Enable Feature" } }`).
-    *   **Generator:** Create `ConfigForm` component that maps schema types to UI components (`Switch`, `Input`, `Select`).
+### Phase 4: My Skills & Interactions [IN PROGRESS]
+> **Goal:** Integrate Phase 2 components into the actual pages and finalize interactions.
 
-## 5. New Additions (Trend-Driven)
-- [x] **MCP Integration:** Added "MCP" badge to Skill Cards for Model Context Protocol readiness.
-- [x] **Extended Filtering:** Added category filters (Coding, Security, Productivity, etc.) to Marketplace.
-- [x] **Hooks Management:** Added "Hooks" tab in Skill Details (SlideOver) for future hook configuration.
-- [x] **Changelog:** Added "Changelog" tab in Skill Details to track version history.
-*   `clsx`, `tailwind-merge`: For dynamic class names.
-*   `framer-motion`: For fluid UI transitions (already used in Antigravity).
-*   `@headlessui/react` (Optional): For accessible Drawers/Dialogs if needed.
+- [x] **My Skills Page:** Convert to List Layout.
+- [ ] **Interaction Integration (Fix the Gap):**
+    *   [ ] **SlideOver Integration:** Replace `ViewModal` (old `<div>` modal) with the new `SlideOver` component in `MySkills` and `Marketplace`.
+    *   [ ] **Switch Integration:** Replace `Play/Pause` buttons with the new `Switch` component in `SkillCard` (List Mode).
+- [x] **Animations:** Add `framer-motion` for basic page transitions.
+- [ ] **Settings Form (Schema UI):** Build the dynamic form generator for Skill Config.
+    *   [ ] **Schema Parser:** Logic to infer types from JSON or read schema from `SKILL.md`.
+    *   [ ] **ConfigForm Component:** Map types to `Switch`, `Input`, `Select`.
+
+### Phase 5: Intelligence & Visualization (2026 Trends) [PLANNED]
+> **Goal:** Adapt to Agentic/MCP trends and enhance trust visualization.
+
+- [ ] **Skill Insights Dashboard:**
+    *   Visual representation of installed skills (Categories, Security Scores).
+    *   Charts using `Recharts`.
+- [ ] **MCP Integration:**
+    *   **Capability Badges:** Display "Tools", "Resources", "Prompts" counts on cards.
+    *   **Dependency Check:** Visual warnings for missing MCP servers (e.g., SQLite).
+- [ ] **Visual Discovery:**
+    *   **Preview Support:** Render preview images/videos in SlideOver if available.
+    *   **Hero Animation:** Make the Marketplace Hero section dynamic.
+- [ ] **Trust & Security System:**
+    *   **Security Shield:** Visual indicator of security scan results (Green/Yellow/Red).
+    *   **Capability Manifest:** Explicitly list what the skill can do (e.g., "Can Read Files", "Can Execute Commands").
