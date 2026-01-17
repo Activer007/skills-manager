@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, memo } from 'react';
+import { useState, useMemo, useRef, useEffect, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useMarketplaceSkills, useInstallSkill } from '../hooks/useSkills';
 import type { MarketplaceSkill } from '../types';
@@ -81,7 +81,7 @@ const Marketplace = () => {
     return GITHUB_URL_REGEX.test(searchTerm);
   }, [searchTerm]);
 
-  const handleInstall = async (skill: MarketplaceSkill) => {
+  const handleInstall = useCallback(async (skill: MarketplaceSkill) => {
     if (installMutation.isPending) return;
 
     const confirmed = window.confirm(
@@ -100,7 +100,7 @@ const Marketplace = () => {
         const errorMessage = error instanceof Error ? error.message : String(error);
         toast.error(i18n.language === 'zh' ? `安装失败: ${errorMessage}` : `Installation failed: ${errorMessage}`);
     }
-  };
+  }, [installMutation, i18n.language]);
 
   const handleOpenSource = async (url: string) => {
     try {
@@ -111,10 +111,10 @@ const Marketplace = () => {
     }
   };
 
-  const isInstalled = (skillId: string) => {
+  const isInstalled = useCallback((skillId: string) => {
     // Compare by name or githubUrl as paths (ids) won't match marketplace slugs
     return installedSkills.some(s => s.id === skillId || s.name === skillId || (s.githubUrl && s.githubUrl.includes(skillId)));
-  };
+  }, [installedSkills]);
 
   const filteredSkills = useMemo(() => {
     return marketplaceSkills.filter(skill => {
@@ -177,7 +177,7 @@ const Marketplace = () => {
       setSelectedSkill,
       setShowDrawer,
       language: i18n.language
-  }), [isInstalled, i18n.language]); // handleInstall, setSelectedSkill, setShowDrawer are stable
+  }), [isInstalled, handleInstall, i18n.language]); // handleInstall, setSelectedSkill, setShowDrawer are stable
 
   return (
     <div className="space-y-8 h-full flex flex-col">
