@@ -4,8 +4,9 @@ import { Switch } from './ui/Switch';
 import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { TrustShield, type TrustLevel } from './TrustShield';
+import { TrustShield } from './TrustShield';
 import { cn } from '../utils/cn';
+import { scoreToTrustLevel } from '../utils/securityHelpers';
 import { Star, GitBranch, Trash2, Settings, Plug } from 'lucide-react';
 
 // 常量定义
@@ -84,15 +85,10 @@ export const SkillCard = ({
     const iconColor = useMemo(() => stringToColor(skill.name), [skill.name]);
     const iconInitial = useMemo(() => skill.name.substring(0, 1).toUpperCase(), [skill.name]);
 
-    const getTrustLevel = (score?: number): TrustLevel => {
-        if (score === undefined) return 'unknown';
-        if (score >= 90) return 'verified';
-        if (score >= 70) return 'safe';
-        if (score >= 50) return 'warning';
-        return 'critical';
-    };
-
-    const trustLevel = isInstalled ? getTrustLevel((skill as InstalledSkill).securityScore) : 'unknown';
+    // 使用统一的安全分数转换工具函数
+    const trustLevel = useMemo(() => {
+        return isInstalled ? scoreToTrustLevel((skill as InstalledSkill).securityScore) : 'unknown';
+    }, [isInstalled, skill]);
 
     // Icon Placeholder Generator (based on name char)
     const renderIcon = () => {
@@ -137,7 +133,7 @@ export const SkillCard = ({
                             </Badge>
                         )}
                         {isInstalled && (
-                            <TrustShield level={trustLevel} score={(skill as InstalledSkill).securityScore} size="sm" showLabel={false} />
+                            <TrustShield level={trustLevel} score={(skill as InstalledSkill).securityScore} size="sm" showLabel={true} />
                         )}
                         {'version' in skill && (
                              <Badge variant="outline" size="xs" className="text-slate-400 font-normal">
@@ -204,7 +200,7 @@ export const SkillCard = ({
                             </div>
                         )}
                         {isInstalled && (
-                             <TrustShield level={trustLevel} score={(skill as InstalledSkill).securityScore} size="sm" />
+                             <TrustShield level={trustLevel} score={(skill as InstalledSkill).securityScore} size="sm" showLabel={false} />
                         )}
                         {isMarketplace && (
                             <div className="flex items-center gap-1 text-xs font-medium bg-slate-100 dark:bg-base-200 px-2 py-1 rounded-full text-slate-600 dark:text-slate-400">

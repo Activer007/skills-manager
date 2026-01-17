@@ -32,10 +32,22 @@ export interface ScanRecord {
   blocked: boolean;
 }
 
+/**
+ * 安全分数阈值配置（已弃用）
+ * @deprecated 请使用 src/utils/securityHelpers.ts 中的 SECURITY_SCORE_THRESHOLDS
+ * 保留此配置以保持向后兼容性
+ */
 export const SCORE_THRESHOLDS = {
   SAFE: 70,
   CRITICAL: 30,
 };
 
+/**
+ * @deprecated 请使用 src/utils/securityHelpers.ts 中的 isSafeScore
+ */
 export const isSafeScore = (score: number) => score >= SCORE_THRESHOLDS.SAFE;
+
+/**
+ * @deprecated 请使用 src/utils/securityHelpers.ts 中的 isCriticalScore
+ */
 export const isRiskScore = (score: number) => score < SCORE_THRESHOLDS.SAFE;
