@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill } from '../hooks/useSkills';
+import { useSkillConfig } from '../hooks/useSkillConfig';
 import { useBatchSkillQuality } from '../hooks/useSkillQuality';
 import { X, Github, HardDrive, Plus, FolderOpen } from 'lucide-react';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
@@ -80,6 +81,9 @@ const MySkills = () => {
   const [importPath, setImportPath] = useState('');
   const [securityReport, setSecurityReport] = useState<SecurityReport | null>(null);
   const [isScanningSecurity, setIsScanningSecurity] = useState(false);
+
+  // Load config for selected skill
+  const { config: skillConfig, updateConfig, isUpdating: isConfigUpdating } = useSkillConfig(selectedSkill ? selectedSkill.id : null);
 
   // Create a map of path -> score
   const scoreMap = React.useMemo(() => {
@@ -414,16 +418,21 @@ const MySkills = () => {
                 {activeSlideTab === 'config' && (
                     <div className="animate-in fade-in duration-200">
                         <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-xl text-sm border border-blue-100 dark:border-blue-900/50">
-                            This is a preview of the Schema-based UI Generator. These settings are currently using a mock schema.
+                            This is a preview. The schema is currently mocked, but values are persisted to <code>~/.claude/skill-manager-config.json</code>.
                         </div>
                         <ConfigForm
                             schema={mockSchema}
-                            initialValues={{ enableFeature: true, logLevel: 'info', maxRetries: 3 }}
+                            initialValues={skillConfig || {}}
                             onSave={async (values) => {
-                                console.log('Saved values:', values);
-                                await new Promise(resolve => setTimeout(resolve, 1000));
-                                toast.success('Configuration saved successfully');
+                                try {
+                                    await updateConfig(values);
+                                    toast.success('Configuration saved successfully');
+                                } catch (error) {
+                                    console.error('Failed to save config:', error);
+                                    toast.error('Failed to save configuration');
+                                }
                             }}
+                            isLoading={isConfigUpdating}
                         />
                     </div>
                 )}
