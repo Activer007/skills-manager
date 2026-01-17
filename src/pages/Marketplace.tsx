@@ -11,7 +11,7 @@ import { SkillCard } from '../components/SkillCard';
 import { SlideOver } from '../components/ui/SlideOver';
 import { Button } from '../components/ui/Button';
 import { cn } from '../utils/cn';
-import { Star, GitBranch, Github, ExternalLink } from 'lucide-react';
+import { Star, GitBranch, Github } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // 常量定义
