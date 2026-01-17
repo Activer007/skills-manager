@@ -10,6 +10,7 @@ type ScanSkillEntry = {
   skillType: 'system' | 'project' | string;
   isMcp?: boolean;
   tags?: string[];
+  configSchema?: Record<string, unknown>;
 };
 
 type ScanSkillsResult = {
@@ -56,7 +57,8 @@ export function useSkills() {
           securityScore: report?.score,
           securityIssues: report?.issues,
           isMcp: skill.isMcp,
-          tags: skill.tags
+          tags: skill.tags,
+          configSchema: skill.configSchema
         };
       };
 

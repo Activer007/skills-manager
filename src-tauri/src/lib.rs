@@ -27,6 +27,8 @@ pub struct SkillInfo {
     #[serde(rename = "isMcp")]
     pub is_mcp: bool,
     pub tags: Vec<String>,
+    #[serde(rename = "configSchema")]
+    pub config_schema: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize)]
@@ -101,6 +103,7 @@ fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
     });
 
     let tags = doc.metadata.tags.unwrap_or_default();
+    let config_schema = doc.metadata.config_schema;
 
     // Check if it's an MCP skill based on tags
     let is_mcp = tags.iter().any(|t| t.to_lowercase() == "mcp" || t.to_lowercase() == "mcp-server");
@@ -112,6 +115,7 @@ fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
         skill_type: skill_type.to_string(),
         is_mcp,
         tags,
+        config_schema,
     })
 }
 
