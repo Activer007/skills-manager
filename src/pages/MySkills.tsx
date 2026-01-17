@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill } from '../hooks/useSkills';
 import { useSkillConfig } from '../hooks/useSkillConfig';
@@ -57,12 +58,15 @@ const mockSchema: ConfigSchema = {
   }
 };
 
+type SlideTab = 'overview' | 'config' | 'security' | 'hooks' | 'changelog';
+
 const MySkills = () => {
   const { t, i18n } = useTranslation();
   const { data: installedSkills = [], isLoading } = useSkills();
   const uninstallMutation = useUninstallSkill();
   const importGithubMutation = useImportSkill();
   const importLocalMutation = useImportLocalSkill();
+  const queryClient = useQueryClient();
 
   // Fetch quality scores for all skills
   const skillPaths = React.useMemo(() => installedSkills.map(s => s.localPath), [installedSkills]);
@@ -71,7 +75,7 @@ const MySkills = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'system' | 'project'>('all');
   const [selectedSkill, setSelectedSkill] = useState<InstalledSkill | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [activeSlideTab, setActiveSlideTab] = useState<'overview' | 'config' | 'security' | 'hooks' | 'changelog'>('overview');
+  const [activeSlideTab, setActiveSlideTab] = useState<SlideTab>('overview');
   const [skillContent, setSkillContent] = useState<string>('');
   const [skillScore, setSkillScore] = useState<SkillScore | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -89,17 +93,49 @@ const MySkills = () => {
   const activeSchema = React.useMemo(() => {
     // 1. Priority: Schema defined in SKILL.md (backend parsed)
     if (selectedSkill?.configSchema && Object.keys(selectedSkill.configSchema).length > 0) {
-        return selectedSkill.configSchema as ConfigSchema;
+        const schema = selectedSkill.configSchema as ConfigSchema;
+        if (!schema.enabled) {
+          return {
+            enabled: {
+              type: 'boolean',
+              label: i18n.language === 'zh' ? '启用此 Skill' : 'Enable this Skill',
+              description: i18n.language === 'zh' ? '切换此 Skill 的启用状态' : 'Toggle this skill on or off',
+              default: true
+            },
+            ...schema
+          };
+        }
+        return schema;
     }
 
     // 2. Fallback: Infer from current config values
     if (skillConfig && Object.keys(skillConfig).length > 0) {
-      return inferSchemaFromValues(skillConfig);
+      const schema = inferSchemaFromValues(skillConfig);
+      if (!schema.enabled) {
+        return {
+          enabled: {
+            type: 'boolean',
+            label: i18n.language === 'zh' ? '启用此 Skill' : 'Enable this Skill',
+            description: i18n.language === 'zh' ? '切换此 Skill 的启用状态' : 'Toggle this skill on or off',
+            default: true
+          },
+          ...schema
+        };
+      }
+      return schema;
     }
 
     // 3. Last resort: Mock schema (for dev/demo)
-    return mockSchema;
-  }, [skillConfig, selectedSkill]);
+    return {
+      enabled: {
+        type: 'boolean',
+        label: i18n.language === 'zh' ? '启用此 Skill' : 'Enable this Skill',
+        description: i18n.language === 'zh' ? '切换此 Skill 的启用状态' : 'Toggle this skill on or off',
+        default: true
+      },
+      ...mockSchema
+    };
+  }, [skillConfig, selectedSkill, i18n.language]);
 
   // Create a map of path -> score
   const scoreMap = React.useMemo(() => {
@@ -165,10 +201,10 @@ const MySkills = () => {
     return skill.type === activeTab;
   });
 
-  const handleViewSkill = async (skill: InstalledSkill) => {
+  const handleViewSkill = async (skill: InstalledSkill, tab: SlideTab = 'overview') => {
     setSelectedSkill(skill);
     setShowViewModal(true);
-    setActiveSlideTab('overview');
+    setActiveSlideTab(tab);
 
     // Check if we already have the score from batch analysis
     const cachedScore = scoreMap.get(skill.localPath);
@@ -221,6 +257,62 @@ const MySkills = () => {
     }
   };
 
+  const toggleSkillMutation = useMutation({
+    mutationFn: async ({ skillId, nextEnabled, currentConfig }: { skillId: string; nextEnabled: boolean; currentConfig: Record<string, unknown> }) => {
+      const nextConfig = { ...currentConfig, enabled: nextEnabled };
+      await invoke('set_skill_config', { skillId, config: nextConfig });
+      return nextConfig;
+    },
+    onMutate: async ({ skillId, nextEnabled }) => {
+      await queryClient.cancelQueries({ queryKey: ['skills'] });
+      const previousSkills = queryClient.getQueryData<InstalledSkill[]>(['skills']);
+      queryClient.setQueryData<InstalledSkill[]>(['skills'], (old) =>
+        old?.map((skill) =>
+          skill.id === skillId
+            ? { ...skill, enabled: nextEnabled, config: { ...(skill.config ?? {}), enabled: nextEnabled } }
+            : skill
+        ) ?? []
+      );
+      return { previousSkills };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousSkills) {
+        queryClient.setQueryData(['skills'], context.previousSkills);
+      }
+    },
+    onSuccess: (nextConfig, { skillId, nextEnabled }) => {
+      queryClient.setQueryData<InstalledSkill[]>(['skills'], (old) =>
+        old?.map((skill) =>
+          skill.id === skillId
+            ? { ...skill, enabled: nextEnabled, config: nextConfig }
+            : skill
+        ) ?? []
+      );
+      queryClient.invalidateQueries({ queryKey: ['skillConfig', skillId] });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['skills'] });
+    },
+  });
+
+  const handleToggleSkill = async (skill: InstalledSkill) => {
+    const nextEnabled = !(skill.enabled ?? true);
+    try {
+      await toggleSkillMutation.mutateAsync({
+        skillId: skill.id,
+        nextEnabled,
+        currentConfig: skill.config ?? {}
+      });
+      toast.success(i18n.language === 'zh'
+        ? `${skill.name} 已${nextEnabled ? '启用' : '禁用'}`
+        : `${skill.name} ${nextEnabled ? 'enabled' : 'disabled'}`);
+    } catch (error: unknown) {
+      toast.error(i18n.language === 'zh'
+        ? `更新状态失败: ${getErrorMessage(error)}`
+        : `Failed to update status: ${getErrorMessage(error)}`);
+    }
+  };
+
   const closeImportModal = () => {
     setShowImportModal(false);
     setImportType(null);
@@ -242,6 +334,7 @@ const MySkills = () => {
         <Button
           variant="primary"
           onClick={() => setShowImportModal(true)}
+          className="whitespace-nowrap"
         >
             <Plus size={18} className="mr-2" />
             {t('importSkill')}
@@ -286,9 +379,11 @@ const MySkills = () => {
                     skill={{...skill, description: getLocalizedDescription(skill, i18n.language)}}
                     viewMode="list"
                     isInstalled={true}
-                    isActive={true} 
+                    isActive={skill.enabled ?? true}
                     onUninstall={() => handleUninstall(skill)}
-                    onViewDetails={() => handleViewSkill(skill)}
+                    onViewDetails={() => handleViewSkill(skill, 'overview')}
+                    onConfigure={() => handleViewSkill(skill, 'config')}
+                    onToggle={() => handleToggleSkill(skill)}
                 />
             ))
         ) : (
