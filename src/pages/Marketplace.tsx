@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useMarketplaceSkills, useInstallSkill } from '../hooks/useSkills';
 import type { MarketplaceSkill } from '../types';
@@ -11,13 +11,17 @@ import { SkillCard } from '../components/SkillCard';
 import { SlideOver } from '../components/ui/SlideOver';
 import { Button } from '../components/ui/Button';
 import { cn } from '../utils/cn';
-import { Star, GitBranch, Github } from 'lucide-react';
+import { Star, GitBranch, Github, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { FixedSizeGrid as Grid, GridChildComponentProps } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
+
+import { ImportSkillModal } from '../components/ImportSkillModal';
 
 // 常量定义
-const PAGE_SIZE = 12;
 const TOP_RATED_THRESHOLD = 50; // Stars threshold for top-rated filter
-const MAX_VISIBLE_PAGES = 5;
+const GUTTER_SIZE = 24;
+const ROW_HEIGHT = 380;
 
 type FilterType = 'all' | 'top-rated' | 'productivity' | 'coding' | 'security' | 'data' | 'design';
 
@@ -35,10 +39,10 @@ const Marketplace = () => {
   const { data: installedSkills = [] } = useSkills();
   const installMutation = useInstallSkill();
   const [searchTerm, setSearchTerm] = useState('');
-  const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<FilterType>('all');
   const [selectedSkill, setSelectedSkill] = useState<MarketplaceSkill | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const handleInstall = async (skill: MarketplaceSkill) => {
     if (installMutation.isPending) return;
@@ -74,56 +78,60 @@ const Marketplace = () => {
     return installedSkills.some(s => s.id === skillId);
   };
 
-  const filteredSkills = marketplaceSkills.filter(skill => {
-    const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        skill.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        skill.author.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredSkills = useMemo(() => {
+    return marketplaceSkills.filter(skill => {
+        const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            skill.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            skill.author.toLowerCase().includes(searchTerm.toLowerCase());
 
-    if (!matchesSearch) return false;
+        if (!matchesSearch) return false;
 
-    if (filter === 'top-rated') return skill.stars > TOP_RATED_THRESHOLD;
+        if (filter === 'top-rated') return skill.stars > TOP_RATED_THRESHOLD;
 
-    if (filter !== 'all') {
-        const keywords = CATEGORY_KEYWORDS[filter as keyof typeof CATEGORY_KEYWORDS];
-        const textToCheck = `${skill.name} ${skill.description} ${skill.tags?.join(' ') || ''}`.toLowerCase();
-        return keywords.some(k => textToCheck.includes(k));
-    }
-
-    return true;
-  });
-
-  const totalPages = Math.ceil(filteredSkills.length / PAGE_SIZE);
-  const currentSkills = filteredSkills.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const getPageNumbers = () => {
-    const pages = [];
-
-    if (totalPages <= MAX_VISIBLE_PAGES) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      let start = Math.max(1, page - 2);
-      let end = Math.min(totalPages, page + 2);
-
-      if (end - start < MAX_VISIBLE_PAGES - 1) {
-        if (start === 1) {
-          end = Math.min(totalPages, start + MAX_VISIBLE_PAGES - 1);
-        } else {
-          start = Math.max(1, end - MAX_VISIBLE_PAGES + 1);
+        if (filter !== 'all') {
+            const keywords = CATEGORY_KEYWORDS[filter as keyof typeof CATEGORY_KEYWORDS];
+            const textToCheck = `${skill.name} ${skill.description} ${skill.tags?.join(' ') || ''}`.toLowerCase();
+            return keywords.some(k => textToCheck.includes(k));
         }
-      }
 
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
-      }
-    }
+        return true;
+    });
+  }, [marketplaceSkills, searchTerm, filter]);
 
-    return pages;
+  const Cell = ({ columnIndex, rowIndex, style, data }: GridChildComponentProps) => {
+    const { skills, columnCount } = data;
+    const index = rowIndex * columnCount + columnIndex;
+
+    if (index >= skills.length) return null;
+
+    const skill = skills[index];
+
+    // Adjust style to add gaps (gutter)
+    // We subtract GUTTER_SIZE from width and height and add half gutter to left/top
+    // This is a simplified approach. A better one is to use padding in the inner div.
+    const left = parseFloat(style.left?.toString() || '0') + GUTTER_SIZE / 2;
+    const top = parseFloat(style.top?.toString() || '0') + GUTTER_SIZE / 2;
+    const width = parseFloat(style.width?.toString() || '0') - GUTTER_SIZE;
+    const height = parseFloat(style.height?.toString() || '0') - GUTTER_SIZE;
+
+    return (
+        <div style={{ ...style, left, top, width, height }}>
+            <SkillCard
+                skill={{...skill, description: getLocalizedDescription(skill, i18n.language)}}
+                viewMode="grid"
+                isInstalled={isInstalled(skill.id)}
+                onInstall={() => handleInstall(skill)}
+                onViewDetails={() => {
+                    setSelectedSkill(skill);
+                    setShowDrawer(true);
+                }}
+            />
+        </div>
+    );
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 h-full flex flex-col">
       {/* Hero Section */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 dark:from-primary/5 dark:to-purple-500/5 p-8 md:p-12">
           <div className="relative z-10 max-w-2xl">
@@ -147,24 +155,41 @@ const Marketplace = () => {
               </motion.p>
 
               {/* Search Bar inside Hero */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="relative max-w-lg group"
-              >
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
-                  <input
-                      type="text"
-                      placeholder={t('searchSkills')}
-                      className="w-full pl-12 pr-4 py-4 rounded-xl bg-white dark:bg-base-100 border-0 shadow-lg shadow-black/5 ring-1 ring-black/5 focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-slate-400 text-slate-900 dark:text-slate-100"
-                      value={searchTerm}
-                      onChange={(e) => {
-                          setSearchTerm(e.target.value);
-                          setPage(1);
-                      }}
-                  />
-              </motion.div>
+              <div className="flex gap-4">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="relative max-w-lg flex-1 group"
+                  >
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
+                      <input
+                          type="text"
+                          placeholder={t('searchSkills')}
+                          className="w-full pl-12 pr-4 py-4 rounded-xl bg-white dark:bg-base-100 border-0 shadow-lg shadow-black/5 ring-1 ring-black/5 focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-slate-400 text-slate-900 dark:text-slate-100"
+                          value={searchTerm}
+                          onChange={(e) => {
+                              setSearchTerm(e.target.value);
+                          }}
+                      />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                  >
+                     <Button
+                        size="lg"
+                        variant="primary"
+                        className="h-full rounded-xl shadow-lg shadow-primary/20"
+                        onClick={() => setShowImportModal(true)}
+                     >
+                        <Download size={20} className="mr-2" />
+                        {i18n.language === 'zh' ? '导入' : 'Import'}
+                     </Button>
+                  </motion.div>
+              </div>
           </div>
 
           {/* Decorative Background Elements */}
@@ -211,7 +236,6 @@ const Marketplace = () => {
                   key={chip.id}
                   onClick={() => {
                       setFilter(chip.id);
-                      setPage(1);
                   }}
                   className={cn(
                       "px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
@@ -234,88 +258,29 @@ const Marketplace = () => {
           <SkeletonCard count={8} />
         </div>
       ) : (
-        <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {currentSkills.map((skill) => (
-                    <SkillCard
-                        key={skill.id}
-                        skill={{...skill, description: getLocalizedDescription(skill, i18n.language)}}
-                        viewMode="grid"
-                        isInstalled={isInstalled(skill.id)}
-                        onInstall={() => handleInstall(skill)}
-                        onViewDetails={() => {
-                            setSelectedSkill(skill);
-                            setShowDrawer(true);
-                        }}
-                    />
-                ))}
-            </div>
+        <div className="flex-1 min-h-[600px] w-full">
+            <AutoSizer>
+                {({ height, width }) => {
+                    const columnCount = Math.floor(width / (280 + GUTTER_SIZE)) || 1;
+                    const columnWidth = width / columnCount;
+                    const rowCount = Math.ceil(filteredSkills.length / columnCount);
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex justify-center mt-8 pb-8">
-                    <div className="flex items-center gap-2 bg-white dark:bg-base-100 p-2 rounded-xl shadow-sm border border-gray-100 dark:border-base-200">
-                        <button
-                            className="btn btn-sm btn-ghost"
-                            disabled={page === 1}
-                            onClick={() => {
-                                setPage(1);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
+                    return (
+                        <Grid
+                            columnCount={columnCount}
+                            columnWidth={columnWidth}
+                            height={height}
+                            rowCount={rowCount}
+                            rowHeight={ROW_HEIGHT}
+                            width={width}
+                            itemData={{ skills: filteredSkills, columnCount }}
                         >
-                            ««
-                        </button>
-                        <button
-                            className="btn btn-sm btn-ghost"
-                            disabled={page === 1}
-                            onClick={() => {
-                                setPage(p => Math.max(1, p - 1));
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                        >
-                            «
-                        </button>
-
-                        {getPageNumbers().map((pageNum) => (
-                            <button
-                                key={pageNum}
-                                className={cn(
-                                    "btn btn-sm min-w-[2rem]",
-                                    pageNum === page ? "btn-primary text-white" : "btn-ghost font-normal"
-                                )}
-                                onClick={() => {
-                                    setPage(pageNum);
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                }}
-                            >
-                                {pageNum}
-                            </button>
-                        ))}
-
-                        <button
-                            className="btn btn-sm btn-ghost"
-                            disabled={page === totalPages}
-                            onClick={() => {
-                                setPage(p => Math.min(totalPages, p + 1));
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                        >
-                            »
-                        </button>
-                        <button
-                            className="btn btn-sm btn-ghost"
-                            disabled={page === totalPages}
-                            onClick={() => {
-                                setPage(totalPages);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                        >
-                            »»
-                        </button>
-                    </div>
-                </div>
-            )}
-        </>
+                            {Cell}
+                        </Grid>
+                    );
+                }}
+            </AutoSizer>
+        </div>
       )}
 
       <SlideOver
@@ -422,6 +387,11 @@ const Marketplace = () => {
             </div>
         )}
       </SlideOver>
+
+      <ImportSkillModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+      />
     </div>
   );
 };
