@@ -138,8 +138,8 @@ Instead of navigating away, skill details open in a right-side drawer (Sheet).
     *   **Capability Badges:** Display "Tools", "Resources", "Prompts" counts on cards.
     *   **Dependency Check:** Visual warnings for missing MCP servers (e.g., SQLite).
 - [ ] **Visual Discovery:**
-    *   **Preview Support:** Render preview images/videos in SlideOver if available.
+    *   [x] **Preview Support:** Render preview images/videos in SlideOver if available.
     *   **Hero Animation:** Make the Marketplace Hero section dynamic.
 - [ ] **Trust & Security System:**
-    *   **Security Shield:** Visual indicator of security scan results (Green/Yellow/Red).
+    *   [x] **Security Shield:** Visual indicator of security scan results (Green/Yellow/Red).
     *   **Capability Manifest:** Explicitly list what the skill can do (e.g., "Can Read Files", "Can Execute Commands").
