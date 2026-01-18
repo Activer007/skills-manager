@@ -30,8 +30,11 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           id={selectId}
           ref={ref}
           className={cn(
-            'select select-bordered w-full bg-base-100 text-slate-900 dark:text-slate-100 border-gray-200 dark:border-base-300 transition-all focus:ring-2 focus:ring-primary/20 focus:outline-none',
-            error && 'select-error focus:ring-error/20',
+            // 统一圆角：rounded-md (8px)
+            // 统一过渡：duration-normal (200ms)
+            // 统一焦点环：ring-2
+            'select select-bordered w-full bg-base-100 text-slate-900 dark:text-slate-100 border-gray-200 dark:border-base-300 transition-all duration-normal rounded-md focus:ring-2 focus:ring-primary/20 focus:outline-none focus:border-primary',
+            error && 'select-error focus:ring-error/20 focus:border-error',
             className
           )}
           {...props}

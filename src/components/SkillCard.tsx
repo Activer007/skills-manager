@@ -120,7 +120,8 @@ export const SkillCard = ({
         return (
             <div
                 className={cn(
-                    "rounded-xl flex items-center justify-center font-bold shadow-sm flex-shrink-0",
+                    // 统一圆角：rounded-lg (12px)
+                    "rounded-lg flex items-center justify-center font-bold shadow-sm flex-shrink-0",
                     sizeClass.width,
                     sizeClass.height,
                     sizeClass.text,
@@ -137,7 +138,9 @@ export const SkillCard = ({
     if (viewMode === 'list') {
         return (
             <div
-                className="group relative flex items-center gap-4 p-4 bg-white dark:bg-base-100 rounded-xl border border-gray-100 dark:border-base-200 hover:shadow-md transition-all duration-200 cursor-pointer"
+                // 统一圆角：rounded-lg (12px)
+                // 统一过渡：duration-normal (200ms)
+                className="group relative flex items-center gap-4 p-4 bg-white dark:bg-base-100 rounded-lg border border-gray-100 dark:border-base-200 hover:shadow-md hover:border-gray-200 dark:hover:border-base-300 transition-all duration-normal cursor-pointer"
                 onClick={onViewDetails}
             >
                 {/* Icon */}

@@ -1,0 +1,248 @@
+/**
+ * Skill Manager Design Tokens
+ *
+ * 统一的设计规范系统，基于 Antigravity-Manager 项目参考
+ * 所有设计相关的变量都集中管理，确保整个应用的视觉一致性
+ */
+
+:root {
+  /* ========================================
+   * 间距系统 (Spacing System)
+   * 基于 Tailwind 默认间距
+   * ======================================== */
+
+  --spacing-xs: 0.25rem;   /* 4px  - 最小间距，紧密元素 */
+  --spacing-sm: 0.5rem;    /* 8px  - 紧密元素，图标与文字 */
+  --spacing-md: 1rem;      /* 16px - 舒适间距，卡片内边距 */
+  --spacing-lg: 1.5rem;    /* 24px - 大间距，区块分隔 */
+  --spacing-xl: 2rem;      /* 32px - 超大间距，页面级 */
+  --spacing-2xl: 3rem;     /* 48px - 特大间距 */
+  --spacing-3xl: 4rem;     /* 64px - 巨大间距 */
+
+  /* ========================================
+   * 圆角系统 (Border Radius)
+   * 统一使用 rounded-lg 和 rounded-xl
+   * ======================================== */
+
+  --radius-none: 0;
+  --radius-sm: 0.25rem;    /* 4px  - 小元素（tag、badge） */
+  --radius-md: 0.5rem;     /* 8px  - 按钮、输入框（主要使用） */
+  --radius-lg: 0.75rem;    /* 12px - 卡片（主要使用） */
+  --radius-xl: 1rem;       /* 16px - 对话框 */
+  --radius-2xl: 1.5rem;    /* 24px - 特殊容器 */
+  --radius-full: 9999px;   /* 圆形（徽章、头像） */
+
+  /* ========================================
+   * 阴影系统 (Box Shadow)
+   * 明确的深度层级
+   * ======================================== */
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* 彩色阴影（用于按钮等元素） */
+  --shadow-blue: 0 1px 3px 0 rgb(59 130 246 / 0.3);
+  --shadow-green: 0 1px 3px 0 rgb(16 185 129 / 0.3);
+  --shadow-red: 0 1px 3px 0 rgb(239 68 68 / 0.3);
+  --shadow-amber: 0 1px 3px 0 rgb(245 158 11 / 0.3);
+
+  /* ========================================
+   * 字体系统 (Typography)
+   * ======================================== */
+
+  /* 字体大小 */
+  --font-size-xs: 0.75rem;    /* 12px - 说明文字 */
+  --font-size-sm: 0.875rem;   /* 14px - 正文 */
+  --font-size-base: 1rem;     /* 16px - 基础 */
+  --font-size-lg: 1.125rem;   /* 18px - 副标题 */
+  --font-size-xl: 1.25rem;    /* 20px - 标题 */
+  --font-size-2xl: 1.5rem;    /* 24px - 大标题 */
+  --font-size-3xl: 1.875rem;  /* 30px - 特大标题 */
+  --font-size-4xl: 2.25rem;   /* 36px - 巨大标题 */
+
+  /* 字重 */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* 行高 */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+
+  /* ========================================
+   * 颜色系统 (Color System)
+   * 语义化颜色定义
+   * ======================================== */
+
+  /* 主色调 */
+  --color-primary: #3b82f6;       /* blue-500 */
+  --color-primary-hover: #2563eb; /* blue-600 */
+  --color-primary-light: #dbeafe; /* blue-100 */
+
+  /* 次要色 */
+  --color-secondary: #64748b;     /* slate-500 */
+  --color-secondary-light: #f1f5f9; /* slate-100 */
+
+  /* 成功色 */
+  --color-success: #10b981;       /* emerald-500 */
+  --color-success-hover: #059669; /* emerald-600 */
+  --color-success-light: #d1fae5; /* emerald-100 */
+
+  /* 警告色 */
+  --color-warning: #f59e0b;       /* amber-500 */
+  --color-warning-hover: #d97706; /* amber-600 */
+  --color-warning-light: #fef3c7; /* amber-100 */
+
+  /* 错误色 */
+  --color-error: #ef4444;         /* red-500 */
+  --color-error-hover: #dc2626;   /* red-600 */
+  --color-error-light: #fee2e2;   /* red-100 */
+
+  /* 信息色 */
+  --color-info: #0ea5e9;          /* sky-500 */
+  --color-info-hover: #0284c7;    /* sky-600 */
+  --color-info-light: #e0f2fe;    /* sky-100 */
+
+  /* 文本颜色 */
+  --text-primary: #111827;        /* gray-900 */
+  --text-secondary: #374151;      /* gray-700 */
+  --text-tertiary: #6b7280;       /* gray-500 */
+  --text-disabled: #9ca3af;       /* gray-400 */
+
+  /* 背景颜色 */
+  --bg-primary: #ffffff;          /* 白色 */
+  --bg-secondary: #f9fafb;        /* gray-50 */
+  --bg-tertiary: #f3f4f6;         /* gray-100 */
+
+  /* 边框颜色 */
+  --border-color: #e5e7eb;        /* gray-200 */
+  --border-color-dark: #d1d5db;   /* gray-300 */
+
+  /* ========================================
+   * 动画系统 (Animation)
+   * ======================================== */
+
+  /* 动画时长 */
+  --duration-fast: 150ms;         /* 快速过渡 */
+  --duration-normal: 200ms;       /* 标准过渡 */
+  --duration-slow: 300ms;         /* 慢速过渡 */
+  --duration-slower: 500ms;       /* 更慢过渡 */
+
+  /* 缓动函数 */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ========================================
+   * Z-index 系统
+   * 明确的层级关系
+   * ======================================== */
+
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+
+  /* ========================================
+   * 组件特定变量
+   * ======================================== */
+
+  /* 按钮高度 */
+  --button-height-sm: 2rem;       /* 32px */
+  --button-height-md: 2.5rem;     /* 40px */
+  --button-height-lg: 3rem;       /* 48px */
+
+  /* 输入框高度 */
+  --input-height: 3rem;           /* 48px - 统一的表单元素高度 */
+
+  /* 卡片内边距 */
+  --card-padding-sm: var(--spacing-md);  /* 16px */
+  --card-padding-md: var(--spacing-lg);  /* 24px */
+  --card-padding-lg: var(--spacing-xl);  /* 32px */
+
+  /* 间隙 */
+  --gap-xs: var(--spacing-xs);
+  --gap-sm: var(--spacing-sm);
+  --gap-md: var(--spacing-md);
+  --gap-lg: var(--spacing-lg);
+  --gap-xl: var(--spacing-xl);
+}
+
+/* ========================================
+ * 暗色模式覆盖
+ * ======================================== */
+
+.dark {
+  /* 文本颜色 */
+  --text-primary: #f9fafb;        /* gray-50 */
+  --text-secondary: #d1d5db;      /* gray-300 */
+  --text-tertiary: #9ca3af;       /* gray-400 */
+  --text-disabled: #6b7280;       /* gray-500 */
+
+  /* 背景颜色 */
+  --bg-primary: #0f172a;          /* slate-900 (base-100) */
+  --bg-secondary: #1e293b;        /* slate-800 (base-200) */
+  --bg-tertiary: #334155;         /* slate-700 (base-300) */
+
+  /* 边框颜色 */
+  --border-color: #334155;        /* slate-700 */
+  --border-color-dark: #475569;   /* slate-600 */
+
+  /* 彩色阴影（暗色模式下更明显） */
+  --shadow-blue: 0 1px 3px 0 rgb(59 130 246 / 0.5);
+  --shadow-green: 0 1px 3px 0 rgb(16 185 129 / 0.5);
+  --shadow-red: 0 1px 3px 0 rgb(239 68 68 / 0.5);
+  --shadow-amber: 0 1px 3px 0 rgb(245 158 11 / 0.5);
+}
+
+/* ========================================
+ * 实用工具类（辅助类）
+ * ======================================== */
+
+/* 平滑过渡 */
+.smooth-transition {
+  transition: all var(--duration-normal) var(--ease-in-out);
+}
+
+/* 快速过渡 */
+.fast-transition {
+  transition: all var(--duration-fast) var(--ease-in-out);
+}
+
+/* 无障碍焦点样式 */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 文本截断 */
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 多行文本截断 */
+.text-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.text-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
