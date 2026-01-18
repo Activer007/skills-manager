@@ -67,7 +67,7 @@ export const Switch = ({
       <div
         className={cn(
           'relative rounded-full transition-colors duration-200 ease-in-out border-2 border-transparent',
-          checked ? 'bg-green-500' : 'bg-slate-200 dark:bg-slate-700',
+          checked ? 'bg-primary' : 'bg-slate-200 dark:bg-base-300',
           currentSize.switch
         )}
       >

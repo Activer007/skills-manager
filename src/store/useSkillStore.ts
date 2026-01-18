@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import type { SecurityReport } from '../types/security';
 import { invoke } from '@tauri-apps/api/core';
+import { fetchMarketplaceData } from '../utils/marketplace';
 
 type ScanSkillEntry = {
   name: string;
@@ -70,10 +71,8 @@ export const useSkillStore = create<SkillStore>()(
       fetchMarketplaceSkills: async () => {
         set({ isLoading: true });
         try {
-          const response = await fetch('/data/marketplace.json');
-          if (!response.ok) throw new Error('Failed to load marketplace data');
-          const data = await response.json();
-          set({ marketplaceSkills: data, isLoading: false });
+          const data = await fetchMarketplaceData();
+          set({ marketplaceSkills: data as MarketplaceSkill[], isLoading: false });
         } catch (error) {
           console.error('Error loading marketplace:', error);
           set({ isLoading: false });

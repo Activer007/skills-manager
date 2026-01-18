@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
+import { fetchMarketplaceData } from '../utils/marketplace';
 import type { SecurityReport } from '../types/security';
 
 type ScanSkillEntry = {
@@ -35,14 +36,29 @@ export function useSkills() {
         return [];
       }
 
-      const securityReports = await invoke<SecurityReport[]>('batch_scan_skills', {
+      const [securityReports, skillConfigs] = await Promise.all([
+        invoke<SecurityReport[]>('batch_scan_skills', {
         skillPaths: allSkillPaths,
         locale: window.localStorage.getItem('i18nextLng') || 'en'
-      });
+        }),
+        Promise.all(
+          allSkillPaths.map(async (skillPath) => {
+            try {
+              const config = await invoke<Record<string, unknown>>('get_skill_config', { skillId: skillPath });
+              return [skillPath, config] as const;
+            } catch {
+              return [skillPath, {}] as const;
+            }
+          })
+        ),
+      ]);
       const securityMap = new Map(securityReports.map(report => [report.skill_id, report]));
+      const configMap = new Map(skillConfigs);
 
       const mapSkill = (skill: ScanSkillEntry): InstalledSkill => {
         const report = securityMap.get(skill.path.split(/[\\/]/).pop() || '');
+        const config = configMap.get(skill.path) ?? {};
+        const enabled = typeof config.enabled === 'boolean' ? config.enabled : true;
         return {
           id: skill.path,
           name: skill.name,
@@ -54,6 +70,8 @@ export function useSkills() {
           version: '1.0.0',
           author: 'Unknown',
           stars: 0,
+          enabled,
+          config,
           securityScore: report?.score,
           securityIssues: report?.issues,
           isMcp: skill.isMcp,
@@ -166,11 +184,8 @@ export function useMarketplaceSkills() {
   return useQuery({
     queryKey: ['marketplace-skills'],
     queryFn: async () => {
-      const response = await fetch('/data/marketplace.json');
-      if (!response.ok) {
-        throw new Error(`Failed to load marketplace data (${response.status})`);
-      }
-      return await response.json() as MarketplaceSkill[];
+      const data = await fetchMarketplaceData();
+      return data as MarketplaceSkill[];
     },
     staleTime: 1000 * 60 * 10, // 10 minutes (marketplace data changes less frequently)
     gcTime: 1000 * 60 * 30, // 30 minutes

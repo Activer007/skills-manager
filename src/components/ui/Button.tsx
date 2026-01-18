@@ -12,11 +12,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, children, disabled, ...props }, ref) => {
     const variants = {
-      primary: 'btn-primary text-white',
-      secondary: 'btn-neutral text-white',
+      primary: 'btn-primary text-primary-content',
+      secondary: 'btn-neutral text-neutral-content',
       outline: 'btn-outline',
       ghost: 'btn-ghost',
-      error: 'btn-error text-white',
+      error: 'btn-error text-error-content',
       link: 'btn-link',
     };
 

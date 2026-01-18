@@ -30,7 +30,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           id={selectId}
           ref={ref}
           className={cn(
-            'select select-bordered w-full bg-white dark:bg-base-100 transition-all focus:ring-2 focus:ring-primary/20 focus:outline-none',
+            'select select-bordered w-full bg-base-100 text-slate-900 dark:text-slate-100 border-gray-200 dark:border-base-300 transition-all focus:ring-2 focus:ring-primary/20 focus:outline-none',
             error && 'select-error focus:ring-error/20',
             className
           )}
