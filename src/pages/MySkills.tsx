@@ -107,7 +107,7 @@ const MySkills = () => {
         if (!schema.enabled) {
           return {
             enabled: {
-              type: 'boolean',
+              type: 'boolean' as const,
               label: i18n.language === 'zh' ? '启用此 Skill' : 'Enable this Skill',
               description: i18n.language === 'zh' ? '切换此 Skill 的启用状态' : 'Toggle this skill on or off',
               default: true
@@ -124,7 +124,7 @@ const MySkills = () => {
       if (!schema.enabled) {
         return {
           enabled: {
-            type: 'boolean',
+            type: 'boolean' as const,
             label: i18n.language === 'zh' ? '启用此 Skill' : 'Enable this Skill',
             description: i18n.language === 'zh' ? '切换此 Skill 的启用状态' : 'Toggle this skill on or off',
             default: true
@@ -138,7 +138,7 @@ const MySkills = () => {
     // 3. Last resort: Mock schema (for dev/demo)
     return {
       enabled: {
-        type: 'boolean',
+        type: 'boolean' as const,
         label: i18n.language === 'zh' ? '启用此 Skill' : 'Enable this Skill',
         description: i18n.language === 'zh' ? '切换此 Skill 的启用状态' : 'Toggle this skill on or off',
         default: true
@@ -425,16 +425,20 @@ const MySkills = () => {
            </div>
         ) : filteredSkills.length > 0 ? (
             filteredSkills.map(skill => (
-                <SkillCard 
+                <SkillCard
                     key={skill.id}
                     skill={{...skill, description: getLocalizedDescription(skill, i18n.language)}}
                     viewMode="list"
                     isInstalled={true}
                     isActive={skill.enabled ?? true}
-                    onUninstall={() => handleUninstall(skill)}
+                    onUninstall={async () => {
+                      handleUninstall(skill);
+                    }}
                     onViewDetails={() => handleViewSkill(skill, 'overview')}
                     onConfigure={() => handleViewSkill(skill, 'config')}
-                    onToggle={() => handleToggleSkill(skill)}
+                    onToggle={async () => {
+                      await handleToggleSkill(skill);
+                    }}
                 />
             ))
         ) : (
