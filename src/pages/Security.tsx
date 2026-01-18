@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Shield, ShieldCheck, ShieldAlert, CheckCircle, RefreshCw } from 'lucide-react';
 import { useSkills } from '../hooks/useSkills';
+import { Button } from '../components/ui/Button';
 
 const Security = () => {
   const { t, i18n } = useTranslation();
@@ -36,14 +37,15 @@ const Security = () => {
                  : 'Scan and monitor your Skills for potential vulnerabilities'}
              </p>
         </div>
-        <button
-            className={`btn btn-primary gap-2 ${scanning ? 'loading' : ''}`}
+        <Button
+            variant="primary"
             onClick={handleScan}
             disabled={scanning}
+            isLoading={scanning}
         >
-            {!scanning && <RefreshCw size={18} />}
+            {!scanning && <RefreshCw size={18} className="mr-2" />}
             {scanning ? t('scanning') : (i18n.language === 'zh' ? '立即扫描' : 'Scan Now')}
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -126,9 +128,9 @@ const Security = () => {
                                 </td>
                                 <td>{new Date().toLocaleDateString()}</td>
                                 <td>
-                                  <button className="btn btn-xs btn-ghost">
+                                  <Button variant="ghost" size="xs">
                                     {i18n.language === 'zh' ? '查看报告' : 'View Report'}
-                                  </button>
+                                  </Button>
                                 </td>
                             </tr>
                         ))}

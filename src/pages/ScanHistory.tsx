@@ -10,6 +10,8 @@ import { ShieldAlert, ShieldCheck, ShieldBan, RefreshCw, Search, Download, Filte
 import type { ScanRecord } from '../types/security';
 import { isSafeScore, isRiskScore } from '../types/security';
 import { toast } from '../store/useToastStore';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
 
 export default function ScanHistory() {
   const { i18n } = useTranslation();
@@ -105,23 +107,26 @@ export default function ScanHistory() {
         <h2 className="text-2xl font-bold">{i18n.language === 'zh' ? '安全扫描历史' : 'Security Scan History'}</h2>
         
         <div className="flex gap-2">
-          <button
-            className="btn btn-outline btn-sm gap-2"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleExportCSV}
             disabled={filteredData.length === 0}
           >
             <Download className="w-4 h-4" />
             {i18n.language === 'zh' ? '导出 CSV' : 'Export CSV'}
-          </button>
-          <button
-            className={`btn btn-ghost btn-sm gap-2 ${isRefetching ? 'loading' : ''}`}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => refetch()}
             disabled={isRefetching}
             title={i18n.language === 'zh' ? '刷新' : 'Refresh'}
+            isLoading={isRefetching}
           >
             {!isRefetching && <RefreshCw className="w-4 h-4" />}
             {i18n.language === 'zh' ? '刷新' : 'Refresh'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -155,21 +160,28 @@ export default function ScanHistory() {
           <div className="p-4 border-b border-base-200 flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/50" />
-              <input 
-                type="text" 
-                className="input input-sm input-bordered pl-9 w-full"
+              <Input
+                type="text"
+                className="input-sm pl-9"
                 placeholder={i18n.language === 'zh' ? '搜索 Skill...' : 'Search Skill...'}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label={i18n.language === 'zh' ? '搜索 Skill' : 'Search Skill'}
               />
             </div>
 
             <div className="flex gap-2 w-full sm:w-auto">
               <div className="dropdown dropdown-end">
-                <div tabIndex={0} role="button" className="btn btn-sm btn-ghost gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  tabIndex={0}
+                  role="button"
+                  className="gap-2"
+                >
                   <Filter className="w-4 h-4" />
                   {levelFilter === 'All' ? (i18n.language === 'zh' ? '所有状态' : 'All Status') : levelFilter}
-                </div>
+                </Button>
                 <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-200">
                   <li><a className={levelFilter === 'All' ? 'active' : ''} onClick={() => setLevelFilter('All')}>{i18n.language === 'zh' ? '所有状态' : 'All Status'}</a></li>
                   <li><a className={levelFilter === 'Safe' ? 'active' : ''} onClick={() => setLevelFilter('Safe')}>Safe (Score ≥ 70)</a></li>
