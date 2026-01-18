@@ -3,13 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill } from '../hooks/useSkills';
 import { useSkillConfig } from '../hooks/useSkillConfig';
 import { useBatchSkillQuality } from '../hooks/useSkillQuality';
-import { X, Github, HardDrive, Plus, FolderOpen } from 'lucide-react';
+import { X, Github, HardDrive, Plus, FolderOpen, FileText, Settings, Shield, History, ToyBrick } from 'lucide-react';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
 import { ConfigForm, type ConfigSchema } from '../components/ConfigForm';
-import { FileText, Settings, Shield, History, ToyBrick } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../store/useToastStore';
 import { SkillCard } from '../components/SkillCard';
 import { Button } from '../components/ui/Button';
 import { SlideOver } from '../components/ui/SlideOver';
@@ -308,7 +307,7 @@ const MySkills = () => {
         )}
       </div>
 
-      {/* View SlideOver */}
+      {/* View SlideOver */} 
       <SlideOver
         isOpen={showViewModal}
         onClose={() => {
@@ -338,7 +337,7 @@ const MySkills = () => {
       >
         {selectedSkill && (
             <div className="space-y-6">
-                {/* Tabs Header */}
+                {/* Tabs Header */} 
                 <div className="flex items-center gap-1 border-b border-gray-100 dark:border-base-200 mb-6">
                     <button
                         onClick={() => setActiveSlideTab('overview')}
@@ -403,7 +402,7 @@ const MySkills = () => {
                     </button>
                 </div>
 
-                {/* Tab Content */}
+                {/* Tab Content */} 
                 {activeSlideTab === 'overview' && (
                     <div className="space-y-6 animate-in fade-in duration-200">
                         {isAnalyzing ? (
@@ -477,7 +476,7 @@ const MySkills = () => {
                 {activeSlideTab === 'changelog' && (
                     <div className="animate-in fade-in duration-200 space-y-6">
                         <div className="relative pl-4 border-l-2 border-gray-100 dark:border-base-300 space-y-8">
-                            {[
+                            {[ 
                                 { version: '1.2.0', date: '2023-10-25', changes: ['Added support for new API endpoints', 'Fixed bug in authentication flow', 'Improved error handling'] },
                                 { version: '1.1.5', date: '2023-10-10', changes: ['Performance optimizations', 'Updated dependencies'] },
                                 { version: '1.0.0', date: '2023-09-01', changes: ['Initial release', 'Basic skill functionality'] },

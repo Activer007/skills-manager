@@ -69,14 +69,14 @@ export const Modal = ({
         isOpen && "modal-open"
       )}
     >
-      <div className={cn("modal-box bg-white dark:bg-base-100 p-0 overflow-hidden relative", className)}>
+      <div className={cn("modal-box bg-white dark:bg-base-100 p-0 overflow-hidden relative shadow-2xl rounded-2xl border border-gray-100 dark:border-base-300 max-w-lg", className)}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-base-200">
-          <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100">{title}</h3>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-base-200 bg-white dark:bg-base-100">
+          <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 leading-none">{title}</h3>
           <Button
             variant="ghost"
             size="sm"
-            className="btn-circle btn-sm"
+            className="btn-circle btn-sm hover:bg-slate-100 dark:hover:bg-base-200 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             onClick={onClose}
           >
             <X size={20} />
@@ -90,12 +90,12 @@ export const Modal = ({
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 py-4 bg-gray-50 dark:bg-base-200/50 flex justify-end gap-2 border-t border-gray-100 dark:border-base-200">
+          <div className="px-6 py-4 bg-gray-50 dark:bg-base-200/50 flex justify-end gap-3 border-t border-gray-100 dark:border-base-200">
             {footer}
           </div>
         )}
       </div>
-      <form method="dialog" className="modal-backdrop">
+      <form method="dialog" className="modal-backdrop bg-black/40 backdrop-blur-sm">
         <button>close</button>
       </form>
     </dialog>,

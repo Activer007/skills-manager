@@ -31,7 +31,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          'btn font-medium normal-case transition-all duration-200',
+          'btn font-medium normal-case transition-all duration-200 rounded-lg',
           variants[variant],
           sizes[size],
           className

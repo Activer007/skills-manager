@@ -4,7 +4,7 @@ import { Modal } from './ui/Modal';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { useInstallSkill } from '../hooks/useSkills';
-import { toast } from 'sonner';
+import { toast } from '../store/useToastStore';
 import { Download, AlertTriangle } from 'lucide-react';
 import type { MarketplaceSkill } from '../types';
 

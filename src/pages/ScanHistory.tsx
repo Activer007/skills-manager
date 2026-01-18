@@ -1,14 +1,15 @@
 import { useState, useMemo } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
 import type { CSSProperties } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { ShieldAlert, ShieldCheck, ShieldBan, RefreshCw, Search, Download, Filter } from 'lucide-react';
+
 import type { ScanRecord } from '../types/security';
 import { isSafeScore, isRiskScore } from '../types/security';
-import { ShieldAlert, ShieldCheck, ShieldBan, RefreshCw, Search, Download, Filter } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '../store/useToastStore';
 
 export default function ScanHistory() {
   const { i18n } = useTranslation();
