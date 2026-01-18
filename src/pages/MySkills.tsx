@@ -15,6 +15,8 @@ import { Button } from '../components/ui/Button';
 import { SlideOver } from '../components/ui/SlideOver';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/Tabs';
+import { EmptyState } from '../components/ui/EmptyState';
 import { cn } from '../utils/cn';
 import { SkeletonCard } from '../components/SkeletonCard';
 import { QualityScoreCard } from '../components/SkillQuality/QualityScoreCard';
@@ -392,33 +394,22 @@ const MySkills = () => {
         </Button>
       </div>
 
-      <div className="border-b border-gray-200 dark:border-base-300">
-        <div className="flex gap-6 overflow-x-auto">
-            {[ 
-                { id: 'all', label: i18n.language === 'zh' ? '全部' : 'All' },
-                { id: 'system', label: t('systemLevel') },
-                { id: 'project', label: t('projectLevel') }
-            ].map(tab => (
-                 <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as 'all' | 'system' | 'project')}
-                    className={cn(
-                        "pb-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
-                        activeTab === tab.id
-                            ? "border-primary text-primary"
-                            : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                    )}
-                >
-                    {tab.label}
-                    <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-base-200 text-xs text-slate-600 dark:text-slate-400">
-                        {tab.id === 'all' ? installedSkills.length : installedSkills.filter(s => s.type === tab.id).length}
-                    </span>
-                </button>
-            ))}
-        </div>
-      </div>
+      {/* Tabs - Using new Tabs component */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'all' | 'system' | 'project')}>
+        <TabsList variant="underline">
+          <TabsTrigger value="all" badge={installedSkills.length}>
+            {i18n.language === 'zh' ? '全部' : 'All'}
+          </TabsTrigger>
+          <TabsTrigger value="system" badge={installedSkills.filter(s => s.type === 'system').length}>
+            {t('systemLevel')}
+          </TabsTrigger>
+          <TabsTrigger value="project" badge={installedSkills.filter(s => s.type === 'project').length}>
+            {t('projectLevel')}
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="space-y-3">
+        <TabsContent value="all" className="mt-4">
+          <div className="space-y-3">
         {isLoading ? (
            <div className="space-y-4">
              <SkeletonCard count={3} />
@@ -442,21 +433,83 @@ const MySkills = () => {
                 />
             ))
         ) : (
-             <div className="text-center py-20 bg-white dark:bg-base-100 rounded-xl border border-dashed border-gray-200 dark:border-base-300">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="p-4 rounded-full bg-slate-50 dark:bg-base-200 text-slate-400">
-                        <FolderOpen size={32} />
-                    </div>
-                    <p className="text-slate-500 font-medium">
-                      {i18n.language === 'zh'
-                        ? `暂无 ${activeTab !== 'all' && (activeTab === 'system' ? '系统级' : '项目级')} Skills`
-                        : `No ${activeTab !== 'all' ? activeTab : ''} Skills found`
-                      }
-                    </p>
-                </div>
-            </div>
+          <EmptyState
+            icon={<FolderOpen />}
+            title={i18n.language === 'zh' ? `暂无 Skills` : 'No Skills found'}
+            description={i18n.language === 'zh' ? '开始添加您的第一个 Skill 吧' : 'Start adding your first skill'}
+          />
         )}
       </div>
+      </TabsContent>
+
+      <TabsContent value="system" className="mt-4">
+        <div className="space-y-3">
+        {isLoading ? (
+           <div className="space-y-4">
+             <SkeletonCard count={3} />
+           </div>
+        ) : filteredSkills.filter(s => s.type === 'system').length > 0 ? (
+            filteredSkills.filter(s => s.type === 'system').map(skill => (
+                <SkillCard
+                    key={skill.id}
+                    skill={{...skill, description: getLocalizedDescription(skill, i18n.language)}}
+                    viewMode="list"
+                    isInstalled={true}
+                    isActive={skill.enabled ?? true}
+                    onUninstall={async () => {
+                      handleUninstall(skill);
+                    }}
+                    onViewDetails={() => handleViewSkill(skill, 'overview')}
+                    onConfigure={() => handleViewSkill(skill, 'config')}
+                    onToggle={async () => {
+                      await handleToggleSkill(skill);
+                    }}
+                />
+            ))
+        ) : (
+          <EmptyState
+            icon={<FolderOpen />}
+            title={i18n.language === 'zh' ? '暂无系统级 Skills' : 'No System-level Skills found'}
+            description={i18n.language === 'zh' ? '从市场导入或添加项目路径' : 'Import from marketplace or add project path'}
+          />
+        )}
+      </div>
+      </TabsContent>
+
+      <TabsContent value="project" className="mt-4">
+        <div className="space-y-3">
+        {isLoading ? (
+           <div className="space-y-4">
+             <SkeletonCard count={3} />
+           </div>
+        ) : filteredSkills.filter(s => s.type === 'project').length > 0 ? (
+            filteredSkills.filter(s => s.type === 'project').map(skill => (
+                <SkillCard
+                    key={skill.id}
+                    skill={{...skill, description: getLocalizedDescription(skill, i18n.language)}}
+                    viewMode="list"
+                    isInstalled={true}
+                    isActive={skill.enabled ?? true}
+                    onUninstall={async () => {
+                      handleUninstall(skill);
+                    }}
+                    onViewDetails={() => handleViewSkill(skill, 'overview')}
+                    onConfigure={() => handleViewSkill(skill, 'config')}
+                    onToggle={async () => {
+                      await handleToggleSkill(skill);
+                    }}
+                />
+            ))
+        ) : (
+          <EmptyState
+            icon={<FolderOpen />}
+            title={i18n.language === 'zh' ? '暂无项目级 Skills' : 'No Project-level Skills found'}
+            description={i18n.language === 'zh' ? '在设置中添加项目路径' : 'Add project paths in settings'}
+          />
+        )}
+      </div>
+      </TabsContent>
+      </Tabs>
 
       {/* View SlideOver */} 
       <SlideOver
