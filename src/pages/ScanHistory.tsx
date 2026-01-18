@@ -1,17 +1,19 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
-import type { CSSProperties } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
-import { ShieldAlert, ShieldCheck, ShieldBan, RefreshCw, Search, Download, Filter } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, ShieldBan, RefreshCw, Search, Download, History } from 'lucide-react';
 
 import type { ScanRecord } from '../types/security';
 import { isSafeScore, isRiskScore } from '../types/security';
 import { toast } from '../store/useToastStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/Tabs';
+import { EmptyState } from '../components/ui/EmptyState';
+import { CircularProgress } from '../components/ui/Progress';
 
 export default function ScanHistory() {
   const { i18n } = useTranslation();
@@ -170,25 +172,15 @@ export default function ScanHistory() {
               />
             </div>
 
-            <div className="flex gap-2 w-full sm:w-auto">
-              <div className="dropdown dropdown-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  tabIndex={0}
-                  role="button"
-                  className="gap-2"
-                >
-                  <Filter className="w-4 h-4" />
-                  {levelFilter === 'All' ? (i18n.language === 'zh' ? '所有状态' : 'All Status') : levelFilter}
-                </Button>
-                <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-200">
-                  <li><a className={levelFilter === 'All' ? 'active' : ''} onClick={() => setLevelFilter('All')}>{i18n.language === 'zh' ? '所有状态' : 'All Status'}</a></li>
-                  <li><a className={levelFilter === 'Safe' ? 'active' : ''} onClick={() => setLevelFilter('Safe')}>Safe (Score ≥ 70)</a></li>
-                  <li><a className={levelFilter === 'Risk' ? 'active' : ''} onClick={() => setLevelFilter('Risk')}>Risk (Score &lt; 70)</a></li>
-                  <li><a className={levelFilter === 'Blocked' ? 'active' : ''} onClick={() => setLevelFilter('Blocked')}>Blocked</a></li>
-                </ul>
-              </div>
+            <div className="w-full sm:w-auto">
+              <Tabs value={levelFilter} onValueChange={(value) => setLevelFilter(value as 'All' | 'Safe' | 'Risk' | 'Blocked')}>
+                <TabsList variant="pills" className="w-full sm:w-auto">
+                  <TabsTrigger value="All">{i18n.language === 'zh' ? '全部' : 'All'}</TabsTrigger>
+                  <TabsTrigger value="Safe">Safe (≥70)</TabsTrigger>
+                  <TabsTrigger value="Risk">Risk (&lt;70)</TabsTrigger>
+                  <TabsTrigger value="Blocked">Blocked</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
           </div>
 
@@ -214,12 +206,12 @@ export default function ScanHistory() {
                       {record.skill_name}
                     </td>
                     <td>
-                        <div
-                          className="radial-progress text-primary text-xs"
-                          style={{ '--value': record.score, '--size': '2rem' } as CSSProperties}
-                        >
-                            {record.score}
-                        </div>
+                        <CircularProgress
+                          value={record.score}
+                          size="sm"
+                          showPercentage={true}
+                          colorScheme={record.score >= 70 ? 'green' : record.score >= 50 ? 'orange' : 'red'}
+                        />
                     </td>
                     <td className={`font-bold ${getLevelColor(record.level)}`}>{record.level}</td>
                     <td>{record.issues_count}</td>
@@ -242,10 +234,18 @@ export default function ScanHistory() {
                 ))}
                 {filteredData.length === 0 && (
                     <tr>
-                        <td colSpan={6} className="text-center py-12 opacity-50">
-                            {searchTerm || levelFilter !== 'All' 
-                              ? (i18n.language === 'zh' ? '未找到匹配的记录' : 'No matching records found')
-                              : (i18n.language === 'zh' ? '暂无扫描记录' : 'No scan history')}
+                        <td colSpan={6} className="p-0">
+                            <EmptyState
+                                variant="minimal"
+                                size="sm"
+                                icon={searchTerm || levelFilter !== 'All' ? <Search /> : <History />}
+                                title={searchTerm || levelFilter !== 'All'
+                                  ? (i18n.language === 'zh' ? '未找到匹配的记录' : 'No matching records')
+                                  : (i18n.language === 'zh' ? '暂无扫描记录' : 'No scan history')}
+                                description={searchTerm || levelFilter !== 'All'
+                                  ? (i18n.language === 'zh' ? '尝试调整搜索关键词或筛选条件' : 'Try adjusting your search or filters')
+                                  : (i18n.language === 'zh' ? '开始扫描您的 Skills 吧' : 'Start scanning your skills')}
+                            />
                         </td>
                     </tr>
                 )}
