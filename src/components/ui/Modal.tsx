@@ -11,6 +11,8 @@ interface ModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   className?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  animation?: boolean;
 }
 
 export const Modal = ({
@@ -20,8 +22,24 @@ export const Modal = ({
   children,
   footer,
   className,
+  size = 'lg',
+  animation = true,
 }: ModalProps) => {
   const modalRef = useRef<HTMLDialogElement>(null);
+
+  // 尺寸映射
+  const sizeClasses = {
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-xl',
+    full: 'max-w-full mx-4',
+  };
+
+  // 动画类
+  const animationClasses = animation
+    ? 'animate-in fade-in zoom-in-95 duration-normal'
+    : '';
 
   useEffect(() => {
     const modal = modalRef.current;
@@ -69,7 +87,15 @@ export const Modal = ({
         isOpen && "modal-open"
       )}
     >
-      <div className={cn("modal-box bg-white dark:bg-base-100 p-0 overflow-hidden relative shadow-2xl rounded-2xl border border-gray-100 dark:border-base-300 max-w-lg", className)}>
+      <div className={cn(
+        // 统一圆角：rounded-lg (12px)
+        // 统一阴影：shadow-2xl
+        // 动画效果
+        "modal-box bg-white dark:bg-base-100 p-0 overflow-hidden relative shadow-2xl rounded-lg border border-gray-100 dark:border-base-300",
+        sizeClasses[size],
+        animationClasses,
+        className
+      )}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-base-200 bg-white dark:bg-base-100">
           <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 leading-none">{title}</h3>

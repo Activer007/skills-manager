@@ -7,7 +7,10 @@ const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     <div
       ref={ref}
       className={cn(
-        'card bg-white dark:bg-base-100 border border-gray-100 dark:border-base-200 shadow-sm hover:shadow-md transition-shadow duration-300 rounded-2xl',
+        // 统一使用 rounded-lg (12px) 而非 rounded-2xl (16px)
+        // 统一阴影：shadow-sm（默认）/shadow-md（悬停）
+        // 统一过渡：duration-normal (200ms)
+        'bg-white dark:bg-base-100 border border-gray-100 dark:border-base-200 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-base-300 rounded-lg transition-all duration-normal',
         className
       )}
       {...props}

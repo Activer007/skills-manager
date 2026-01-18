@@ -1,3 +1,9 @@
+/* ========================================
+ * Design Tokens - 统一的设计规范
+ * 必须在 Tailwind 之前导入
+ * ======================================== */
+@import './styles/design-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
