@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill } from '../hooks/useSkills';
 import { useSkillConfig } from '../hooks/useSkillConfig';
 import { useBatchSkillQuality } from '../hooks/useSkillQuality';
-import { X, Github, HardDrive, Plus, FolderOpen, FileText, Settings, Shield, History, ToyBrick } from 'lucide-react';
+import { Github, HardDrive, Plus, FolderOpen, FileText, Settings, Shield, History, ToyBrick } from 'lucide-react';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
@@ -13,6 +13,8 @@ import { toast } from '../store/useToastStore';
 import { SkillCard } from '../components/SkillCard';
 import { Button } from '../components/ui/Button';
 import { SlideOver } from '../components/ui/SlideOver';
+import { Modal } from '../components/ui/Modal';
+import { Input } from '../components/ui/Input';
 import { cn } from '../utils/cn';
 import { SkeletonCard } from '../components/SkeletonCard';
 import { QualityScoreCard } from '../components/SkillQuality/QualityScoreCard';
@@ -20,6 +22,7 @@ import SecurityReportCard from '../components/SecurityReportCard';
 import type { SkillScore } from '../types/scorer';
 import type { SecurityReport } from '../types/security';
 import { inferSchemaFromValues } from '../utils/schemaInference';
+import ModalDialog from '../components/common/ModalDialog';
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) {
@@ -85,6 +88,14 @@ const MySkills = () => {
   const [importPath, setImportPath] = useState('');
   const [securityReport, setSecurityReport] = useState<SecurityReport | null>(null);
   const [isScanningSecurity, setIsScanningSecurity] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: React.ReactNode;
+    onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    isDestructive?: boolean;
+  } | null>(null);
 
   // Load config for selected skill
   const { config: skillConfig, updateConfig, isUpdating: isConfigUpdating } = useSkillConfig(selectedSkill ? selectedSkill.id : null);
@@ -148,34 +159,43 @@ const MySkills = () => {
   }, [qualityScores, skillPaths]);
 
 
-  const handleUninstall = async (skill: InstalledSkill) => {
+  const handleUninstall = (skill: InstalledSkill) => {
     if (uninstallMutation.isPending) return;
 
-    const confirmed = window.confirm(
-      i18n.language === 'zh'
-        ? `⚠️ 确认删除\n\n你确定要删除 Skill "${skill.name}" 吗？\n\n此操作将删除以下内容：\n• Skill 文件夹及所有文件\n• 相关配置信息\n\n此操作无法撤销！`
-        : `⚠️ Confirm Deletion\n\nAre you sure you want to delete the skill "${skill.name}"?\n\nThis will remove:\n• Skill folder and all files\n• Related configuration\n\nThis action cannot be undone!`
-    );
-
-    if (!confirmed) return;
-
-    try {
-      await uninstallMutation.mutateAsync(skill.localPath);
-      toast.success(`${skill.name} 已成功删除`);
-    } catch (error: unknown) {
-      toast.error(`删除失败: ${getErrorMessage(error)}`);
-    }
+    setConfirmDialog({
+      title: i18n.language === 'zh' ? '确认删除' : 'Confirm Deletion',
+      message: (
+        <div className="space-y-3 text-left text-sm text-slate-600 dark:text-slate-400">
+          <p>
+            {i18n.language === 'zh'
+              ? `你确定要删除 Skill "${skill.name}" 吗？`
+              : `Are you sure you want to delete the skill "${skill.name}"?`}
+          </p>
+          <ul className="list-disc pl-4 space-y-1">
+            <li>{i18n.language === 'zh' ? 'Skill 文件夹及所有文件' : 'Skill folder and all files'}</li>
+            <li>{i18n.language === 'zh' ? '相关配置信息' : 'Related configuration'}</li>
+          </ul>
+          <p className="font-medium text-error">
+            {i18n.language === 'zh' ? '此操作无法撤销！' : 'This action cannot be undone!'}
+          </p>
+        </div>
+      ),
+      confirmText: i18n.language === 'zh' ? '删除' : 'Delete',
+      cancelText: i18n.language === 'zh' ? '取消' : 'Cancel',
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await uninstallMutation.mutateAsync(skill.localPath);
+          toast.success(`${skill.name} 已成功删除`);
+        } catch (error: unknown) {
+          toast.error(`删除失败: ${getErrorMessage(error)}`);
+        }
+      },
+    });
   };
 
-  const handleImport = async () => {
-    const confirmed = window.confirm(
-      i18n.language === 'zh'
-        ? `⚠️ 安全提示\n\n当前版本已启用安全检查功能。\n\n导入前会自动扫描 Skill 内容，检测以下危险模式：\n• 破坏性操作（如 rm -rf /）\n• 远程代码执行（如 curl | sh）\n• 命令注入（如 eval()）\n• 数据泄露风险\n\n如检测到硬触发危险代码，将阻止导入。\n\n是否继续导入？`
-        : `⚠️ Security Notice\n\nSecurity scanning is enabled. The skill will be scanned for:\n• Destructive operations (e.g., rm -rf /)\n• Remote code execution (e.g., curl | sh)\n• Command injection (e.g., eval())\n• Data exfiltration risks\n\nImport will be blocked if critical patterns are detected.\n\nContinue importing?`
-    );
-
-    if (!confirmed) return;
-
+  const performImport = async () => {
     try {
       if (importType === 'github') {
         await importGithubMutation.mutateAsync({
@@ -193,6 +213,38 @@ const MySkills = () => {
     } catch (error: unknown) {
       toast.error(`导入失败: ${getErrorMessage(error)}`);
     }
+  };
+
+  const handleImport = () => {
+    setConfirmDialog({
+      title: i18n.language === 'zh' ? '安全提示' : 'Security Notice',
+      message: (
+        <div className="space-y-3 text-left text-sm text-slate-600 dark:text-slate-400">
+          <p>
+            {i18n.language === 'zh'
+              ? '当前版本已启用安全检查功能。导入前会自动扫描 Skill 内容，检测以下危险模式：'
+              : 'Security scanning is enabled. The skill will be scanned for:'}
+          </p>
+          <ul className="list-disc pl-4 space-y-1">
+            <li>{i18n.language === 'zh' ? '破坏性操作（如 rm -rf /）' : 'Destructive operations (e.g., rm -rf /)'}</li>
+            <li>{i18n.language === 'zh' ? '远程代码执行（如 curl | sh）' : 'Remote code execution (e.g., curl | sh)'}</li>
+            <li>{i18n.language === 'zh' ? '命令注入（如 eval()）' : 'Command injection (e.g., eval())'}</li>
+            <li>{i18n.language === 'zh' ? '数据泄露风险' : 'Data exfiltration risks'}</li>
+          </ul>
+          <p className="font-medium text-slate-700 dark:text-slate-300">
+            {i18n.language === 'zh'
+              ? '如检测到硬触发危险代码，将阻止导入。是否继续导入？'
+              : 'Import will be blocked if critical patterns are detected. Continue importing?'}
+          </p>
+        </div>
+      ),
+      confirmText: i18n.language === 'zh' ? '继续导入' : 'Continue Import',
+      cancelText: i18n.language === 'zh' ? '取消' : 'Cancel',
+      onConfirm: () => {
+        setConfirmDialog(null);
+        void performImport();
+      },
+    });
   };
 
   const filteredSkills = installedSkills.filter(skill => {
@@ -433,11 +485,13 @@ const MySkills = () => {
         {selectedSkill && (
             <div className="space-y-6">
                 {/* Tabs Header */} 
-                <div className="flex items-center gap-1 border-b border-gray-100 dark:border-base-200 mb-6">
-                    <button
+                <div className="flex flex-wrap items-center gap-1 border-b border-gray-100 dark:border-base-200 mb-6">
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setActiveSlideTab('overview')}
                         className={cn(
-                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                            "rounded-none border-b-2 px-4",
                             activeSlideTab === 'overview'
                                 ? "border-primary text-primary"
                                 : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
@@ -445,11 +499,13 @@ const MySkills = () => {
                     >
                         <FileText size={16} />
                         Overview
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setActiveSlideTab('config')}
                         className={cn(
-                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                            "rounded-none border-b-2 px-4",
                             activeSlideTab === 'config'
                                 ? "border-primary text-primary"
                                 : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
@@ -457,11 +513,13 @@ const MySkills = () => {
                     >
                         <Settings size={16} />
                         Configuration
-                    </button>
-                     <button
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setActiveSlideTab('security')}
                         className={cn(
-                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                            "rounded-none border-b-2 px-4",
                             activeSlideTab === 'security'
                                 ? "border-primary text-primary"
                                 : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
@@ -469,11 +527,13 @@ const MySkills = () => {
                     >
                         <Shield size={16} />
                         Security
-                    </button>
-                     <button
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setActiveSlideTab('hooks')}
                         className={cn(
-                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                            "rounded-none border-b-2 px-4",
                             activeSlideTab === 'hooks'
                                 ? "border-primary text-primary"
                                 : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
@@ -482,11 +542,13 @@ const MySkills = () => {
                         <ToyBrick size={16} />
                         Hooks
                         <span className="bg-slate-100 dark:bg-base-200 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded text-[10px]">New</span>
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setActiveSlideTab('changelog')}
                         className={cn(
-                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                            "rounded-none border-b-2 px-4",
                             activeSlideTab === 'changelog'
                                 ? "border-primary text-primary"
                                 : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
@@ -494,7 +556,7 @@ const MySkills = () => {
                     >
                         <History size={16} />
                         Changelog
-                    </button>
+                    </Button>
                 </div>
 
                 {/* Tab Content */} 
@@ -599,156 +661,145 @@ const MySkills = () => {
       </SlideOver>
 
       {/* Import Modal */} 
-      {showImportModal && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-lg bg-white dark:bg-base-100">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-xl text-slate-900 dark:text-slate-100">{t('importSkill')}</h3>
-              <button
-                className="btn btn-sm btn-circle btn-ghost"
-                onClick={closeImportModal}
+      <Modal
+        isOpen={showImportModal}
+        onClose={closeImportModal}
+        title={t('importSkill')}
+        footer={
+          !importType ? (
+            <Button variant="ghost" onClick={closeImportModal}>
+              {i18n.language === 'zh' ? '关闭' : 'Close'}
+            </Button>
+          ) : (
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setImportType(null);
+                  setImportUrl('');
+                  setImportPath('');
+                }}
               >
-                <X size={20} />
-              </button>
+                {i18n.language === 'zh' ? '返回' : 'Back'}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleImport}
+                disabled={
+                  importGithubMutation.isPending ||
+                  importLocalMutation.isPending ||
+                  (importType === 'github' ? !importUrl.trim() : !importPath.trim())
+                }
+                isLoading={importGithubMutation.isPending || importLocalMutation.isPending}
+              >
+                {(importGithubMutation.isPending || importLocalMutation.isPending) ? (
+                  t('importing')
+                ) : (
+                  <>
+                    <Plus size={18} className="mr-2" />
+                    {i18n.language === 'zh' ? '确认导入' : 'Confirm Import'}
+                  </>
+                )}
+              </Button>
+            </div>
+          )
+        }
+      >
+        {!importType ? (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-500 mb-4">
+              {i18n.language === 'zh' ? '选择导入方式：' : 'Select import method:'}
+            </p>
+
+            <button
+              type="button"
+              className="w-full text-left card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
+              onClick={() => setImportType('github')}
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
+                  <Github size={24} />
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-base mb-1 text-slate-900 dark:text-slate-100">{t('importFromGitHub')}</div>
+                  <div className="text-sm text-slate-500">
+                    {i18n.language === 'zh'
+                      ? '输入 GitHub 仓库 URL，支持完整仓库或子目录'
+                      : 'Enter GitHub repository URL, supports full repo or subdirectory'}
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className="w-full text-left card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
+              onClick={() => setImportType('local')}
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
+                  <HardDrive size={24} />
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-base mb-1 text-slate-900 dark:text-slate-100">{t('importFromLocal')}</div>
+                  <div className="text-sm text-slate-500">
+                    {i18n.language === 'zh'
+                      ? '选择本地文件夹路径，必须包含 SKILL.md 文件'
+                      : 'Select local folder path, must contain SKILL.md file'}
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
+              <div className="flex items-center gap-3">
+                {importType === 'github' ? <Github size={20} /> : <HardDrive size={20} />}
+                <span className="text-sm font-medium">
+                  {importType === 'github' ? t('importFromGitHub') : t('importFromLocal')}
+                </span>
+              </div>
             </div>
 
-            {!importType ? (
-              <div className="space-y-3">
-                <p className="text-sm text-slate-500 mb-4">
-                  {i18n.language === 'zh' ? '选择导入方式：' : 'Select import method:'}
-                </p>
-
-                <div
-                  className="card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
-                  onClick={() => setImportType('github')}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
-                      <Github size={24} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-base mb-1 text-slate-900 dark:text-slate-100">{t('importFromGitHub')}</div>
-                      <div className="text-sm text-slate-500">
-                        {i18n.language === 'zh'
-                          ? '输入 GitHub 仓库 URL，支持完整仓库或子目录'
-                          : 'Enter GitHub repository URL, supports full repo or subdirectory'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  className="card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
-                  onClick={() => setImportType('local')}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
-                      <HardDrive size={24} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-base mb-1 text-slate-900 dark:text-slate-100">{t('importFromLocal')}</div>
-                      <div className="text-sm text-slate-500">
-                        {i18n.language === 'zh'
-                          ? '选择本地文件夹路径，必须包含 SKILL.md 文件'
-                          : 'Select local folder path, must contain SKILL.md file'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {importType === 'github' ? (
+              <Input
+                label={i18n.language === 'zh' ? 'GitHub 仓库 URL' : 'GitHub Repository URL'}
+                placeholder="https://github.com/username/skill-name"
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                helperText={i18n.language === 'zh'
+                  ? '仓库必须包含 SKILL.md 文件'
+                  : 'Repository must contain SKILL.md file'}
+                autoFocus
+              />
             ) : (
-              <div className="space-y-6">
-                <div
-                  className="alert alert-info bg-info/10 text-info border-info/20"
-                >
-                  <div className="flex items-center gap-3">
-                    {importType === 'github' ? <Github size={20} /> : <HardDrive size={20} />}
-                    <span className="text-sm font-medium">
-                      {importType === 'github' ? t('importFromGitHub') : t('importFromLocal')}
-                    </span>
-                  </div>
-                </div>
-
-                {importType === 'github' ? (
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
-                        {i18n.language === 'zh' ? 'GitHub 仓库 URL' : 'GitHub Repository URL'}
-                      </span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="https://github.com/username/skill-name"
-                      className="input input-bordered w-full bg-white dark:bg-base-100"
-                      value={importUrl}
-                      onChange={(e) => setImportUrl(e.target.value)}
-                      autoFocus
-                    />
-                    <label className="label">
-                      <span className="label-text-alt text-slate-400">
-                        {i18n.language === 'zh'
-                          ? '仓库必须包含 SKILL.md 文件'
-                          : 'Repository must contain SKILL.md file'}
-                      </span>
-                    </label>
-                  </div>
-                ) : (
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
-                        {i18n.language === 'zh' ? '本地文件夹路径' : 'Local Folder Path'}
-                      </span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="C:\\Users\\User\\Downloads\\my-skill"
-                      className="input input-bordered w-full bg-white dark:bg-base-100"
-                      value={importPath}
-                      onChange={(e) => setImportPath(e.target.value)}
-                      autoFocus
-                    />
-                    <label className="label">
-                      <span className="label-text-alt text-slate-400">
-                        {i18n.language === 'zh'
-                          ? '文件夹必须包含 SKILL.md 文件'
-                          : 'Folder must contain SKILL.md file'}
-                      </span>
-                    </label>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setImportType(null);
-                      setImportUrl('');
-                      setImportPath('');
-                    }}
-                  >
-                    {i18n.language === 'zh' ? '返回' : 'Back'}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleImport}
-                    disabled={importGithubMutation.isPending || importLocalMutation.isPending || (importType === 'github' ? !importUrl.trim() : !importPath.trim())}
-                    isLoading={importGithubMutation.isPending || importLocalMutation.isPending}
-                  >
-                    {(importGithubMutation.isPending || importLocalMutation.isPending) ? (
-                      t('importing')
-                    ) : (
-                      <>
-                        <Plus size={18} className="mr-2" />
-                        {i18n.language === 'zh' ? '确认导入' : 'Confirm Import'}
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
+              <Input
+                label={i18n.language === 'zh' ? '本地文件夹路径' : 'Local Folder Path'}
+                placeholder="C:\\Users\\User\\Downloads\\my-skill"
+                value={importPath}
+                onChange={(e) => setImportPath(e.target.value)}
+                helperText={i18n.language === 'zh'
+                  ? '文件夹必须包含 SKILL.md 文件'
+                  : 'Folder must contain SKILL.md file'}
+                autoFocus
+              />
             )}
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
+
+      <ModalDialog
+        isOpen={!!confirmDialog}
+        title={confirmDialog?.title ?? ''}
+        message={confirmDialog?.message ?? ''}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+        confirmText={confirmDialog?.confirmText}
+        cancelText={confirmDialog?.cancelText}
+        isDestructive={confirmDialog?.isDestructive}
+        type={confirmDialog?.isDestructive ? 'confirm' : 'info'}
+      />
     </div>
   );
 };

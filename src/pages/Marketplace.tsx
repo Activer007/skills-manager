@@ -18,6 +18,7 @@ import { AutoSizer } from 'react-virtualized-auto-sizer';
 import type { CSSProperties } from 'react';
 
 import { ImportSkillModal } from '../components/ImportSkillModal';
+import ModalDialog from '../components/common/ModalDialog';
 
 // 常量定义
 const TOP_RATED_THRESHOLD = 50; // Stars threshold for top-rated filter
@@ -91,6 +92,7 @@ const Marketplace = () => {
   const [selectedSkill, setSelectedSkill] = useState<MarketplaceSkill | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [pendingInstall, setPendingInstall] = useState<MarketplaceSkill | null>(null);
 
   const isGithubUrl = useMemo(() => {
     return GITHUB_URL_REGEX.test(searchTerm);
@@ -98,24 +100,22 @@ const Marketplace = () => {
 
   const handleInstall = useCallback(async (skill: MarketplaceSkill) => {
     if (installMutation.isPending) return;
+    setPendingInstall(skill);
+  }, [installMutation.isPending]);
 
-    const confirmed = window.confirm(
-      i18n.language === 'zh'
-        ? `⚠️ 安全提示\n\n当前版本已启用安全检查功能。\n\n安装前会自动扫描 Skill 内容，检测以下危险模式：\n• 破坏性操作（如 rm -rf /）\n• 远程代码执行（如 curl | sh）\n• 命令注入（如 eval()）\n• 数据泄露风险\n\n如检测到硬触发危险代码，将阻止安装。\n\n是否继续安装 ${skill.name}？`
-        : `⚠️ Security Notice\n\nSecurity scanning is enabled. The skill will be scanned for:\n• Destructive operations (e.g., rm -rf /)\n• Remote code execution (e.g., curl | sh)\n• Command injection (e.g., eval())\n• Data exfiltration risks\n\nInstallation will be blocked if critical patterns are detected.\n\nContinue installing ${skill.name}?`
-    );
-
-    if (!confirmed) return;
-
+  const confirmInstall = async () => {
+    if (!pendingInstall) return;
     try {
-        await installMutation.mutateAsync(skill);
-        toast.success(i18n.language === 'zh' ? `${skill.name} 安装成功！` : `${skill.name} installed successfully!`);
+      await installMutation.mutateAsync(pendingInstall);
+      toast.success(i18n.language === 'zh' ? `${pendingInstall.name} 安装成功！` : `${pendingInstall.name} installed successfully!`);
     } catch (error: unknown) {
-        console.error('Installation error:', error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        toast.error(i18n.language === 'zh' ? `安装失败: ${errorMessage}` : `Installation failed: ${errorMessage}`);
+      console.error('Installation error:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(i18n.language === 'zh' ? `安装失败: ${errorMessage}` : `Installation failed: ${errorMessage}`);
+    } finally {
+      setPendingInstall(null);
     }
-  }, [installMutation, i18n.language]);
+  };
 
   const handleOpenSource = async (url: string) => {
     try {
@@ -529,6 +529,36 @@ const Marketplace = () => {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         initialUrl={isGithubUrl ? searchTerm : undefined}
+      />
+
+      <ModalDialog
+        isOpen={!!pendingInstall}
+        title={i18n.language === 'zh' ? '安全提示' : 'Security Notice'}
+        message={
+          <div className="space-y-3 text-left text-sm text-slate-600 dark:text-slate-400">
+            <p>
+              {i18n.language === 'zh'
+                ? '当前版本已启用安全检查功能。安装前会自动扫描 Skill 内容，检测以下危险模式：'
+                : 'Security scanning is enabled. The skill will be scanned for:'}
+            </p>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>{i18n.language === 'zh' ? '破坏性操作（如 rm -rf /）' : 'Destructive operations (e.g., rm -rf /)'}</li>
+              <li>{i18n.language === 'zh' ? '远程代码执行（如 curl | sh）' : 'Remote code execution (e.g., curl | sh)'}</li>
+              <li>{i18n.language === 'zh' ? '命令注入（如 eval()）' : 'Command injection (e.g., eval())'}</li>
+              <li>{i18n.language === 'zh' ? '数据泄露风险' : 'Data exfiltration risks'}</li>
+            </ul>
+            <p className="font-medium text-slate-700 dark:text-slate-300">
+              {i18n.language === 'zh'
+                ? `是否继续安装 ${pendingInstall?.name ?? ''}？`
+                : `Continue installing ${pendingInstall?.name ?? ''}?`}
+            </p>
+          </div>
+        }
+        confirmText={i18n.language === 'zh' ? '继续安装' : 'Continue Install'}
+        cancelText={i18n.language === 'zh' ? '取消' : 'Cancel'}
+        onConfirm={confirmInstall}
+        onCancel={() => setPendingInstall(null)}
+        type="confirm"
       />
     </div>
   );

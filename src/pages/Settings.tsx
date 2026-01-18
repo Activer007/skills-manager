@@ -5,6 +5,9 @@ import { useSkillStore } from '../store/useSkillStore';
 import { Plus, X, FolderOpen, ExternalLink, Package } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from '../store/useToastStore';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 
 const Settings = () => {
   const { t, i18n } = useTranslation();
@@ -257,11 +260,11 @@ const Settings = () => {
                   <span className="text-sm text-base-content/70">
                     {i18n.language === 'zh' ? '项目仓库' : 'Repository'}
                   </span>
-                  <a
-                    href="https://github.com/Activer007/skills-manager"
-                    className="btn btn-sm btn-ghost gap-1"
-                    onClick={async (e) => {
-                      e.preventDefault();
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="gap-1"
+                    onClick={async () => {
                       try {
                         await invoke('open_url', { url: 'https://github.com/Activer007/skills-manager' });
                       } catch (error) {
@@ -271,7 +274,7 @@ const Settings = () => {
                   >
                     <ExternalLink size={14} />
                     GitHub
-                  </a>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -296,11 +299,11 @@ const Settings = () => {
                         : 'Command-line Skill management tool with smart search, installation, and built-in skill marketplace.'
                       }
                     </p>
-                    <a
-                      href="https://github.com/buzhangsan/skill-manager"
-                      className="btn btn-sm btn-primary gap-1 w-full"
-                      onClick={async (e) => {
-                        e.preventDefault();
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="gap-1 w-full"
+                      onClick={async () => {
                         try {
                           await invoke('open_url', { url: 'https://github.com/buzhangsan/skill-manager' });
                         } catch (error) {
@@ -310,7 +313,7 @@ const Settings = () => {
                     >
                       <ExternalLink size={14} />
                       {i18n.language === 'zh' ? '查看项目' : 'View Project'}
-                    </a>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -340,53 +343,52 @@ const Settings = () => {
                   <div key={index} className="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
                     <FolderOpen size={18} className="text-base-content/60 shrink-0" />
                     <span className="flex-1 font-mono text-sm break-all">{path}</span>
-                    <button
-                      className="btn btn-sm btn-ghost text-error"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-error"
                       onClick={() => handleRemovePath(path)}
                     >
                       <X size={16} />
-                    </button>
+                    </Button>
                   </div>
                 ))
               )}
             </div>
 
             {/* 添加新路径 */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">
-                  {i18n.language === 'zh' ? '添加新的项目路径' : 'Add New Project Path'}
-                </span>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                {i18n.language === 'zh' ? '添加新的项目路径' : 'Add New Project Path'}
               </label>
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder={i18n.language === 'zh'
-                    ? '例如: C:\\Projects\\MyApp 或 /Users/name/Projects/MyApp'
-                    : 'e.g., C:\\Projects\\MyApp or /Users/name/Projects/MyApp'
-                  }
-                  className="input input-bordered flex-1"
-                  value={newPath}
-                  onChange={(e) => setNewPath(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddPath()}
-                />
-                <button
-                  className="btn btn-primary"
+                <div className="flex-1">
+                  <Input
+                    type="text"
+                    placeholder={i18n.language === 'zh'
+                      ? '例如: C:\\Projects\\MyApp 或 /Users/name/Projects/MyApp'
+                      : 'e.g., C:\\Projects\\MyApp or /Users/name/Projects/MyApp'
+                    }
+                    value={newPath}
+                    onChange={(e) => setNewPath(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddPath()}
+                  />
+                </div>
+                <Button
+                  variant="primary"
                   onClick={handleAddPath}
                   disabled={!newPath.trim()}
                 >
                   <Plus size={20} />
                   {i18n.language === 'zh' ? '添加' : 'Add'}
-                </button>
+                </Button>
               </div>
-              <label className="label">
-                <span className="label-text-alt text-base-content/50">
-                  {i18n.language === 'zh'
-                    ? '系统会扫描该路径下的 .claude/skills 文件夹'
-                    : 'System will scan .claude/skills folder under this path'
-                  }
-                </span>
-              </label>
+              <p className="text-xs text-base-content/50">
+                {i18n.language === 'zh'
+                  ? '系统会扫描该路径下的 .claude/skills 文件夹'
+                  : 'System will scan .claude/skills folder under this path'
+                }
+              </p>
             </div>
 
             <div className="alert alert-success mt-4">
@@ -408,15 +410,15 @@ const Settings = () => {
             <h3 className="card-title text-lg">
               {i18n.language === 'zh' ? '外观' : 'Appearance'}
             </h3>
-            <div className="form-control w-full max-w-xs">
-                <label className="label">
-                    <span className="label-text">{t('theme')}</span>
-                </label>
-                <select className="select select-bordered">
-                    <option>{i18n.language === 'zh' ? '跟随系统' : 'Follow System'}</option>
-                    <option>{t('light')}</option>
-                    <option>{t('dark')}</option>
-                </select>
+            <div className="w-full max-w-xs">
+                <Select
+                  label={t('theme')}
+                  options={[
+                    { label: i18n.language === 'zh' ? '跟随系统' : 'Follow System', value: 'system' },
+                    { label: t('light'), value: 'light' },
+                    { label: t('dark'), value: 'dark' },
+                  ]}
+                />
             </div>
         </div>
       </div>
@@ -434,12 +436,12 @@ const Settings = () => {
             </p>
 
             <div className="flex flex-wrap gap-3">
-                <button className="btn btn-outline btn-error">
+                <Button variant="outline" className="border-error text-error hover:bg-error/10">
                   {i18n.language === 'zh' ? '重置所有 Skills' : 'Reset All Skills'}
-                </button>
-                <button className="btn btn-outline btn-error">
+                </Button>
+                <Button variant="outline" className="border-error text-error hover:bg-error/10">
                   {i18n.language === 'zh' ? '清空缓存' : 'Clear Cache'}
-                </button>
+                </Button>
             </div>
         </div>
       </div>
