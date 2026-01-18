@@ -14,16 +14,10 @@ import { cn } from '../utils/cn';
 import { Star, GitBranch, Github, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { FixedSizeGrid as Grid } from 'react-window';
-import type { GridChildComponentProps } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 import type { CSSProperties } from 'react';
 
 import { ImportSkillModal } from '../components/ImportSkillModal';
-
-// @ts-ignore - react-window types might be mismatched in this env
-import * as ReactWindow from 'react-window';
-// @ts-ignore
-const Grid = ReactWindow.FixedSizeGrid;
 
 // 常量定义
 const TOP_RATED_THRESHOLD = 50; // Stars threshold for top-rated filter
