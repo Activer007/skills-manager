@@ -12,8 +12,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, children, disabled, ...props }, ref) => {
     const variants = {
-      // 主要按钮：增强对比度和可见性，添加字体粗细和边框
-      primary: 'btn-primary text-primary-content font-semibold shadow-md hover:shadow-lg border-2 border-primary hover:border-primary-focus',
+      // 主要按钮：明确背景色、白色文字、增加 padding
+      primary: 'btn-primary bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-semibold px-4 shadow-md hover:shadow-lg',
       // 次要按钮
       secondary: 'btn-neutral text-neutral-content shadow-sm hover:shadow-md',
       // 轮廓按钮
