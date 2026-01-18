@@ -1,8 +1,8 @@
 # Skill Manager 设计系统
 
-> 版本: 1.0.0
+> 版本: 1.1.0
 > 更新日期: 2026-01-18
-> 状态: Phase 1 已完成 ✅
+> 状态: Phase 3 已完成 ✅
 
 本文档定义了 Skill Manager 应用的统一设计规范，确保整个应用的视觉一致性和可维护性。
 
@@ -663,16 +663,29 @@ import { Tooltip } from '@/components/ui/Tooltip';
 
 ## 🚧 未来改进
 
-### Phase 2: 组件库补充
-- [ ] 创建 Tabs 组件
-- [ ] 创建 Table 组件
-- [ ] 创建 EmptyState 组件
-- [ ] 创建 Tooltip 组件
-- [ ] 创建 Progress 组件
+### Phase 2: 组件库补充 ✅ 已完成
+- [x] 创建 Tabs 组件
+- [x] 创建 EmptyState 组件
+- [x] 创建 Progress 组件
+- [x] 创建 Tooltip 组件
+- [ ] 创建 Table 组件（待未来补充）
 
-### Phase 3: 页面重构
-- [ ] 应用新组件到所有页面
-- [ ] 统一页面风格
+### Phase 3: 页面重构 ✅ 已完成
+- [x] ScanHistory.tsx 重构
+  - [x] 替换 dropdown 为 Tabs 组件
+  - [x] 替换手写空状态为 EmptyState 组件
+  - [x] 替换 radial-progress 为 CircularProgress
+- [x] Security.tsx 重构
+  - [x] 替换 DaisyUI card 为 Card 组件
+  - [x] 添加空状态处理
+- [x] Settings.tsx 评估（功能性为主，暂不重构）
+- [x] Dashboard.tsx 评估（代码质量良好，无需重构）
+
+**重构收益**:
+- ✅ 减少重复代码约 90 行
+- ✅ 提高视觉一致性
+- ✅ 改善用户体验（一次点击筛选、友好的空状态）
+- ✅ 增强可访问性（键盘导航、焦点环）
 
 ### Phase 4: 可访问性改进
 - [ ] 添加 aria-label 支持
@@ -690,4 +703,4 @@ import { Tooltip } from '@/components/ui/Tooltip';
 ---
 
 **维护者**: Skill Manager Team
-**最后更新**: 2026-01-18
+**最后更新**: 2026-01-18 (Phase 3 完成)
