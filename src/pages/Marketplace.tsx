@@ -10,6 +10,7 @@ import { SkeletonCard } from '../components/SkeletonCard';
 import { SkillCard } from '../components/SkillCard';
 import { SlideOver } from '../components/ui/SlideOver';
 import { Button } from '../components/ui/Button';
+import { EmptyState } from '../components/ui/EmptyState';
 import { cn } from '../utils/cn';
 import { Star, GitBranch, Github, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -358,35 +359,21 @@ const Marketplace = () => {
           </div>
         </div>
       ) : filteredSkills.length === 0 ? (
-        // Empty State Component
-        <div className="flex flex-col items-center justify-center h-full py-16 text-center">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="flex flex-col items-center"
-            >
-                <div className="w-24 h-24 bg-slate-100 dark:bg-base-200 rounded-full flex items-center justify-center mb-6">
-                    <Search className="text-slate-300 dark:text-slate-600" size={48} />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">
-                    {i18n.language === 'zh' ? '未找到相关 Skill' : 'No skills found'}
-                </h2>
-                <p className="text-lg text-slate-600 dark:text-slate-400 mb-8 max-w-lg mx-auto">
-                    {i18n.language === 'zh'
-                        ? '尝试使用不同的关键词，或者直接导入 GitHub 仓库。'
-                        : 'Try searching with different keywords, or import directly from GitHub.'}
-                    <br />
-                    <Button
-                        variant="link"
-                        className="text-lg font-semibold text-primary mt-2"
-                        onClick={() => setShowImportModal(true)}
-                    >
-                        {i18n.language === 'zh' ? '从 GitHub 导入' : 'Import from GitHub'}
-                    </Button>
-                </p>
-            </motion.div>
-        </div>
+        // Empty State Component - Using new EmptyState
+        <EmptyState
+          variant="minimal"
+          icon={<Search />}
+          title={i18n.language === 'zh' ? '未找到相关 Skill' : 'No skills found'}
+          description={i18n.language === 'zh'
+            ? '尝试使用不同的关键词，或者直接导入 GitHub 仓库。'
+            : 'Try searching with different keywords, or import directly from GitHub.'
+          }
+          action={{
+            label: i18n.language === 'zh' ? '从 GitHub 导入' : 'Import from GitHub',
+            onClick: () => setShowImportModal(true),
+            variant: 'primary',
+          }}
+        />
       ) : (
         <div className="flex-1 min-h-[600px] w-full">
             {/* @ts-expect-error - AutoSizer types are slightly mismatched but runtime is correct */}

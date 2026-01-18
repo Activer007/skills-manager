@@ -431,6 +431,222 @@ import { cn } from '@/utils/cn';
 
 ---
 
+## 🎨 新增组件（Phase 2）
+
+### Tabs 组件
+
+**文件**: `src/components/ui/Tabs.tsx`
+
+#### 使用示例
+```tsx
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+
+// Underline variant（默认）
+<Tabs value={activeTab} onValueChange={setActiveTab}>
+  <TabsList variant="underline">
+    <TabsTrigger value="all">
+      全部
+      <Badge>12</Badge>
+    </TabsTrigger>
+    <TabsTrigger value="system">系统级</TabsTrigger>
+  </TabsList>
+  <TabsContent value="all">
+    {/* 全部内容 */}
+  </TabsContent>
+  <TabsContent value="system">
+    {/* 系统级内容 */}
+  </TabsContent>
+</Tabs>
+
+// Pills variant
+<Tabs value={activeTab} onValueChange={setActiveTab} variant="pills">
+  <TabsList variant="pills">
+    <TabsTrigger value="overview">概览</TabsTrigger>
+    <TabsTrigger value="config">配置</TabsTrigger>
+  </TabsList>
+  <TabsContent value="overview">{/* ... */}</TabsContent>
+</Tabs>
+```
+
+#### Props
+- **value**: 当前激活的 tab 值
+- **onValueChange**: 值变化回调
+- **variant**: `underline`（默认）或 `pills`
+- **TabsTrigger badge**: 徽章数量
+
+#### 特性
+- ✅ 键盘导航（方向键切换）
+- ✅ 徽章显示（badge）
+- ✅ 进入动画（fade-in + zoom-in-95）
+- ✅ 焦点环样式统一
+- ✅ 暗色模式支持
+
+---
+
+### EmptyState 组件
+
+**文件**: `src/components/ui/EmptyState.tsx`
+
+#### 使用示例
+```tsx
+import { EmptyState } from '@/components/ui/EmptyState';
+
+// Centered variant（默认）- 带边框
+<EmptyState
+  icon={<FolderOpen />}
+  title="暂无数据"
+  description="开始添加您的第一个项目吧"
+  action={{
+    label: '添加项目',
+    onClick: handleAdd,
+    variant: 'primary',
+  }}
+/>
+
+// Minimal variant - 无边框
+<EmptyState
+  variant="minimal"
+  icon={<Search />}
+  title="未找到相关结果"
+  description="尝试使用不同的关键词"
+/>
+
+// 内置预设
+import { EmptyStateNoData, EmptyStateNoResults } from '@/components/ui/EmptyState';
+
+<EmptyStateNoSkills
+  action={{
+    label: '浏览市场',
+    onClick: () => navigate('/marketplace'),
+  }}
+/>
+```
+
+#### Props
+- **icon**: 图标（React 节点）
+- **title**: 标题
+- **description**: 描述文本
+- **action**: 操作按钮（可选）
+- **variant**: `centered`（默认）或 `minimal`
+- **size**: `sm` | `md` | `lg`
+
+#### 内置预设
+- `EmptyStateNoData` - 通用无数据
+- `EmptyStateNoResults` - 搜索无结果
+- `EmptyStateNoSkills` - 无 Skills
+- `EmptyStateError` - 错误状态
+
+---
+
+### Progress 组件
+
+**文件**: `src/components/ui/Progress.tsx`
+
+#### 使用示例
+```tsx
+import { Progress, CircularProgress } from '@/components/ui/Progress';
+
+// 线性进度条 - 默认变体
+<Progress
+  value={75}
+  label="配额使用情况"
+  showPercentage
+  colorScheme="auto"
+/>
+
+// 分段变体（类似 Antigravity Manager）
+<Progress
+  value={75}
+  label="G3 Pro"
+  variant="segmented"
+  showPercentage
+  colorScheme="green"
+/>
+
+// 圆形进度条
+<CircularProgress
+  value={75}
+  size="lg"
+  showPercentage
+  colorScheme="blue"
+/>
+```
+
+#### Props
+##### Progress Props
+- **value**: 当前进度值（0-max）
+- **max**: 最大值（默认 100）
+- **size**: `sm` | `md` | `lg`
+- **showLabel**: 显示标签
+- **showPercentage**: 显示百分比
+- **colorScheme**: `blue` | `green` | `orange` | `red` | `auto`
+- **label**: 主标签文本
+- **secondaryLabel**: 次标签文本
+- **variant**: `default` | `segmented`
+
+##### CircularProgress Props
+- **value**: 当前进度值（0-max）
+- **max**: 最大值（默认 100）
+- **size**: `sm` | `md` | `lg`
+- **showPercentage**: 显示百分比
+- **colorScheme**: `blue` | `green` | `orange` | `red`
+- **strokeWidth**: 圆环宽度（默认 8）
+
+#### 特性
+- ✅ 自动颜色编码（auto 模式）
+  - ≥50%: 绿色
+  - 20-50%: 橙色
+  - <20%: 红色
+- ✅ 平滑动画（700ms ease-out）
+- ✅ 半透明背景填充
+- ✅ 支持暗色模式
+
+---
+
+### Tooltip 组件
+
+**文件**: `src/components/ui/Tooltip.tsx`
+
+#### 使用示例
+```tsx
+import { Tooltip } from '@/components/ui/Tooltip';
+
+<Tooltip content="查看详情" side="top">
+  <button>
+    <Info className="w-4 h-4" />
+  </button>
+</Tooltip>
+
+<Tooltip content="删除此项目" side="right" align="start">
+  <button>
+    <Trash2 className="w-4 h-4" />
+  </button>
+</Tooltip>
+
+// 可选：不显示箭头
+<Tooltip content="提示信息" arrow={false}>
+  <button>按钮</button>
+</Tooltip>
+```
+
+#### Props
+- **content**: 提示内容
+- **children**: 触发元素
+- **delayDuration**: 延迟显示时间（默认 200ms）
+- **side**: `top` | `right` | `bottom` | `left`
+- **sideOffset**: 偏移距离（默认 8px）
+- **align**: `start` | `center` | `end`
+- **alignOffset**: 对齐偏移（默认 0）
+- **arrow**: 是否显示箭头（默认 true）
+
+#### 特性
+- ✅ 基 Radix UI，可访问性优秀
+- ✅ 智能定位（自动避免边界溢出）
+- ✅ 统一的样式和动画
+- ✅ 支持 HTML 内容
+
+---
+
 ## 📝 检查清单
 
 在提交代码前，请确保：
