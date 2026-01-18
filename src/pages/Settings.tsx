@@ -4,7 +4,7 @@ import { CacheStatsCard } from '../components/CacheStatsCard';
 import { useSkillStore } from '../store/useSkillStore';
 import { Plus, X, FolderOpen, ExternalLink, Package } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
-import { toast } from 'sonner';
+import { toast } from '../store/useToastStore';
 
 const Settings = () => {
   const { t, i18n } = useTranslation();

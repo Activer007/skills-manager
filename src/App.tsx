@@ -1,4 +1,3 @@
-import { Toaster } from "sonner";
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import MySkills from './pages/MySkills';
@@ -43,7 +42,6 @@ function App() {
   return (
     <>
       <RouterProvider router={router} />
-      <Toaster position="top-right" richColors />
     </>
   );
 }

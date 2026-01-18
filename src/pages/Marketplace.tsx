@@ -5,7 +5,7 @@ import type { MarketplaceSkill } from '../types';
 import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
-import { toast } from 'sonner';
+import { toast } from '../store/useToastStore';
 import { SkeletonCard } from '../components/SkeletonCard';
 import { SkillCard } from '../components/SkillCard';
 import { SlideOver } from '../components/ui/SlideOver';
@@ -16,8 +16,14 @@ import { motion } from 'framer-motion';
 import { FixedSizeGrid as Grid } from 'react-window';
 import type { GridChildComponentProps } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
+import type { CSSProperties } from 'react';
 
 import { ImportSkillModal } from '../components/ImportSkillModal';
+
+// @ts-ignore - react-window types might be mismatched in this env
+import * as ReactWindow from 'react-window';
+// @ts-ignore
+const Grid = ReactWindow.FixedSizeGrid;
 
 // 常量定义
 const TOP_RATED_THRESHOLD = 50; // Stars threshold for top-rated filter
@@ -36,9 +42,17 @@ const CATEGORY_KEYWORDS: Record<Exclude<FilterType, 'all' | 'top-rated'>, string
 
 const GITHUB_URL_REGEX = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/tree\/[\w.-]+(\/.*)?)?$/;
 
+// Manual definition for react-window cell props
+interface CellProps {
+  columnIndex: number;
+  rowIndex: number;
+  style: CSSProperties;
+  data: any;
+}
+
 // Cell defined outside to prevent re-creation on render
-const Cell = memo(({ columnIndex, rowIndex, style, data }: GridChildComponentProps) => {
-    const { skills, columnCount, isInstalled, handleInstall, setSelectedSkill, setShowDrawer, language } = data as any;
+const Cell = memo(({ columnIndex, rowIndex, style, data }: CellProps) => {
+    const { skills, columnCount, isInstalled, handleInstall, setSelectedSkill, setShowDrawer, language } = data;
     const index = rowIndex * columnCount + columnIndex;
 
     if (index >= skills.length) return null;
@@ -381,8 +395,9 @@ const Marketplace = () => {
         </div>
       ) : (
         <div className="flex-1 min-h-[600px] w-full">
+            {/* @ts-expect-error - AutoSizer types are slightly mismatched but runtime is correct */}
             <AutoSizer>
-                {({ height, width }: any) => {
+                {({ height, width }: { height: number; width: number }) => {
                     if (!height || !width) return null;
 
                     const columnCount = Math.floor(width / (280 + GUTTER_SIZE)) || 1;

@@ -30,8 +30,10 @@ interface SkillStore {
   projectPaths: string[];
   defaultInstallLocation: 'system' | 'project';
   selectedProjectIndex: number;
+  theme: 'light' | 'dark' | 'system';
 
   // Actions
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
   fetchMarketplaceSkills: () => Promise<void>;
   scanLocalSkills: () => Promise<void>;
   installSkill: (skill: MarketplaceSkill) => Promise<ImportResult>;
@@ -54,6 +56,9 @@ export const useSkillStore = create<SkillStore>()(
       projectPaths: [],
       defaultInstallLocation: 'system',
       selectedProjectIndex: 0,
+      theme: 'system',
+
+      setTheme: (theme) => set({ theme }),
 
       setDefaultInstallLocation: (location: 'system' | 'project') => {
         set({ defaultInstallLocation: location });
@@ -281,7 +286,8 @@ export const useSkillStore = create<SkillStore>()(
         // 不持久化 installedSkills，每次启动重新扫描
         projectPaths: state.projectPaths,
         defaultInstallLocation: state.defaultInstallLocation,
-        selectedProjectIndex: state.selectedProjectIndex
+        selectedProjectIndex: state.selectedProjectIndex,
+        theme: state.theme
       }),
     }
   )
