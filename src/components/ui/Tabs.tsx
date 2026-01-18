@@ -7,7 +7,6 @@ import { cn } from '../../utils/cn';
 // ========================================
 
 interface TabsProps {
-  variant?: 'underline' | 'pills';
   children: React.ReactNode;
   defaultValue?: string;
   value?: string;
@@ -15,7 +14,7 @@ interface TabsProps {
   className?: string;
 }
 
-const Tabs = ({ className, variant = 'underline', children, ...props }: TabsProps) => (
+const Tabs = ({ className, children, ...props }: TabsProps) => (
     <TabsPrimitive.Root
       className={cn('tabs-component', className)}
       {...props}
@@ -40,8 +39,8 @@ const TabsList = React.forwardRef<HTMLDivElement, TabsListProps>(
       ref={ref}
       className={cn(
         'inline-flex items-center justify-start',
-        // Underline variant
-        variant === 'underline' && 'border-b border-gray-200 dark:border-base-200',
+        // Underline variant - 增加间距以改善可读性
+        variant === 'underline' && 'border-b border-gray-200 dark:border-base-200 gap-6 sm:gap-8',
         // Pills variant
         variant === 'pills' && 'flex-wrap gap-1 bg-gray-100 dark:bg-base-200 rounded-lg p-1',
         className
