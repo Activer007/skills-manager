@@ -145,7 +145,7 @@ export const SkillCard = ({
                     // 激活状态：正常样式
                     isActive && "bg-white dark:bg-base-100 border-gray-100 dark:border-base-200 hover:shadow-md hover:border-gray-200 dark:hover:border-base-300",
                     // 禁用状态：灰色样式，降低透明度
-                    !isActive && "bg-gray-50 dark:bg-base-200/50 border-gray-200 dark:border-base-300 opacity-60 hover:opacity-70"
+                    !isActive && "bg-gray-50 dark:bg-base-200/50 border-gray-200 dark:border-base-300 opacity-50 hover:opacity-70"
                 )}
                 onClick={onViewDetails}
             >
@@ -191,7 +191,7 @@ export const SkillCard = ({
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
                     {isInstalled ? (
                         <>
                              <div onClick={(e) => e.stopPropagation()} className="flex items-center">
