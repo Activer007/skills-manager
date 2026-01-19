@@ -13,6 +13,25 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'json'],
+      exclude: [
+        'node_modules/',
+        'src/test/',
+        '**/*.test.ts',
+        '**/*.test.tsx',
+        '**/types/',
+        '**/vitest.config.ts',
+        '**/vite.config.ts',
+      ],
+      thresholds: {
+        statements: 60,
+        branches: 55,
+        functions: 60,
+        lines: 60,
+      },
+    },
   },
   resolve: {
     alias: {

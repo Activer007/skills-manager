@@ -1,9 +1,13 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
-import MySkills from './pages/MySkills';
-import Marketplace from './pages/Marketplace';
-import Settings from './pages/Settings';
-import ScanHistory from './pages/ScanHistory';
+import { PageLoader } from './components/ui/PageLoader';
+
+// Lazy load pages for code splitting
+const MySkills = lazy(() => import('./pages/MySkills'));
+const Marketplace = lazy(() => import('./pages/Marketplace'));
+const Settings = lazy(() => import('./pages/Settings'));
+const ScanHistory = lazy(() => import('./pages/ScanHistory'));
 
 const router = createBrowserRouter([
   {
@@ -16,19 +20,35 @@ const router = createBrowserRouter([
       },
       {
         path: 'my-skills',
-        element: <MySkills />,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <MySkills />
+          </Suspense>
+        ),
       },
       {
         path: 'marketplace',
-        element: <Marketplace />,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <Marketplace />
+          </Suspense>
+        ),
       },
       {
         path: 'security',
-        element: <ScanHistory />,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ScanHistory />
+          </Suspense>
+        ),
       },
       {
         path: 'settings',
-        element: <Settings />,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <Settings />
+          </Suspense>
+        ),
       },
     ],
   },

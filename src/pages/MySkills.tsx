@@ -9,6 +9,7 @@ import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
 import { ConfigForm } from '../components/ConfigForm';
+import type { ConfigSchema } from '../components/ConfigForm';
 import { toast } from '../store/useToastStore';
 import { SkillCard } from '../components/SkillCard';
 import { Button } from '../components/ui/Button';
