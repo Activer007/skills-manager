@@ -298,7 +298,7 @@ const Marketplace = () => {
   }, []);
 
   return (
-    <div className="space-y-8 h-full flex flex-col">
+    <div className="space-y-8">
       {/* Hero Section */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 dark:from-primary/5 dark:to-purple-500/5 p-8 md:p-12">
           <div className="relative z-10 max-w-2xl">
@@ -474,8 +474,9 @@ const Marketplace = () => {
           }}
         />
       ) : (
-        <div className="flex-1 min-h-[600px] w-full" ref={gridContainerRef}>
-            <AutoSizer
+        <div className="w-full" ref={gridContainerRef}>
+            <div className="min-h-[600px]">
+                <AutoSizer
                 renderProp={({ height, width }) => {
                     const resolvedHeight = height || gridSize.height;
                     const resolvedWidth = width || gridSize.width;
@@ -503,7 +504,8 @@ const Marketplace = () => {
                         </Grid>
                     );
                 }}
-            />
+                />
+            </div>
         </div>
       )}
 

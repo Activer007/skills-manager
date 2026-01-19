@@ -19,7 +19,9 @@ const Settings = () => {
     setDefaultInstallLocation,
     marketplaceSkills,
     selectedProjectIndex,
-    setSelectedProjectIndex
+    setSelectedProjectIndex,
+    showSecuritySection,
+    setShowSecuritySection
   } = useSkillStore();
   const [paths, setPaths] = useState<string[]>([]);
   const [newPath, setNewPath] = useState('');
@@ -419,6 +421,42 @@ const Settings = () => {
                     { label: t('dark'), value: 'dark' },
                   ]}
                 />
+            </div>
+        </div>
+      </div>
+
+      <div className="card bg-base-100 shadow-sm border border-base-200">
+        <div className="card-body">
+            <h3 className="card-title text-lg">
+              {i18n.language === 'zh' ? '开发者选项' : 'Developer Options'}
+            </h3>
+            <p className="text-sm text-base-content/60 mb-4">
+              {i18n.language === 'zh'
+                ? '配置开发时的显示选项'
+                : 'Configure display options for development'
+              }
+            </p>
+
+            <div className="form-control">
+              <label className="label cursor-pointer">
+                <span className="label-text">
+                  {i18n.language === 'zh' ? '显示安全板块' : 'Show Security Section'}
+                </span>
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary"
+                  checked={showSecuritySection}
+                  onChange={(e) => setShowSecuritySection(e.target.checked)}
+                />
+              </label>
+              <label className="label">
+                <span className="label-text-alt text-base-content/60">
+                  {i18n.language === 'zh'
+                    ? '关闭后在侧边栏隐藏安全中心入口'
+                    : 'Hide security center from sidebar when disabled'
+                  }
+                </span>
+              </label>
             </div>
         </div>
       </div>

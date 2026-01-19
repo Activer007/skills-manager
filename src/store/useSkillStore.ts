@@ -31,9 +31,11 @@ interface SkillStore {
   defaultInstallLocation: 'system' | 'project';
   selectedProjectIndex: number;
   theme: 'light' | 'dark' | 'system';
+  showSecuritySection: boolean;
 
   // Actions
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  setShowSecuritySection: (show: boolean) => void;
   fetchMarketplaceSkills: () => Promise<void>;
   scanLocalSkills: () => Promise<void>;
   installSkill: (skill: MarketplaceSkill) => Promise<ImportResult>;
@@ -57,8 +59,11 @@ export const useSkillStore = create<SkillStore>()(
       defaultInstallLocation: 'system',
       selectedProjectIndex: 0,
       theme: 'system',
+      showSecuritySection: true,
 
       setTheme: (theme) => set({ theme }),
+
+      setShowSecuritySection: (show: boolean) => set({ showSecuritySection: show }),
 
       setDefaultInstallLocation: (location: 'system' | 'project') => {
         set({ defaultInstallLocation: location });
@@ -287,7 +292,8 @@ export const useSkillStore = create<SkillStore>()(
         projectPaths: state.projectPaths,
         defaultInstallLocation: state.defaultInstallLocation,
         selectedProjectIndex: state.selectedProjectIndex,
-        theme: state.theme
+        theme: state.theme,
+        showSecuritySection: state.showSecuritySection
       }),
     }
   )
