@@ -4,11 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill } from '../hooks/useSkills';
 import { useSkillConfig } from '../hooks/useSkillConfig';
 import { useBatchSkillQuality } from '../hooks/useSkillQuality';
-import { Github, HardDrive, Plus, FolderOpen, FileText, Settings, Shield, History, ToyBrick } from 'lucide-react';
+import { Github, HardDrive, Plus, FolderOpen, FileText, Settings, Shield, History } from 'lucide-react';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
-import { ConfigForm, type ConfigSchema } from '../components/ConfigForm';
+import { ConfigForm } from '../components/ConfigForm';
 import { toast } from '../store/useToastStore';
 import { SkillCard } from '../components/SkillCard';
 import { Button } from '../components/ui/Button';
@@ -36,33 +36,7 @@ const getErrorMessage = (error: unknown) => {
   return JSON.stringify(error);
 };
 
-const mockSchema: ConfigSchema = {
-  enableFeature: {
-    type: 'boolean',
-    label: 'Enable Advanced Features',
-    description: 'Turn on experimental capabilities',
-    default: true
-  },
-  logLevel: {
-    type: 'enum',
-    label: 'Log Level',
-    options: ['info', 'warn', 'error', 'debug'],
-    default: 'info'
-  },
-  apiKey: {
-    type: 'string',
-    label: 'API Key',
-    description: 'Enter your API key here',
-    required: true
-  },
-  maxRetries: {
-    type: 'number',
-    label: 'Max Retries',
-    default: 3
-  }
-};
-
-type SlideTab = 'overview' | 'config' | 'security' | 'hooks' | 'changelog';
+type SlideTab = 'overview' | 'config' | 'security' | 'changelog';
 
 const MySkills = () => {
   const { t, i18n } = useTranslation();
@@ -137,16 +111,7 @@ const MySkills = () => {
       return schema;
     }
 
-    // 3. Last resort: Mock schema (for dev/demo)
-    return {
-      enabled: {
-        type: 'boolean' as const,
-        label: i18n.language === 'zh' ? '启用此 Skill' : 'Enable this Skill',
-        description: i18n.language === 'zh' ? '切换此 Skill 的启用状态' : 'Toggle this skill on or off',
-        default: true
-      },
-      ...mockSchema
-    };
+    return {};
   }, [skillConfig, selectedSkill, i18n.language]);
 
   // Create a map of path -> score
@@ -588,21 +553,6 @@ const MySkills = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setActiveSlideTab('hooks')}
-                        className={cn(
-                            "rounded-none border-b-2 px-4",
-                            activeSlideTab === 'hooks'
-                                ? "border-primary text-primary"
-                                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                        )}
-                    >
-                        <ToyBrick size={16} />
-                        Hooks
-                        <span className="bg-slate-100 dark:bg-base-200 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded text-[10px]">New</span>
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
                         onClick={() => setActiveSlideTab('changelog')}
                         className={cn(
                             "rounded-none border-b-2 px-4",
@@ -647,7 +597,9 @@ const MySkills = () => {
                 {activeSlideTab === 'config' && (
                     <div className="animate-in fade-in duration-200">
                         <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-xl text-sm border border-blue-100 dark:border-blue-900/50">
-                            This is a preview. The schema is currently mocked, but values are persisted to <code>~/.claude/skill-manager-config.json</code>.
+                            {i18n.language === 'zh'
+                              ? '仅当 Skill 在 SKILL.md 中定义了配置项，或已有已保存的配置值时，才会显示配置字段。'
+                              : 'Configuration fields appear only when the skill defines them in SKILL.md or when existing config values are detected.'}
                         </div>
                         <ConfigForm
                             schema={activeSchema}
@@ -673,18 +625,6 @@ const MySkills = () => {
                             loading={isScanningSecurity}
                         />
                     </div>
-                )}
-
-                {activeSlideTab === 'hooks' && (
-                     <div className="animate-in fade-in duration-200">
-                        <div className="text-center py-12 bg-slate-50 dark:bg-base-200 rounded-xl border border-dashed border-gray-200 dark:border-base-300">
-                            <ToyBrick size={48} className="mx-auto text-slate-300 mb-4" />
-                            <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">Hook Management Coming Soon</h3>
-                            <p className="text-slate-500 max-w-sm mx-auto mt-2">
-                                Manage lifecycle hooks like <code>pre-commit</code>, <code>post-install</code>, and MCP server integrations.
-                            </p>
-                        </div>
-                     </div>
                 )}
 
                 {activeSlideTab === 'changelog' && (

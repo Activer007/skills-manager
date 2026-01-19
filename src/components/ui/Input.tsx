@@ -27,7 +27,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             // 统一圆角：rounded-md (8px)
             // 统一过渡：duration-normal (200ms)
             // 统一焦点环：ring-2
-            'input input-bordered w-full bg-base-100 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 border-gray-200 dark:border-base-300 transition-all duration-normal rounded-md focus:ring-2 focus:ring-primary/20 focus:outline-none focus:border-primary',
+            'input input-bordered w-full px-3 bg-base-100 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 border-gray-200 dark:border-base-300 transition-all duration-normal rounded-md focus:ring-2 focus:ring-primary/20 focus:outline-none focus:border-primary',
             error && 'input-error focus:ring-error/20 focus:border-error',
             className
           )}

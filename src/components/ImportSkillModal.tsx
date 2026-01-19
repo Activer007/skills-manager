@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from './ui/Modal';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
+import { Progress } from './ui/Progress';
 import { useInstallSkill } from '../hooks/useSkills';
 import { toast } from '../store/useToastStore';
 import { Download, AlertTriangle } from 'lucide-react';
@@ -18,20 +19,58 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
   const { t, i18n } = useTranslation();
   const [url, setUrl] = useState(initialUrl || '');
   const [error, setError] = useState('');
+  const [installProgress, setInstallProgress] = useState(0);
+  const [isInstalling, setIsInstalling] = useState(false);
+  const installTimerRef = useRef<number | null>(null);
   const installMutation = useInstallSkill();
 
   useEffect(() => {
     if (isOpen) {
       setUrl(initialUrl || '');
       setError('');
+      setInstallProgress(0);
+      setIsInstalling(false);
+    } else if (installTimerRef.current) {
+      window.clearInterval(installTimerRef.current);
+      installTimerRef.current = null;
     }
   }, [isOpen, initialUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (installTimerRef.current) {
+        window.clearInterval(installTimerRef.current);
+        installTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const validateUrl = (value: string) => {
     if (!value) return false;
     // Basic GitHub URL validation
     const githubRegex = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/(tree|blob)\/[\w.-]+(\/.*)?)?$/;
     return githubRegex.test(value);
+  };
+
+  const startInstallProgress = () => {
+    if (installTimerRef.current) {
+      window.clearInterval(installTimerRef.current);
+    }
+    let current = 0;
+    setInstallProgress(0);
+    setIsInstalling(true);
+    installTimerRef.current = window.setInterval(() => {
+      const delta = Math.max(2, Math.round(Math.random() * 8));
+      current = Math.min(current + delta, 90);
+      setInstallProgress(current);
+    }, 320);
+  };
+
+  const stopInstallProgress = () => {
+    if (installTimerRef.current) {
+      window.clearInterval(installTimerRef.current);
+      installTimerRef.current = null;
+    }
   };
 
   const handleInstall = async () => {
@@ -64,7 +103,9 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
     };
 
     try {
+      startInstallProgress();
       await installMutation.mutateAsync(tempSkill);
+      setInstallProgress(100);
       toast.success(i18n.language === 'zh' ? `${skillName} 安装成功！` : `${skillName} installed successfully!`);
       onClose();
       setUrl('');
@@ -80,6 +121,12 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
       } else {
         setError(i18n.language === 'zh' ? `安装失败: ${errorMessage}` : `Installation failed: ${errorMessage}`);
       }
+    } finally {
+      stopInstallProgress();
+      window.setTimeout(() => {
+        setIsInstalling(false);
+        setInstallProgress(0);
+      }, 300);
     }
   };
 
@@ -90,14 +137,14 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
       title={t('importGithubSkill', { defaultValue: i18n.language === 'zh' ? '导入 GitHub Skill' : 'Import GitHub Skill' })}
       footer={
         <>
-          <Button variant="ghost" onClick={onClose} disabled={installMutation.isPending}>
+          <Button variant="ghost" onClick={onClose} disabled={installMutation.isPending || isInstalling}>
             {t('cancel', { defaultValue: i18n.language === 'zh' ? '取消' : 'Cancel' })}
           </Button>
           <Button
             variant="primary"
             onClick={handleInstall}
             isLoading={installMutation.isPending}
-            disabled={!url || !!error}
+            disabled={!url || !!error || isInstalling}
           >
             <Download size={16} className="mr-2" />
             {t('importAndInstall', { defaultValue: i18n.language === 'zh' ? '导入并安装' : 'Import & Install' })}
@@ -125,9 +172,29 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
             if (error) setError('');
           }}
           error={error}
-          disabled={installMutation.isPending}
+          disabled={installMutation.isPending || isInstalling}
           autoFocus
         />
+
+        {isInstalling && (
+          <div className="rounded-lg border border-slate-200 dark:border-base-300 bg-slate-50 dark:bg-base-200/40 p-4 space-y-2">
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              {i18n.language === 'zh' ? '正在导入并安装…' : 'Importing and installing…'}
+            </div>
+            <Progress
+              value={installProgress}
+              showPercentage
+              size="sm"
+              colorScheme="blue"
+              label={i18n.language === 'zh' ? '导入进度' : 'Import progress'}
+            />
+            <p className="text-xs text-slate-500">
+              {i18n.language === 'zh'
+                ? '进度为模拟值，完成后会自动刷新'
+                : 'Progress is simulated and will complete automatically.'}
+            </p>
+          </div>
+        )}
 
         <div className="text-xs text-slate-400">
             {t('example', { defaultValue: i18n.language === 'zh' ? '示例:' : 'Example:' })} <br/>
