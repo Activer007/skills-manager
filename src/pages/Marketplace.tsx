@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, memo, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useLayoutEffect, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useMarketplaceSkills, useInstallSkill } from '../hooks/useSkills';
 import type { MarketplaceSkill } from '../types';
@@ -94,6 +94,8 @@ const Marketplace = () => {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [pendingInstall, setPendingInstall] = useState<MarketplaceSkill | null>(null);
+  const [gridSize, setGridSize] = useState({ width: 0, height: 0 });
+  const gridContainerRef = useRef<HTMLDivElement>(null);
 
   const isGithubUrl = useMemo(() => {
     return GITHUB_URL_REGEX.test(searchTerm);
@@ -197,6 +199,24 @@ const Marketplace = () => {
       setShowDrawer,
       language: i18n.language
   }), [isInstalled, handleInstall, i18n.language]); // handleInstall, setSelectedSkill, setShowDrawer are stable
+
+  useLayoutEffect(() => {
+    const updateSize = () => {
+      const el = gridContainerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const width = Math.floor(rect.width);
+      const height = Math.floor(rect.height);
+      if (width && height) {
+        setGridSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+      }
+    };
+
+    updateSize();
+    const handleResize = () => requestAnimationFrame(updateSize);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div className="space-y-8 h-full flex flex-col">
@@ -375,24 +395,25 @@ const Marketplace = () => {
           }}
         />
       ) : (
-        <div className="flex-1 min-h-[600px] w-full">
-            {/* @ts-expect-error - AutoSizer types are slightly mismatched but runtime is correct */}
-            <AutoSizer>
-                {({ height, width }: { height: number; width: number }) => {
-                    if (!height || !width) return null;
+        <div className="flex-1 min-h-[600px] w-full" ref={gridContainerRef}>
+            <AutoSizer
+                renderProp={({ height, width }) => {
+                    const resolvedHeight = height || gridSize.height;
+                    const resolvedWidth = width || gridSize.width;
+                    if (!resolvedHeight || !resolvedWidth) return null;
 
-                    const columnCount = Math.floor(width / (280 + GUTTER_SIZE)) || 1;
-                    const columnWidth = width / columnCount;
+                    const columnCount = Math.floor(resolvedWidth / (280 + GUTTER_SIZE)) || 1;
+                    const columnWidth = resolvedWidth / columnCount;
                     const rowCount = Math.ceil(filteredSkills.length / columnCount);
 
                     return (
                         <Grid
                             columnCount={columnCount}
                             columnWidth={columnWidth}
-                            height={height}
+                            height={resolvedHeight}
                             rowCount={rowCount}
                             rowHeight={ROW_HEIGHT}
-                            width={width}
+                            width={resolvedWidth}
                             itemData={{
                                 ...baseItemData,
                                 skills: filteredSkills,
@@ -403,7 +424,7 @@ const Marketplace = () => {
                         </Grid>
                     );
                 }}
-            </AutoSizer>
+            />
         </div>
       )}
 

@@ -29,7 +29,15 @@ vi.mock('react-window', () => ({
 }));
 
 vi.mock('react-virtualized-auto-sizer', () => ({
-  AutoSizer: ({ children }: any) => children({ height: 500, width: 500 }),
+  AutoSizer: ({ renderProp, ChildComponent }: any) => {
+    if (renderProp) {
+      return renderProp({ height: 500, width: 500 });
+    }
+    if (ChildComponent) {
+      return <ChildComponent height={500} width={500} />;
+    }
+    return null;
+  },
 }));
 
 vi.mock('../components/ui/SlideOver', () => ({
