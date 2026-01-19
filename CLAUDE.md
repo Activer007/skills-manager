@@ -8,13 +8,19 @@ Skill Manager 是一个用于管理 Claude Code Skills 的桌面应用程序，�
 
 ### 核心功能
 - **我的 Skills**：扫描和管理已安装的系统级/项目级 Skills，支持查看质量评分和安全状态
-- **Skill 市场**：浏览和安装来自 GitHub 的开源 Skills
-- **Skill 导入**：支持从 GitHub 仓库或本地文件夹导入
+- **Skill 市场**：浏览和安装来自 GitHub 的开源 Skills，支持实时导入进度显示
+- **Skill 导入**：支持从 GitHub 仓库或本地文件夹导入，智能识别多 Skill 仓库
 - **安全扫描**：检测 Skills 中的安全风险，支持三种扫描模式和白名单管理
 - **扫描历史**：查看历史扫描记录，支持搜索、筛选和导出功能
 - **安全中心**：集中管理和监控所有 Skills 的安全状态
 - **Skill 质量评分**：基于内容质量、技术实现、维护性和用户体验的 100 分制评分系统
 - **项目路径配置**：自定义多个项目路径以扫描项目级 Skills
+
+### 最新特性 (v2.2.0)
+- 🎉 **市场导入进度显示**: 实时进度条提升用户体验
+- 🔧 **规范化 Skill 提取**: 智能识别和提取多 Skill 仓库
+- 🛡️ **容错能力增强**: 支持无效 frontmatter 的 Skill
+- 🎨 **UI/UX 持续优化**: 设计系统统一，组件库完善
 
 ## 开发命令
 
@@ -77,14 +83,19 @@ cargo clippy              # Rust lint 检查
 ### Tauri Commands 列表
 
 #### 核心功能命令（src-tauri/src/lib.rs）
-- `scan_skills` - 扫描本地 Skills
-- `import_github_skill` - 从 GitHub 导入
+- `scan_skills` - 扫描本地 Skills（扫描深度：6 层）
+- `import_github_skill` - 从 GitHub 导入（支持多 Skill 提取和批量安全扫描）
 - `uninstall_skill` - 卸载 Skill
 - `import_local_skill` - 从本地导入
 - `get_project_paths` - 获取项目路径配置
 - `save_project_paths` - 保存项目路径
 - `open_url` - 在系统浏览器打开 URL
 - `read_skill` - 读取 SKILL.md 内容
+
+**v2.2.0 新增特性**:
+- `extract_skill_dirs()` - 智能识别和提取仓库中的 Skill 目录
+- 导入时支持批量安全扫描和独立阻塞处理
+- 容错处理：支持解析无效的 Skill frontmatter
 
 #### Skill 质量评分命令（src-tauri/src/commands/analyzer.rs）
 - `analyze_skill_quality` - 分析单个 Skill 质量

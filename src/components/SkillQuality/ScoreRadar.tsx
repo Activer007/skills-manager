@@ -44,9 +44,9 @@ export const ScoreRadar: React.FC<ScoreRadarProps> = ({ score, className }) => {
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
           <PolarGrid stroke="oklch(var(--b3))" />
-          <PolarAngleAxis 
-            dataKey="subject" 
-            tick={{ fill: 'oklch(var(--bc))', fontSize: 12 }} 
+          <PolarAngleAxis
+            dataKey="subject"
+            tick={{ fill: 'oklch(var(--bc))', fontSize: 12 }}
           />
           <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
           <Radar
@@ -56,9 +56,9 @@ export const ScoreRadar: React.FC<ScoreRadarProps> = ({ score, className }) => {
             fill="oklch(var(--p))"
             fillOpacity={0.6}
           />
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: 'oklch(var(--b1))', 
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'oklch(var(--b1))',
               borderColor: 'oklch(var(--b3))',
               borderRadius: '0.5rem',
               color: 'oklch(var(--bc))'
