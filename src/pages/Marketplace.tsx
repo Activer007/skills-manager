@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useLayoutEffect, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSkills, useMarketplaceSkills, useInstallSkill } from '../hooks/useSkills';
-import type { MarketplaceSkill } from '../types';
+import { useSkills, useMarketplaceSkills, useInstallSkill, useUninstallSkill } from '../hooks/useSkills';
+import type { MarketplaceSkill, InstalledSkill } from '../types';
 import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
@@ -11,6 +11,7 @@ import { SkillCard } from '../components/SkillCard';
 import { SlideOver } from '../components/ui/SlideOver';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
+import { Progress } from '../components/ui/Progress';
 import { cn } from '../utils/cn';
 import { Star, GitBranch, Github, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -48,7 +49,7 @@ interface CellProps {
 
 // Cell defined outside to prevent re-creation on render
 const Cell = memo(({ columnIndex, rowIndex, style, data }: CellProps) => {
-    const { skills, columnCount, isInstalled, handleInstall, setSelectedSkill, setShowDrawer, language } = data;
+    const { skills, columnCount, isInstalled, handleInstall, handleUninstall, setSelectedSkill, setShowDrawer, language } = data;
     const index = rowIndex * columnCount + columnIndex;
 
     if (index >= skills.length) return null;
@@ -66,8 +67,9 @@ const Cell = memo(({ columnIndex, rowIndex, style, data }: CellProps) => {
             <SkillCard
                 skill={{...skill, description: getLocalizedDescription(skill, language)}}
                 viewMode="grid"
-                isInstalled={isInstalled(skill.id)}
+                isInstalled={isInstalled(skill)}
                 onInstall={() => handleInstall(skill)}
+                onUninstall={isInstalled(skill) ? () => handleUninstall(skill) : undefined}
                 onViewDetails={() => {
                     setSelectedSkill(skill);
                     setShowDrawer(true);
@@ -88,14 +90,28 @@ const Marketplace = () => {
   } = useMarketplaceSkills();
   const { data: installedSkills = [] } = useSkills();
   const installMutation = useInstallSkill();
+  const uninstallMutation = useUninstallSkill();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
   const [selectedSkill, setSelectedSkill] = useState<MarketplaceSkill | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [pendingInstall, setPendingInstall] = useState<MarketplaceSkill | null>(null);
+  const [pendingUninstall, setPendingUninstall] = useState<InstalledSkill | null>(null);
   const [gridSize, setGridSize] = useState({ width: 0, height: 0 });
   const gridContainerRef = useRef<HTMLDivElement>(null);
+  const installTimerRef = useRef<number | null>(null);
+  const [installProgress, setInstallProgress] = useState(0);
+  const [isInstalling, setIsInstalling] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (installTimerRef.current) {
+        window.clearInterval(installTimerRef.current);
+        installTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const isGithubUrl = useMemo(() => {
     return GITHUB_URL_REGEX.test(searchTerm);
@@ -106,17 +122,79 @@ const Marketplace = () => {
     setPendingInstall(skill);
   }, [installMutation.isPending]);
 
+  const startInstallProgress = useCallback(() => {
+    if (installTimerRef.current) {
+      window.clearInterval(installTimerRef.current);
+    }
+    let current = 0;
+    setInstallProgress(0);
+    setIsInstalling(true);
+    installTimerRef.current = window.setInterval(() => {
+      const delta = Math.max(2, Math.round(Math.random() * 8));
+      current = Math.min(current + delta, 90);
+      setInstallProgress(current);
+    }, 320);
+  }, []);
+
+  const stopInstallProgress = useCallback(() => {
+    if (installTimerRef.current) {
+      window.clearInterval(installTimerRef.current);
+      installTimerRef.current = null;
+    }
+  }, []);
+
+  const resolveInstalledSkill = useCallback((skill: MarketplaceSkill) => {
+    return installedSkills.find(s => s.githubUrl && skill.githubUrl && s.githubUrl === skill.githubUrl)
+      ?? installedSkills.find(s => s.name === skill.name)
+      ?? installedSkills.find(s => s.id === skill.id)
+      ?? installedSkills.find(s => s.githubUrl && (s.githubUrl.includes(skill.id) || skill.githubUrl.includes(s.id)));
+  }, [installedSkills]);
+
+  const isMarketplaceSkillInstalled = useCallback((skill: MarketplaceSkill) => {
+    return !!resolveInstalledSkill(skill);
+  }, [resolveInstalledSkill]);
+
+  const handleUninstall = useCallback((skill: MarketplaceSkill) => {
+    if (uninstallMutation.isPending) return;
+    const installed = resolveInstalledSkill(skill);
+    if (!installed) {
+      toast.error(i18n.language === 'zh' ? '未找到已安装的 Skill' : 'Installed skill not found');
+      return;
+    }
+    setPendingUninstall(installed);
+  }, [resolveInstalledSkill, uninstallMutation.isPending, i18n.language]);
+
   const confirmInstall = async () => {
     if (!pendingInstall) return;
     try {
+      startInstallProgress();
       await installMutation.mutateAsync(pendingInstall);
+      setInstallProgress(100);
       toast.success(i18n.language === 'zh' ? `${pendingInstall.name} 安装成功！` : `${pendingInstall.name} installed successfully!`);
     } catch (error: unknown) {
       console.error('Installation error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(i18n.language === 'zh' ? `安装失败: ${errorMessage}` : `Installation failed: ${errorMessage}`);
     } finally {
-      setPendingInstall(null);
+      stopInstallProgress();
+      setTimeout(() => {
+        setPendingInstall(null);
+        setIsInstalling(false);
+        setInstallProgress(0);
+      }, 300);
+    }
+  };
+
+  const confirmUninstall = async () => {
+    if (!pendingUninstall) return;
+    try {
+      await uninstallMutation.mutateAsync(pendingUninstall.localPath);
+      toast.success(i18n.language === 'zh' ? `${pendingUninstall.name} 已卸载` : `${pendingUninstall.name} uninstalled`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(i18n.language === 'zh' ? `卸载失败: ${errorMessage}` : `Uninstall failed: ${errorMessage}`);
+    } finally {
+      setPendingUninstall(null);
     }
   };
 
@@ -128,11 +206,6 @@ const Marketplace = () => {
         toast.error(i18n.language === 'zh' ? `无法打开链接: ${error}` : `Failed to open URL: ${error}`);
     }
   };
-
-  const isInstalled = useCallback((skillId: string) => {
-    // Compare by name or githubUrl as paths (ids) won't match marketplace slugs
-    return installedSkills.some(s => s.id === skillId || s.name === skillId || (s.githubUrl && s.githubUrl.includes(skillId)));
-  }, [installedSkills]);
 
   const filteredSkills = useMemo(() => {
     return marketplaceSkills.filter(skill => {
@@ -193,12 +266,18 @@ const Marketplace = () => {
 
   // Memoize stable parts of itemData
   const baseItemData = useMemo(() => ({
-      isInstalled,
+      isInstalled: isMarketplaceSkillInstalled,
       handleInstall,
+      handleUninstall,
       setSelectedSkill,
       setShowDrawer,
       language: i18n.language
-  }), [isInstalled, handleInstall, i18n.language]); // handleInstall, setSelectedSkill, setShowDrawer are stable
+  }), [isMarketplaceSkillInstalled, handleInstall, handleUninstall, i18n.language]); // handleInstall, setSelectedSkill, setShowDrawer are stable
+
+  const selectedInstalled = useMemo(() => {
+    if (!selectedSkill) return null;
+    return resolveInstalledSkill(selectedSkill);
+  }, [selectedSkill, resolveInstalledSkill]);
 
   useLayoutEffect(() => {
     const updateSize = () => {
@@ -449,14 +528,25 @@ const Marketplace = () => {
                     {i18n.language === 'zh' ? '关闭' : 'Close'}
                 </Button>
                 {selectedSkill && (
-                     <Button
-                        variant="primary"
-                        onClick={() => handleInstall(selectedSkill)}
-                        disabled={isInstalled(selectedSkill.id) || installMutation.isPending}
-                        isLoading={installMutation.isPending}
-                    >
-                        {isInstalled(selectedSkill.id) ? (i18n.language === 'zh' ? '已安装' : 'Installed') : (i18n.language === 'zh' ? '安装' : 'Install')}
-                    </Button>
+                    selectedInstalled ? (
+                        <Button
+                            variant="error"
+                            onClick={() => handleUninstall(selectedSkill)}
+                            disabled={uninstallMutation.isPending}
+                            isLoading={uninstallMutation.isPending}
+                        >
+                            {i18n.language === 'zh' ? '卸载' : 'Uninstall'}
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="primary"
+                            onClick={() => handleInstall(selectedSkill)}
+                            disabled={installMutation.isPending || isInstalling}
+                            isLoading={installMutation.isPending || isInstalling}
+                        >
+                            {i18n.language === 'zh' ? '安装' : 'Install'}
+                        </Button>
+                    )
                 )}
             </div>
         }
@@ -541,32 +631,79 @@ const Marketplace = () => {
 
       <ModalDialog
         isOpen={!!pendingInstall}
-        title={i18n.language === 'zh' ? '安全提示' : 'Security Notice'}
+        title={isInstalling ? (i18n.language === 'zh' ? '正在安装' : 'Installing') : (i18n.language === 'zh' ? '安全提示' : 'Security Notice')}
+        message={
+          isInstalling ? (
+            <div className="space-y-3 text-left text-sm text-slate-600 dark:text-slate-400">
+              <p>
+                {i18n.language === 'zh'
+                  ? `正在安装 ${pendingInstall?.name ?? ''}，请稍候…`
+                  : `Installing ${pendingInstall?.name ?? ''}, please wait…`}
+              </p>
+              <Progress
+                value={installProgress}
+                showPercentage
+                size="sm"
+                colorScheme="blue"
+                label={i18n.language === 'zh' ? '安装进度' : 'Install progress'}
+              />
+              <p className="text-xs text-slate-500">
+                {i18n.language === 'zh'
+                  ? '进度为模拟值，完成后会自动刷新'
+                  : 'Progress is simulated and will complete automatically.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 text-left text-sm text-slate-600 dark:text-slate-400">
+              <p>
+                {i18n.language === 'zh'
+                  ? '当前版本已启用安全检查功能。安装前会自动扫描 Skill 内容，检测以下危险模式：'
+                  : 'Security scanning is enabled. The skill will be scanned for:'}
+              </p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li>{i18n.language === 'zh' ? '破坏性操作（如 rm -rf /）' : 'Destructive operations (e.g., rm -rf /)'}</li>
+                <li>{i18n.language === 'zh' ? '远程代码执行（如 curl | sh）' : 'Remote code execution (e.g., curl | sh)'}</li>
+                <li>{i18n.language === 'zh' ? '命令注入（如 eval()）' : 'Command injection (e.g., eval())'}</li>
+                <li>{i18n.language === 'zh' ? '数据泄露风险' : 'Data exfiltration risks'}</li>
+              </ul>
+              <p className="font-medium text-slate-700 dark:text-slate-300">
+                {i18n.language === 'zh'
+                  ? `是否继续安装 ${pendingInstall?.name ?? ''}？`
+                  : `Continue installing ${pendingInstall?.name ?? ''}?`}
+              </p>
+            </div>
+          )
+        }
+        confirmText={i18n.language === 'zh' ? '继续安装' : 'Continue Install'}
+        cancelText={i18n.language === 'zh' ? '取消' : 'Cancel'}
+        onConfirm={isInstalling ? undefined : confirmInstall}
+        onCancel={isInstalling ? undefined : () => setPendingInstall(null)}
+        type={isInstalling ? 'info' : 'confirm'}
+        isLoading={isInstalling}
+      />
+
+      <ModalDialog
+        isOpen={!!pendingUninstall}
+        title={i18n.language === 'zh' ? '确认卸载' : 'Confirm Uninstall'}
         message={
           <div className="space-y-3 text-left text-sm text-slate-600 dark:text-slate-400">
             <p>
               {i18n.language === 'zh'
-                ? '当前版本已启用安全检查功能。安装前会自动扫描 Skill 内容，检测以下危险模式：'
-                : 'Security scanning is enabled. The skill will be scanned for:'}
+                ? `确定要卸载 ${pendingUninstall?.name ?? ''} 吗？`
+                : `Are you sure you want to uninstall ${pendingUninstall?.name ?? ''}?`}
             </p>
-            <ul className="list-disc pl-4 space-y-1">
-              <li>{i18n.language === 'zh' ? '破坏性操作（如 rm -rf /）' : 'Destructive operations (e.g., rm -rf /)'}</li>
-              <li>{i18n.language === 'zh' ? '远程代码执行（如 curl | sh）' : 'Remote code execution (e.g., curl | sh)'}</li>
-              <li>{i18n.language === 'zh' ? '命令注入（如 eval()）' : 'Command injection (e.g., eval())'}</li>
-              <li>{i18n.language === 'zh' ? '数据泄露风险' : 'Data exfiltration risks'}</li>
-            </ul>
-            <p className="font-medium text-slate-700 dark:text-slate-300">
-              {i18n.language === 'zh'
-                ? `是否继续安装 ${pendingInstall?.name ?? ''}？`
-                : `Continue installing ${pendingInstall?.name ?? ''}?`}
+            <p className="font-medium text-error">
+              {i18n.language === 'zh' ? '此操作无法撤销！' : 'This action cannot be undone!'}
             </p>
           </div>
         }
-        confirmText={i18n.language === 'zh' ? '继续安装' : 'Continue Install'}
+        confirmText={i18n.language === 'zh' ? '卸载' : 'Uninstall'}
         cancelText={i18n.language === 'zh' ? '取消' : 'Cancel'}
-        onConfirm={confirmInstall}
-        onCancel={() => setPendingInstall(null)}
+        onConfirm={confirmUninstall}
+        onCancel={() => setPendingUninstall(null)}
         type="confirm"
+        isDestructive
+        isLoading={uninstallMutation.isPending}
       />
     </div>
   );

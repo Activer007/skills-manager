@@ -257,9 +257,20 @@ export const SkillCard = ({
                         {skill.author || 'Unknown'}
                     </div>
                     {isInstalled ? (
-                         <Button size="sm" variant="outline" className="h-8 min-h-0 text-xs" onClick={(e) => { e.stopPropagation(); onViewDetails?.(); }}>
-                            Open
-                        </Button>
+                        onUninstall ? (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 min-h-0 text-xs text-error border-error/30 hover:border-error/60"
+                                onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}
+                            >
+                                Uninstall
+                            </Button>
+                        ) : (
+                            <Button size="sm" variant="outline" className="h-8 min-h-0 text-xs" onClick={(e) => { e.stopPropagation(); onViewDetails?.(); }}>
+                                Open
+                            </Button>
+                        )
                     ) : (
                         <Button
                             size="sm"

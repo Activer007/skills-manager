@@ -7,6 +7,7 @@ vi.mock('../hooks/useSkills', () => ({
   useSkills: () => ({ data: [] }),
   useMarketplaceSkills: () => ({ data: [], isLoading: false }),
   useInstallSkill: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUninstallSkill: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 vi.mock('react-i18next', () => ({
