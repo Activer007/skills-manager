@@ -26,6 +26,11 @@ import ModalDialog from '../components/common/ModalDialog';
 const TOP_RATED_THRESHOLD = 50; // Stars threshold for top-rated filter
 const GUTTER_SIZE = 24;
 const ROW_HEIGHT = 380;
+const HERO_BG_CANDIDATES = [
+  '/marketplace/hero-bg.webp',
+  '/marketplace/hero-bg.jpg',
+  '/marketplace/hero-bg.png'
+];
 
 type FilterType = 'all' | 'top-rated' | 'productivity' | 'coding' | 'security' | 'data' | 'design';
 
@@ -103,6 +108,7 @@ const Marketplace = () => {
   const installTimerRef = useRef<number | null>(null);
   const [installProgress, setInstallProgress] = useState(0);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [heroBackgroundUrl, setHeroBackgroundUrl] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -110,6 +116,34 @@ const Marketplace = () => {
         window.clearInterval(installTimerRef.current);
         installTimerRef.current = null;
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHeroBackground = async () => {
+      for (const url of HERO_BG_CANDIDATES) {
+        const loaded = await new Promise<boolean>((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve(true);
+          img.onerror = () => resolve(false);
+          img.src = url;
+        });
+
+        if (cancelled) return;
+        if (loaded) {
+          setHeroBackgroundUrl(url);
+          return;
+        }
+      }
+
+      setHeroBackgroundUrl(null);
+    };
+
+    loadHeroBackground();
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -298,9 +332,16 @@ const Marketplace = () => {
   }, []);
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-8 h-full min-h-0">
       {/* Hero Section */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 dark:from-primary/5 dark:to-purple-500/5 p-8 md:p-12">
+          {heroBackgroundUrl && (
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 z-0 bg-cover bg-center opacity-40"
+              style={{ backgroundImage: `url(${heroBackgroundUrl})` }}
+            />
+          )}
           <div className="relative z-10 max-w-2xl">
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
@@ -439,75 +480,79 @@ const Marketplace = () => {
       </div>
 
 
-      {isLoadingMarketplace ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          <SkeletonCard count={8} />
-        </div>
-      ) : isMarketplaceError ? (
-        <div className="flex flex-col items-center justify-center h-full py-16 text-center">
-          <div className="max-w-lg space-y-4">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {i18n.language === 'zh' ? '市场数据加载失败' : 'Failed to load marketplace data'}
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400">
-              {marketplaceError instanceof Error ? marketplaceError.message : String(marketplaceError)}
-            </p>
-            <Button variant="primary" onClick={() => refetchMarketplace()}>
-              {i18n.language === 'zh' ? '重试加载' : 'Retry'}
-            </Button>
-          </div>
-        </div>
-      ) : filteredSkills.length === 0 ? (
-        // Empty State Component - Using new EmptyState
-        <EmptyState
-          variant="minimal"
-          icon={<Search />}
-          title={i18n.language === 'zh' ? '未找到相关 Skill' : 'No skills found'}
-          description={i18n.language === 'zh'
-            ? '尝试使用不同的关键词，或者直接导入 GitHub 仓库。'
-            : 'Try searching with different keywords, or import directly from GitHub.'
-          }
-          action={{
-            label: i18n.language === 'zh' ? '从 GitHub 导入' : 'Import from GitHub',
-            onClick: () => setShowImportModal(true),
-            variant: 'primary',
-          }}
-        />
-      ) : (
-        <div className="w-full" ref={gridContainerRef}>
-            <div className="min-h-[600px]">
-                <AutoSizer
-                renderProp={({ height, width }) => {
-                    const resolvedHeight = height || gridSize.height;
-                    const resolvedWidth = width || gridSize.width;
-                    if (!resolvedHeight || !resolvedWidth) return null;
-
-                    const columnCount = Math.floor(resolvedWidth / (280 + GUTTER_SIZE)) || 1;
-                    const columnWidth = resolvedWidth / columnCount;
-                    const rowCount = Math.ceil(filteredSkills.length / columnCount);
-
-                    return (
-                        <Grid
-                            columnCount={columnCount}
-                            columnWidth={columnWidth}
-                            height={resolvedHeight}
-                            rowCount={rowCount}
-                            rowHeight={ROW_HEIGHT}
-                            width={resolvedWidth}
-                            itemData={{
-                                ...baseItemData,
-                                skills: filteredSkills,
-                                columnCount
-                            }}
-                        >
-                            {Cell}
-                        </Grid>
-                    );
-                }}
-                />
+      <div className="flex-1 min-h-0">
+        {isLoadingMarketplace ? (
+          <div className="h-full overflow-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <SkeletonCard count={8} />
             </div>
-        </div>
-      )}
+          </div>
+        ) : isMarketplaceError ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="max-w-lg space-y-4">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                {i18n.language === 'zh' ? '市场数据加载失败' : 'Failed to load marketplace data'}
+              </h2>
+              <p className="text-slate-600 dark:text-slate-400">
+                {marketplaceError instanceof Error ? marketplaceError.message : String(marketplaceError)}
+              </p>
+              <Button variant="primary" onClick={() => refetchMarketplace()}>
+                {i18n.language === 'zh' ? '重试加载' : 'Retry'}
+              </Button>
+            </div>
+          </div>
+        ) : filteredSkills.length === 0 ? (
+          // Empty State Component - Using new EmptyState
+          <div className="flex h-full items-center justify-center">
+            <EmptyState
+              variant="minimal"
+              icon={<Search />}
+              title={i18n.language === 'zh' ? '未找到相关 Skill' : 'No skills found'}
+              description={i18n.language === 'zh'
+                ? '尝试使用不同的关键词，或者直接导入 GitHub 仓库。'
+                : 'Try searching with different keywords, or import directly from GitHub.'
+              }
+              action={{
+                label: i18n.language === 'zh' ? '从 GitHub 导入' : 'Import from GitHub',
+                onClick: () => setShowImportModal(true),
+                variant: 'primary',
+              }}
+            />
+          </div>
+        ) : (
+          <div className="w-full h-full" ref={gridContainerRef}>
+              <AutoSizer
+              renderProp={({ height, width }) => {
+                  const resolvedHeight = height || gridSize.height;
+                  const resolvedWidth = width || gridSize.width;
+                  if (!resolvedHeight || !resolvedWidth) return null;
+
+                  const columnCount = Math.floor(resolvedWidth / (280 + GUTTER_SIZE)) || 1;
+                  const columnWidth = resolvedWidth / columnCount;
+                  const rowCount = Math.ceil(filteredSkills.length / columnCount);
+
+                  return (
+                      <Grid
+                          columnCount={columnCount}
+                          columnWidth={columnWidth}
+                          height={resolvedHeight}
+                          rowCount={rowCount}
+                          rowHeight={ROW_HEIGHT}
+                          width={resolvedWidth}
+                          itemData={{
+                              ...baseItemData,
+                              skills: filteredSkills,
+                              columnCount
+                          }}
+                      >
+                          {Cell}
+                      </Grid>
+                  );
+              }}
+              />
+          </div>
+        )}
+      </div>
 
       <SlideOver
         isOpen={showDrawer}
