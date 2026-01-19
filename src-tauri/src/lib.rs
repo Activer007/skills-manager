@@ -2,6 +2,7 @@
 rust_i18n::i18n!("locales", fallback = "en");
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -16,6 +17,8 @@ mod i18n;
 mod models;
 mod security;
 mod services;
+
+const SKILL_SCAN_DEPTH: usize = 6;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SkillInfo {
@@ -126,7 +129,7 @@ fn scan_skills(state: State<'_, ConfigService>) -> Result<ScanResult, String> {
 
     if let Some(skills_dir) = get_claude_skills_dir() {
         if skills_dir.exists() {
-            for entry in WalkDir::new(&skills_dir).max_depth(3).into_iter().flatten() {
+            for entry in WalkDir::new(&skills_dir).max_depth(SKILL_SCAN_DEPTH).into_iter().flatten() {
                 let path = entry.path();
                 if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
                     if let Some(skill) = parse_skill_md(&path.to_path_buf(), "system") {
@@ -141,7 +144,7 @@ fn scan_skills(state: State<'_, ConfigService>) -> Result<ScanResult, String> {
     for project_path in paths {
         let skills_dir = PathBuf::from(&project_path).join(".claude").join("skills");
         if skills_dir.exists() {
-            for entry in WalkDir::new(&skills_dir).max_depth(3).into_iter().flatten() {
+            for entry in WalkDir::new(&skills_dir).max_depth(SKILL_SCAN_DEPTH).into_iter().flatten() {
                 let path = entry.path();
                 if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
                     if let Some(skill) = parse_skill_md(&path.to_path_buf(), "project") {
@@ -197,13 +200,13 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
             };
         }
 
-        let skill_name = if repo_url.contains("/tree/") {
+        let target_dir_name = if repo_url.contains("/tree/") {
             parts.last().unwrap_or(&"skill").to_string()
         } else {
             parts.get(4).unwrap_or(&"skill").to_string()
         };
 
-        let target_dir = install_dir.join(&skill_name);
+        let target_dir = install_dir.join(&target_dir_name);
 
         if repo_url.contains("/tree/") {
             let repo_base = format!("https://github.com/{}/{}", parts[3], parts[4]);
@@ -277,77 +280,120 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
             }
         }
 
-        // Security scan after successful clone
+        let installed_dirs = match extract_skill_dirs(&target_dir, &install_dir) {
+            Ok(dirs) => dirs,
+            Err(e) => {
+                return ImportResult {
+                    success: false,
+                    message: e,
+                    blocked: false,
+                }
+            }
+        };
+
+        let mut installed = Vec::new();
+        let mut blocked = Vec::new();
+        let mut warnings = Vec::new();
+
         if !request.skip_security_check {
             use crate::security::{SecurityScanner, ScanMode};
             use crate::services::whitelist_service::WhitelistService;
 
-            // Check whitelist
-            let (is_whitelisted, whitelisted_rules) = if let Ok(service) = WhitelistService::new() {
-                (
-                    service.is_skill_whitelisted(&skill_name).unwrap_or(false), 
-                    service.get_whitelisted_rules().unwrap_or_default()
-                )
-            } else {
-                (false, Vec::new())
-            };
+            let whitelist_service = WhitelistService::new().ok();
+            let whitelisted_rules = whitelist_service
+                .as_ref()
+                .and_then(|service| service.get_whitelisted_rules().ok())
+                .unwrap_or_default();
 
-            if is_whitelisted {
-                eprintln!("Skill {} is whitelisted, skipping security scan.", skill_name);
-            } else {
-                let scanner = SecurityScanner::new();
-                // TODO: Retrieve configured ScanMode from DB/Config instead of hardcoding Standard
-                let scan_mode = ScanMode::Standard;
+            let scanner = SecurityScanner::new();
+            // TODO: Retrieve configured ScanMode from DB/Config instead of hardcoding Standard
+            let scan_mode = ScanMode::Standard;
 
-                match scanner.scan_directory(target_dir.to_str().unwrap(), &skill_name, "en", scan_mode, &whitelisted_rules) {
-                Ok(report) => {
-                    if report.blocked {
-                        // Remove the skill if blocked by hard triggers
-                        if let Err(e) = fs::remove_dir_all(&target_dir) {
-                            eprintln!("Failed to remove blocked skill directory {}: {}", target_dir.display(), e);
-                        }
-                        return ImportResult {
-                            success: false,
-                            message: format!(
-                                "Security check blocked installation. Found {} critical issues:\n{}",
-                                report.hard_trigger_issues.len(),
-                                report.hard_trigger_issues.join("\n")
-                            ),
-                            blocked: true,
-                        };
-                    }
+            for dir in installed_dirs {
+                let skill_name = dir
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("skill")
+                    .to_string();
+                let is_whitelisted = whitelist_service
+                    .as_ref()
+                    .and_then(|service| service.is_skill_whitelisted(&skill_name).ok())
+                    .unwrap_or(false);
 
-                    // Log security score and issues
-                    eprintln!("Security scan completed for {}: {} ({})", skill_name, report.score, report.level.as_str());
-                    if !report.issues.is_empty() {
-                        eprintln!("Security issues found: {}", report.issues.len());
-                    }
-
-                    if report.score < 70 {
-                        return ImportResult {
-                            success: true,
-                            message: format!(
-                                "Successfully installed {} to {}, but warning: low security score ({}). Please review the code.",
-                                skill_name,
-                                target_dir.display(),
-                                report.score
-                            ),
-                            blocked: false,
-                        };
-                    }
+                if is_whitelisted {
+                    eprintln!("Skill {} is whitelisted, skipping security scan.", skill_name);
+                    installed.push((skill_name, dir));
+                    continue;
                 }
-                Err(e) => {
-                    eprintln!("Security scan failed for {}: {}", skill_name, e);
-                    // Continue installation even if scan fails (log warning only)
+
+                match scanner.scan_directory(dir.to_str().unwrap(), &skill_name, "en", scan_mode, &whitelisted_rules) {
+                    Ok(report) => {
+                        if report.blocked {
+                            if let Err(e) = fs::remove_dir_all(&dir) {
+                                eprintln!("Failed to remove blocked skill directory {}: {}", dir.display(), e);
+                            }
+                            blocked.push(skill_name);
+                            continue;
+                        }
+
+                        eprintln!("Security scan completed for {}: {} ({})", skill_name, report.score, report.level.as_str());
+                        if !report.issues.is_empty() {
+                            eprintln!("Security issues found: {}", report.issues.len());
+                        }
+
+                        if report.score < 70 {
+                            warnings.push(format!("{} ({})", skill_name, report.score));
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Security scan failed for {}: {}", skill_name, e);
+                    }
                 }
             }
+        } else {
+            for dir in installed_dirs {
+                let skill_name = dir
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("skill")
+                    .to_string();
+                installed.push((skill_name, dir));
+            }
         }
+
+        if installed.is_empty() {
+            let message = if blocked.is_empty() {
+                "No SKILL.md found in the imported repository".to_string()
+            } else {
+                format!(
+                    "Security check blocked installation. Blocked skills: {}",
+                    blocked.join(", ")
+                )
+            };
+            return ImportResult {
+                success: false,
+                message,
+                blocked: !blocked.is_empty(),
+            };
+        }
+
+        let mut message = if installed.len() == 1 {
+            format!("Successfully installed {} to {}", installed[0].0, installed[0].1.display())
+        } else {
+            format!("Successfully installed {} skills to {}", installed.len(), install_dir.display())
+        };
+
+        if !blocked.is_empty() {
+            message = format!("{}; blocked: {}", message, blocked.join(", "));
+        }
+        if !warnings.is_empty() {
+            message = format!("{}; warnings: low security score for {}", message, warnings.join(", "));
         }
 
         ImportResult {
             success: true,
-            message: format!("Successfully installed {} to {}", skill_name, target_dir.display()),
-            blocked: false,
+            message,
+            blocked: !blocked.is_empty(),
         }
     }).await.map_err(|e| e.to_string())?;
 
@@ -425,78 +471,211 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
 
     copy_dir_all(&source, &target_dir).map_err(|e| e.to_string())?;
 
-    // Security scan after successful copy
+    let installed_dirs = match extract_skill_dirs(&target_dir, &install_dir) {
+        Ok(dirs) => dirs,
+        Err(e) => {
+            return Ok(ImportResult {
+                success: false,
+                message: e,
+                blocked: false,
+            })
+        }
+    };
+
+    let mut installed = Vec::new();
+    let mut blocked = Vec::new();
+    let mut warnings = Vec::new();
+
     if !request.skip_security_check {
         use crate::security::{SecurityScanner, ScanMode};
         use crate::services::whitelist_service::WhitelistService;
 
-        // Check whitelist
-        let (is_whitelisted, whitelisted_rules) = if let Ok(service) = WhitelistService::new() {
-            (
-                service.is_skill_whitelisted(&request.skill_name).unwrap_or(false), 
-                service.get_whitelisted_rules().unwrap_or_default()
-            )
-        } else {
-            (false, Vec::new())
-        };
+        let whitelist_service = WhitelistService::new().ok();
+        let whitelisted_rules = whitelist_service
+            .as_ref()
+            .and_then(|service| service.get_whitelisted_rules().ok())
+            .unwrap_or_default();
 
-        if is_whitelisted {
-            eprintln!("Skill {} is whitelisted, skipping security scan.", request.skill_name);
-        } else {
-            let scanner = SecurityScanner::new();
-            // TODO: Retrieve configured ScanMode from DB/Config instead of hardcoding Standard
-            let scan_mode = ScanMode::Standard;
+        let scanner = SecurityScanner::new();
+        // TODO: Retrieve configured ScanMode from DB/Config instead of hardcoding Standard
+        let scan_mode = ScanMode::Standard;
 
-            match scanner.scan_directory(target_dir.to_str().unwrap(), &request.skill_name, "en", scan_mode, &whitelisted_rules) {
-            Ok(report) => {
-                if report.blocked {
-                    // Remove the skill if blocked by hard triggers
-                    if let Err(e) = fs::remove_dir_all(&target_dir) {
-                        eprintln!("Failed to remove blocked skill directory {}: {}", target_dir.display(), e);
-                    }
-                    return Ok(ImportResult {
-                        success: false,
-                        message: format!(
-                            "Security check blocked installation. Found {} critical issues:\n{}",
-                            report.hard_trigger_issues.len(),
-                            report.hard_trigger_issues.join("\n")
-                        ),
-                        blocked: true,
-                    });
-                }
+        for dir in installed_dirs {
+            let skill_name = dir
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("skill")
+                .to_string();
+            let is_whitelisted = whitelist_service
+                .as_ref()
+                .and_then(|service| service.is_skill_whitelisted(&skill_name).ok())
+                .unwrap_or(false);
 
-                // Log security score and issues
-                eprintln!("Security scan completed for {}: {} ({})", request.skill_name, report.score, report.level.as_str());
-                if !report.issues.is_empty() {
-                    eprintln!("Security issues found: {}", report.issues.len());
-                }
-
-                if report.score < 70 {
-                    return Ok(ImportResult {
-                        success: true,
-                        message: format!(
-                            "Successfully imported {} to {}, but warning: low security score ({}). Please review the code.",
-                            request.skill_name,
-                            target_dir.display(),
-                            report.score
-                        ),
-                        blocked: false,
-                    });
-                }
+            if is_whitelisted {
+                eprintln!("Skill {} is whitelisted, skipping security scan.", skill_name);
+                installed.push((skill_name, dir));
+                continue;
             }
-            Err(e) => {
-                eprintln!("Security scan failed for {}: {}", request.skill_name, e);
-                // Continue installation even if scan fails (log warning only)
+
+            match scanner.scan_directory(dir.to_str().unwrap(), &skill_name, "en", scan_mode, &whitelisted_rules) {
+                Ok(report) => {
+                    if report.blocked {
+                        if let Err(e) = fs::remove_dir_all(&dir) {
+                            eprintln!("Failed to remove blocked skill directory {}: {}", dir.display(), e);
+                        }
+                        blocked.push(skill_name);
+                        continue;
+                    }
+
+                    eprintln!("Security scan completed for {}: {} ({})", skill_name, report.score, report.level.as_str());
+                    if !report.issues.is_empty() {
+                        eprintln!("Security issues found: {}", report.issues.len());
+                    }
+
+                    if report.score < 70 {
+                        warnings.push(format!("{} ({})", skill_name, report.score));
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Security scan failed for {}: {}", skill_name, e);
+                }
             }
         }
+    } else {
+        for dir in installed_dirs {
+            let skill_name = dir
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("skill")
+                .to_string();
+            installed.push((skill_name, dir));
+        }
     }
+
+    if installed.is_empty() {
+        let message = if blocked.is_empty() {
+            "No SKILL.md found in the imported folder".to_string()
+        } else {
+            format!(
+                "Security check blocked installation. Blocked skills: {}",
+                blocked.join(", ")
+            )
+        };
+        return Ok(ImportResult {
+            success: false,
+            message,
+            blocked: !blocked.is_empty(),
+        });
+    }
+
+    let mut message = if installed.len() == 1 {
+        format!("Successfully imported {} to {}", installed[0].0, installed[0].1.display())
+    } else {
+        format!("Successfully imported {} skills to {}", installed.len(), install_dir.display())
+    };
+
+    if !blocked.is_empty() {
+        message = format!("{}; blocked: {}", message, blocked.join(", "));
+    }
+    if !warnings.is_empty() {
+        message = format!("{}; warnings: low security score for {}", message, warnings.join(", "));
     }
 
     Ok(ImportResult {
         success: true,
-        message: format!("Successfully imported {} to {}", request.skill_name, target_dir.display()),
-        blocked: false,
+        message,
+        blocked: !blocked.is_empty(),
     })
+}
+
+fn collect_skill_dirs(root: &PathBuf) -> Vec<PathBuf> {
+    let root_skill = root.join("SKILL.md");
+    if root_skill.exists() {
+        return vec![root.clone()];
+    }
+
+    let mut skill_dirs = Vec::new();
+    let mut seen = HashSet::new();
+
+    let walker = WalkDir::new(root)
+        .max_depth(6)
+        .into_iter()
+        .filter_entry(|entry| {
+            let name = entry.file_name().to_string_lossy();
+            name != ".git" && name != "node_modules" && name != "target"
+        });
+
+    for entry in walker.flatten() {
+        let path = entry.path();
+        if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
+            if let Some(parent) = path.parent() {
+                let key = parent.to_string_lossy().to_string();
+                if seen.insert(key.clone()) {
+                    skill_dirs.push(PathBuf::from(key));
+                }
+            }
+        }
+    }
+
+    skill_dirs
+}
+
+fn extract_skill_dirs(target_dir: &PathBuf, install_dir: &PathBuf) -> Result<Vec<PathBuf>, String> {
+    let skill_dirs = collect_skill_dirs(target_dir);
+
+    if skill_dirs.is_empty() || (skill_dirs.len() == 1 && skill_dirs[0] == *target_dir) {
+        return Ok(vec![target_dir.clone()]);
+    }
+
+    let mut installed = Vec::new();
+    let mut deferred_moves: Vec<(PathBuf, PathBuf)> = Vec::new();
+
+    for skill_dir in skill_dirs {
+        let name = skill_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("skill")
+            .to_string();
+        let final_dest = install_dir.join(&name);
+        let (move_dest, deferred) = if final_dest == *target_dir {
+            let temp_dest = install_dir.join(format!(".temp_extract_{}", name));
+            (temp_dest, Some(final_dest))
+        } else {
+            (final_dest.clone(), None)
+        };
+
+        let _ = fs::remove_dir_all(&move_dest);
+
+        if let Err(e) = fs::rename(&skill_dir, &move_dest) {
+            copy_dir_all(&skill_dir, &move_dest).map_err(|err| err.to_string())?;
+            let _ = fs::remove_dir_all(&skill_dir);
+            if !move_dest.exists() {
+                return Err(format!("Failed to move skill {}: {}", name, e));
+            }
+        }
+
+        if let Some(destination) = deferred {
+            deferred_moves.push((move_dest, destination));
+        } else {
+            installed.push(move_dest);
+        }
+    }
+
+    let _ = fs::remove_dir_all(&target_dir);
+
+    for (temp_dest, final_dest) in deferred_moves {
+        let _ = fs::remove_dir_all(&final_dest);
+        if let Err(e) = fs::rename(&temp_dest, &final_dest) {
+            copy_dir_all(&temp_dest, &final_dest).map_err(|err| err.to_string())?;
+            let _ = fs::remove_dir_all(&temp_dest);
+            if !final_dest.exists() {
+                return Err(format!("Failed to finalize move: {}", e));
+            }
+        }
+        installed.push(final_dest);
+    }
+
+    Ok(installed)
 }
 
 fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
