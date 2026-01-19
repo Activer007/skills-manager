@@ -7,6 +7,7 @@
 
 use crate::analyzer::{AnalyzerError, SkillMetadata};
 use crate::analyzer::utils::*;
+use log::warn;
 use std::fs;
 use std::path::Path;
 
@@ -49,7 +50,7 @@ impl SkillDocument {
     /// Parse SKILL.md content from a string
     pub fn from_string(raw_content: &str, file_path: String) -> Result<Self, AnalyzerError> {
         // Extract frontmatter and content
-        let (metadata, content) = Self::parse_frontmatter(raw_content)?;
+        let (metadata, content) = Self::parse_frontmatter(raw_content, Some(&file_path))?;
 
         // Extract code blocks and sections
         let code_blocks = extract_code_blocks(&content);
@@ -65,7 +66,7 @@ impl SkillDocument {
     }
 
     /// Parse YAML frontmatter from markdown content
-    fn parse_frontmatter(raw_content: &str) -> Result<(SkillMetadata, String), AnalyzerError> {
+    fn parse_frontmatter(raw_content: &str, file_path: Option<&str>) -> Result<(SkillMetadata, String), AnalyzerError> {
         let lines: Vec<&str> = raw_content.lines().collect();
 
         // Check if content starts with frontmatter delimiter
@@ -83,15 +84,23 @@ impl SkillDocument {
             }
         }
 
+        let path_label = file_path.map(|path| format!(" ({})", path)).unwrap_or_default();
+
         if let Some(end_idx) = frontmatter_end {
             // Extract frontmatter YAML
             let frontmatter_lines = &lines[1..end_idx];
             let frontmatter_yaml = frontmatter_lines.join("\n");
 
             // Parse YAML
-            let metadata: SkillMetadata = serde_yaml::from_str(&frontmatter_yaml).map_err(|e| {
-                AnalyzerError::YamlParseError(format!("Failed to parse YAML frontmatter: {}", e))
-            })?;
+            let metadata: SkillMetadata = match serde_yaml::from_str(&frontmatter_yaml) {
+                Ok(parsed) => parsed,
+                Err(e) => {
+                    warn!("Failed to parse YAML frontmatter{}: {}", path_label, e);
+                    let content_lines = &lines[(end_idx + 1)..];
+                    let content = content_lines.join("\n");
+                    return Ok((SkillMetadata::default(), content));
+                }
+            };
 
             // Extract content after frontmatter
             let content_lines = &lines[(end_idx + 1)..];
@@ -100,9 +109,8 @@ impl SkillDocument {
             Ok((metadata, content))
         } else {
             // Frontmatter not properly closed
-            Err(AnalyzerError::YamlParseError(
-                "Frontmatter delimiter '---' found but no closing delimiter".to_string(),
-            ))
+            warn!("Frontmatter delimiter '---' found but no closing delimiter{}; treating as plain markdown", path_label);
+            Ok((SkillMetadata::default(), raw_content.to_string()))
         }
     }
 
@@ -242,7 +250,7 @@ version: 1.0.0
 This is a test skill.
 "#;
 
-        let (metadata, markdown) = SkillDocument::parse_frontmatter(content).unwrap();
+        let (metadata, markdown) = SkillDocument::parse_frontmatter(content, None).unwrap();
         assert_eq!(metadata.name, "test-skill");
         assert_eq!(metadata.author, Some("Test Author".to_string()));
         assert!(markdown.contains("# Test Skill"));
@@ -255,7 +263,7 @@ This is a test skill.
 This is a test skill without frontmatter.
 "#;
 
-        let (metadata, markdown) = SkillDocument::parse_frontmatter(content).unwrap();
+        let (metadata, markdown) = SkillDocument::parse_frontmatter(content, None).unwrap();
         assert_eq!(metadata.name, ""); // default
         assert!(markdown.contains("# Test Skill"));
     }
@@ -384,7 +392,7 @@ configSchema:
 # Test Skill
 "#;
 
-        let (metadata, _) = SkillDocument::parse_frontmatter(content).unwrap();
+        let (metadata, _) = SkillDocument::parse_frontmatter(content, None).unwrap();
         assert_eq!(metadata.name, "test-skill");
         assert!(metadata.config_schema.is_some());
 
