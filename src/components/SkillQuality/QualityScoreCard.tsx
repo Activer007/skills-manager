@@ -10,6 +10,7 @@ interface QualityScoreCardProps {
   score: SkillScore;
   isLoading?: boolean;
   error?: string | null;
+  showRadar?: boolean;
   className?: string;
 }
 
@@ -36,7 +37,13 @@ const ScoreBar = ({ value, max, label }: { value: number; max: number; label: st
   );
 };
 
-export const QualityScoreCard: React.FC<QualityScoreCardProps> = ({ score, isLoading, error, className }) => {
+export const QualityScoreCard: React.FC<QualityScoreCardProps> = ({
+  score,
+  isLoading,
+  error,
+  showRadar = true,
+  className
+}) => {
   const { i18n } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
@@ -86,11 +93,13 @@ export const QualityScoreCard: React.FC<QualityScoreCardProps> = ({ score, isLoa
         <div className="px-4 pb-4 border-t border-base-200 pt-4 animate-in slide-in-from-top-2 duration-200">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-            {/* Left Column: Radar & Scores */}
+            {/* Left Column: Scores */}
             <div className="space-y-4">
-              <div className="bg-base-200/50 rounded-box p-4 flex items-center justify-center h-64">
-                 <ScoreRadar score={score} />
-              </div>
+              {showRadar && (
+                <div className="bg-base-200/50 rounded-box p-4 flex items-center justify-center h-64">
+                  <ScoreRadar score={score} />
+                </div>
+              )}
 
               <div>
                 <h4 className="font-bold text-sm mb-2 flex items-center gap-2">

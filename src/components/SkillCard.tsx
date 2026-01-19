@@ -260,8 +260,8 @@ export const SkillCard = ({
                         onUninstall ? (
                             <Button
                                 size="sm"
-                                variant="outline"
-                                className="h-8 min-h-0 text-xs text-error border-error/30 hover:border-error/60"
+                                variant="primary"
+                                className="rounded-full h-8 min-h-0 px-4 text-xs shadow-primary/20 hover:shadow-primary/40 hover:shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}
                             >
                                 Uninstall
