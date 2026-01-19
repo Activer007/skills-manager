@@ -6,7 +6,7 @@ import { useSkillStore } from '../../store/useSkillStore';
 
 const Sidebar = () => {
     const { t, i18n } = useTranslation();
-    const { theme, setTheme } = useSkillStore();
+    const { theme, setTheme, showSecuritySection } = useSkillStore();
 
     const toggleTheme = () => {
         const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -22,7 +22,7 @@ const Sidebar = () => {
     const navItems = [
         { to: '/my-skills', icon: Library, label: t('mySkills') },
         { to: '/marketplace', icon: ShoppingBag, label: t('marketplace') },
-        { to: '/security', icon: ShieldCheck, label: t('security') },
+        ...(showSecuritySection ? [{ to: '/security', icon: ShieldCheck, label: t('security') }] : []),
         { to: '/settings', icon: Settings, label: t('settings') },
     ];
 
