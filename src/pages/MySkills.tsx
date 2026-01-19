@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill } from '../hooks/useSkills';
 import { useSkillConfig } from '../hooks/useSkillConfig';
 import { useBatchSkillQuality } from '../hooks/useSkillQuality';
-import { Github, HardDrive, Plus, FolderOpen, FileText, Settings, Shield, History } from 'lucide-react';
+import { Github, HardDrive, Plus, FolderOpen, FileText, Settings, History } from 'lucide-react';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
@@ -37,7 +37,7 @@ const getErrorMessage = (error: unknown) => {
   return JSON.stringify(error);
 };
 
-type SlideTab = 'overview' | 'config' | 'security' | 'changelog';
+type SlideTab = 'overview' | 'config' | 'changelog';
 
 const MySkills = () => {
   const { t, i18n } = useTranslation();
@@ -540,20 +540,6 @@ const MySkills = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setActiveSlideTab('security')}
-                        className={cn(
-                            "rounded-none border-b-2 px-4",
-                            activeSlideTab === 'security'
-                                ? "border-primary text-primary"
-                                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                        )}
-                    >
-                        <Shield size={16} />
-                        Security
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
                         onClick={() => setActiveSlideTab('changelog')}
                         className={cn(
                             "rounded-none border-b-2 px-4",
@@ -584,8 +570,14 @@ const MySkills = () => {
                         ) : skillScore && (
                           <QualityScoreCard
                             score={skillScore}
+                            showRadar={false}
                           />
                         )}
+
+                        <SecurityReportCard
+                            report={securityReport}
+                            loading={isScanningSecurity}
+                        />
 
                         <div className="prose prose-sm max-w-none bg-white dark:bg-base-100 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-base-200">
                           <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed font-mono bg-transparent">
@@ -619,38 +611,34 @@ const MySkills = () => {
                     </div>
                 )}
 
-                {activeSlideTab === 'security' && (
-                    <div className="animate-in fade-in duration-200">
-                        <SecurityReportCard
-                            report={securityReport}
-                            loading={isScanningSecurity}
-                        />
-                    </div>
-                )}
-
                 {activeSlideTab === 'changelog' && (
                     <div className="animate-in fade-in duration-200 space-y-6">
-                        <div className="relative pl-4 border-l-2 border-gray-100 dark:border-base-300 space-y-8">
-                            {[ 
-                                { version: '1.2.0', date: '2023-10-25', changes: ['Added support for new API endpoints', 'Fixed bug in authentication flow', 'Improved error handling'] },
-                                { version: '1.1.5', date: '2023-10-10', changes: ['Performance optimizations', 'Updated dependencies'] },
-                                { version: '1.0.0', date: '2023-09-01', changes: ['Initial release', 'Basic skill functionality'] },
-                            ].map((release, i) => (
-                                <div key={i} className="relative">
-                                    <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-primary ring-4 ring-white dark:ring-base-100"></div>
-                                    <div className="flex flex-col gap-1 mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-slate-900 dark:text-slate-100">v{release.version}</span>
-                                            <span className="text-xs text-slate-400 bg-slate-100 dark:bg-base-200 px-2 py-0.5 rounded-full">{release.date}</span>
+                        <div className="relative rounded-xl">
+                            <div className="relative pl-4 border-l-2 border-gray-100 dark:border-base-300 space-y-8">
+                                {[ 
+                                    { version: '1.2.0', date: '2023-10-25', changes: ['Added support for new API endpoints', 'Fixed bug in authentication flow', 'Improved error handling'] },
+                                    { version: '1.1.5', date: '2023-10-10', changes: ['Performance optimizations', 'Updated dependencies'] },
+                                    { version: '1.0.0', date: '2023-09-01', changes: ['Initial release', 'Basic skill functionality'] },
+                                ].map((release, i) => (
+                                    <div key={i} className="relative">
+                                        <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-primary ring-4 ring-white dark:ring-base-100"></div>
+                                        <div className="flex flex-col gap-1 mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-slate-900 dark:text-slate-100">v{release.version}</span>
+                                                <span className="text-xs text-slate-400 bg-slate-100 dark:bg-base-200 px-2 py-0.5 rounded-full">{release.date}</span>
+                                            </div>
                                         </div>
+                                        <ul className="list-disc list-outside ml-4 text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                                            {release.changes.map((change, j) => (
+                                                <li key={j}>{change}</li>
+                                            ))}
+                                        </ul>
                                     </div>
-                                    <ul className="list-disc list-outside ml-4 text-sm text-slate-600 dark:text-slate-400 space-y-1">
-                                        {release.changes.map((change, j) => (
-                                            <li key={j}>{change}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
+                            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80 dark:bg-base-100/80 backdrop-blur-sm">
+                                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">测试数据用于展示</span>
+                            </div>
                         </div>
                     </div>
                 )}

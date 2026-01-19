@@ -110,6 +110,14 @@ const Marketplace = () => {
   const [isInstalling, setIsInstalling] = useState(false);
   const [heroBackgroundUrl, setHeroBackgroundUrl] = useState<string | null>(null);
 
+  const formatUpdatedAt = useCallback((value?: number) => {
+    if (!value) return i18n.language === 'zh' ? '未知' : 'Unknown';
+    return new Date(value).toLocaleDateString(
+      i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+      { year: 'numeric', month: 'short', day: 'numeric' }
+    );
+  }, [i18n.language]);
+
   useEffect(() => {
     return () => {
       if (installTimerRef.current) {
@@ -564,7 +572,7 @@ const Marketplace = () => {
         description={selectedSkill?.description}
         width="lg"
         footer={
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-[2ch]">
                 <Button
                     variant="ghost"
                     onClick={() => {
@@ -577,7 +585,7 @@ const Marketplace = () => {
                 {selectedSkill && (
                     selectedInstalled ? (
                         <Button
-                            variant="error"
+                            variant="primary"
                             onClick={() => handleUninstall(selectedSkill)}
                             disabled={uninstallMutation.isPending}
                             isLoading={uninstallMutation.isPending}
@@ -628,7 +636,41 @@ const Marketplace = () => {
                             {selectedSkill.forks}
                          </div>
                     </div>
+                    <div className="p-4 bg-slate-50 dark:bg-base-200 rounded-xl border border-gray-100 dark:border-base-300">
+                         <div className="text-slate-500 text-xs mb-1">
+                           {i18n.language === 'zh' ? '更新日期' : 'Updated'}
+                         </div>
+                         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                           {formatUpdatedAt(selectedSkill.updatedAt)}
+                         </div>
+                    </div>
+                    <div className="p-4 bg-slate-50 dark:bg-base-200 rounded-xl border border-gray-100 dark:border-base-300">
+                         <div className="text-slate-500 text-xs mb-1">
+                           {i18n.language === 'zh' ? '分支' : 'Branch'}
+                         </div>
+                         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                           {selectedSkill.branch || (i18n.language === 'zh' ? '默认' : 'Default')}
+                         </div>
+                    </div>
                 </div>
+
+                {selectedSkill.tags && selectedSkill.tags.length > 0 && (
+                    <div>
+                        <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                          {i18n.language === 'zh' ? '标签' : 'Tags'}
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedSkill.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-xs font-medium px-2 py-1 rounded-full bg-slate-100 dark:bg-base-200 text-slate-600 dark:text-slate-300"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                    </div>
+                )}
 
                 {selectedSkill.previews && selectedSkill.previews.length > 0 && (
                     <div>
