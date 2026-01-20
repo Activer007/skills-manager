@@ -336,6 +336,13 @@ fn ensure_export_dir(output_dir: Option<String>) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+fn is_skill_package_path(package_path: &PathBuf) -> bool {
+    package_path
+        .to_string_lossy()
+        .to_ascii_lowercase()
+        .ends_with(".skillpack.zip")
+}
+
 fn should_skip_package_entry(path: &Path) -> bool {
     path.components().any(|component| {
         if let Component::Normal(name) = component {
@@ -416,6 +423,14 @@ fn read_package_metadata(package_path: &PathBuf) -> Result<Option<Value>, String
 }
 
 fn extract_skill_package(package_path: &PathBuf, dest_dir: &PathBuf) -> Result<(), String> {
+    extract_skill_package_with_limit(package_path, dest_dir, MAX_PACKAGE_UNCOMPRESSED_SIZE)
+}
+
+fn extract_skill_package_with_limit(
+    package_path: &PathBuf,
+    dest_dir: &PathBuf,
+    max_uncompressed_size: u64
+) -> Result<(), String> {
     let file = fs::File::open(package_path).map_err(|e| e.to_string())?;
     let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
     let mut total_size: u64 = 0;
@@ -423,11 +438,11 @@ fn extract_skill_package(package_path: &PathBuf, dest_dir: &PathBuf) -> Result<(
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
         let entry_size = file.size();
-        if entry_size > MAX_PACKAGE_UNCOMPRESSED_SIZE {
+        if entry_size > max_uncompressed_size {
             return Err("Package entry too large".to_string());
         }
         total_size = total_size.saturating_add(entry_size);
-        if total_size > MAX_PACKAGE_UNCOMPRESSED_SIZE {
+        if total_size > max_uncompressed_size {
             return Err("Package too large".to_string());
         }
         let Some(enclosed) = file.enclosed_name() else {
@@ -460,6 +475,27 @@ fn extract_skill_package(package_path: &PathBuf, dest_dir: &PathBuf) -> Result<(
     }
 
     Ok(())
+}
+
+fn resolve_package_source_dir(
+    temp_dir: &PathBuf,
+    skill_dir_name: &Option<String>
+) -> Result<PathBuf, String> {
+    let source_dir_from_metadata = skill_dir_name
+        .as_ref()
+        .map(|name| temp_dir.join(name))
+        .filter(|dir| dir.exists());
+    let candidates = collect_skill_dirs(temp_dir);
+
+    if let Some(dir) = source_dir_from_metadata {
+        Ok(dir)
+    } else if candidates.len() == 1 {
+        Ok(candidates[0].clone())
+    } else if candidates.is_empty() {
+        Err("Package does not contain SKILL.md".to_string())
+    } else {
+        Err("Package contains multiple skills; select a single skill package".to_string())
+    }
 }
 
 fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
@@ -1176,8 +1212,7 @@ fn import_skill_package(
         });
     }
 
-    let package_name_normalized = package_path.to_string_lossy().to_ascii_lowercase();
-    if !package_name_normalized.ends_with(".skillpack.zip") {
+    if !is_skill_package_path(&package_path) {
         return Ok(ImportResult {
             success: false,
             message: "Invalid package file extension".to_string(),
@@ -1213,26 +1248,16 @@ fn import_skill_package(
         });
     }
 
-    let source_dir_from_metadata = skill_dir_name
-        .as_ref()
-        .map(|name| temp_dir.join(name))
-        .filter(|dir| dir.exists());
-    let candidates = collect_skill_dirs(&temp_dir);
-    let source_dir = if let Some(dir) = source_dir_from_metadata {
-        dir
-    } else if candidates.len() == 1 {
-        candidates[0].clone()
-    } else {
-        let _ = fs::remove_dir_all(&temp_dir);
-        return Ok(ImportResult {
-            success: false,
-            message: if candidates.is_empty() {
-                "Package does not contain SKILL.md".to_string()
-            } else {
-                "Package contains multiple skills; select a single skill package".to_string()
-            },
-            blocked: false,
-        });
+    let source_dir = match resolve_package_source_dir(&temp_dir, &skill_dir_name) {
+        Ok(dir) => dir,
+        Err(message) => {
+            let _ = fs::remove_dir_all(&temp_dir);
+            return Ok(ImportResult {
+                success: false,
+                message,
+                blocked: false,
+            });
+        }
     };
 
     let inferred_name = source_dir
@@ -1597,6 +1622,68 @@ mod package_tests {
         let dest_dir = temp.path().join("dest");
         let err = extract_skill_package(&package_path, &dest_dir).expect_err("expected invalid path error");
         assert!(err.contains("invalid paths"));
+    }
+
+    #[test]
+    fn test_extract_skill_package_rejects_absolute_path() {
+        let temp = tempdir().unwrap();
+        let package_path = temp.path().join("absolute.skillpack.zip");
+        let file = fs::File::create(&package_path).unwrap();
+        let mut zip = ZipWriter::new(file);
+        let options = FileOptions::default()
+            .compression_method(CompressionMethod::Deflated)
+            .unix_permissions(0o644);
+
+        zip.start_file("/evil.txt", options).unwrap();
+        zip.write_all(b"nope").unwrap();
+        zip.finish().unwrap();
+
+        let dest_dir = temp.path().join("dest");
+        let err = extract_skill_package(&package_path, &dest_dir).expect_err("expected absolute path error");
+        assert!(err.contains("absolute") || err.contains("invalid"));
+    }
+
+    #[test]
+    fn test_extract_skill_package_size_limit() {
+        let temp = tempdir().unwrap();
+        let package_path = temp.path().join("big.skillpack.zip");
+        let file = fs::File::create(&package_path).unwrap();
+        let mut zip = ZipWriter::new(file);
+        let options = FileOptions::default()
+            .compression_method(CompressionMethod::Deflated)
+            .unix_permissions(0o644);
+
+        zip.start_file("skill/SKILL.md", options).unwrap();
+        zip.write_all(&vec![0u8; 16]).unwrap();
+        zip.finish().unwrap();
+
+        let dest_dir = temp.path().join("dest");
+        let err = extract_skill_package_with_limit(&package_path, &dest_dir, 10)
+            .expect_err("expected package size error");
+        assert!(err.contains("too large"));
+    }
+
+    #[test]
+    fn test_resolve_package_source_dir_multiple_skills() {
+        let temp = tempdir().unwrap();
+        let first = temp.path().join("skill-a");
+        let second = temp.path().join("skill-b");
+        fs::create_dir_all(&first).unwrap();
+        fs::create_dir_all(&second).unwrap();
+        fs::write(first.join("SKILL.md"), "# A").unwrap();
+        fs::write(second.join("SKILL.md"), "# B").unwrap();
+
+        let err = resolve_package_source_dir(&temp.path().to_path_buf(), &None)
+            .expect_err("expected multiple skills error");
+        assert!(err.contains("multiple skills"));
+    }
+
+    #[test]
+    fn test_is_skill_package_path() {
+        let valid = PathBuf::from("C:/tmp/demo.skillpack.zip");
+        let invalid = PathBuf::from("C:/tmp/demo.zip");
+        assert!(is_skill_package_path(&valid));
+        assert!(!is_skill_package_path(&invalid));
     }
 
     #[test]
