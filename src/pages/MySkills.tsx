@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill, useImportPackageSkill } from '../hooks/useSkills';
@@ -65,6 +65,7 @@ const MySkills = () => {
   const [importUrl, setImportUrl] = useState('');
   const [importPath, setImportPath] = useState('');
   const [importPackagePath, setImportPackagePath] = useState('');
+  const packageFileInputRef = useRef<HTMLInputElement>(null);
   const [securityReport, setSecurityReport] = useState<SecurityReport | null>(null);
   const [isScanningSecurity, setIsScanningSecurity] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -133,6 +134,15 @@ const MySkills = () => {
   const packagePathError = importType === 'package' && packagePathTrimmed && !isPackagePathValid
     ? t('importPackageInvalid')
     : undefined;
+  const packageFileName = packagePathTrimmed.split(/[\\/]/).pop() || packagePathTrimmed;
+
+  const handleSelectPackageFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const filePath = (file as { path?: string }).path ?? file.name;
+    setImportPackagePath(filePath);
+    event.target.value = '';
+  };
 
 
   const handleUninstall = (skill: InstalledSkill) => {
@@ -183,7 +193,11 @@ const MySkills = () => {
         toast.success('成功从本地导入 Skill！');
       } else if (importType === 'package') {
         await importPackageMutation.mutateAsync(importPackagePath);
-        toast.success(t('importPackageSuccess'));
+        toast.success(
+          packagePathTrimmed
+            ? t('importPackageSuccessWithName', { name: packageFileName || '-', path: packagePathTrimmed })
+            : t('importPackageSuccess')
+        );
       }
       setShowImportModal(false);
       setImportUrl('');
@@ -196,6 +210,14 @@ const MySkills = () => {
   };
 
   const handleImport = () => {
+    const packagePreview = importType === 'package' && packagePathTrimmed ? (
+      <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
+        <div className="font-semibold mb-1">{t('importPackagePreviewTitle')}</div>
+        <div>{t('importPackagePreviewName')}: <span className="font-medium">{packageFileName || '-'}</span></div>
+        <div>{t('importPackagePreviewPath')}: <span className="font-mono break-all">{packagePathTrimmed}</span></div>
+      </div>
+    ) : null;
+
     setConfirmDialog({
       title: i18n.language === 'zh' ? '安全提示' : 'Security Notice',
       message: (
@@ -211,6 +233,7 @@ const MySkills = () => {
             <li>{i18n.language === 'zh' ? '命令注入（如 eval()）' : 'Command injection (e.g., eval())'}</li>
             <li>{i18n.language === 'zh' ? '数据泄露风险' : 'Data exfiltration risks'}</li>
           </ul>
+          {packagePreview}
           <p className="font-medium text-slate-700 dark:text-slate-300">
             {i18n.language === 'zh'
               ? '如检测到硬触发危险代码，将阻止导入。是否继续导入？'
@@ -816,15 +839,35 @@ const MySkills = () => {
                 autoFocus
               />
             ) : (
-              <Input
-                label={i18n.language === 'zh' ? 'Skill 包路径' : 'Skill Package Path'}
-                placeholder="C:\\Users\\User\\Downloads\\my-skill.skillpack.zip"
-                value={importPackagePath}
-                onChange={(e) => setImportPackagePath(e.target.value)}
-                helperText={t('importPackageHint')}
-                error={packagePathError}
-                autoFocus
-              />
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Input
+                    label={i18n.language === 'zh' ? 'Skill 包路径' : 'Skill Package Path'}
+                    placeholder="C:\\Users\\User\\Downloads\\my-skill.skillpack.zip"
+                    value={importPackagePath}
+                    onChange={(e) => setImportPackagePath(e.target.value)}
+                    helperText={t('importPackageHint')}
+                    error={packagePathError}
+                    autoFocus
+                  />
+                </div>
+                <div className="pb-1">
+                  <input
+                    ref={packageFileInputRef}
+                    type="file"
+                    accept=".skillpack.zip,application/zip,application/x-zip-compressed"
+                    className="hidden"
+                    onChange={handleSelectPackageFile}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => packageFileInputRef.current?.click()}
+                  >
+                    <FolderOpen size={16} className="mr-2" />
+                    {t('selectFile')}
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         )}
