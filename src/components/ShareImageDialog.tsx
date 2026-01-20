@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, Eye, Palette, ImageIcon, Loader2 } from 'lucide-react';
 import type { InstalledSkill } from '../types';
@@ -27,10 +27,17 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
   const [theme, setTheme] = useState<ShareCardTheme>('default');
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
+
+  // 同步 ref 和 state
+  useEffect(() => {
+    previewUrlRef.current = previewUrl;
+  }, [previewUrl]);
 
   // 生成预览
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     const generate = async () => {
       if (!isMounted) return;
@@ -40,6 +47,7 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
         if (!isMounted) return;
         const url = URL.createObjectURL(blob);
         setPreviewUrl(url);
+        previewUrlRef.current = url;
       } catch (error) {
         console.error('Failed to generate share card:', error);
         if (!isMounted) return;
@@ -54,16 +62,24 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
     };
 
     if (isOpen) {
-      generate();
+      // 添加小延迟确保状态已更新
+      timeoutId = setTimeout(() => {
+        generate();
+      }, 100);
     }
 
     return () => {
       isMounted = false;
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      // 使用 ref 中最新的 URL
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
       }
     };
-  }, [isOpen, theme]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, theme, skill, i18n.language]);  
 
   const handleDownload = async () => {
     if (!previewUrl) return;
@@ -88,13 +104,13 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
   };
 
   const handleRegenerate = () => {
-    // Force re-render by changing theme to same value
-    setTheme((prev) => {
-      // Trigger useEffect by briefly toggling
-      const next = prev;
-      setTimeout(() => setTheme(prev), 0);
-      return next;
-    });
+    // Clear current preview and trigger regeneration
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    setPreviewUrl(null);
+    // useEffect will automatically regenerate due to previewUrl change
   };
 
   return (

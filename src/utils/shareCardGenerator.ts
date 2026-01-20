@@ -95,6 +95,18 @@ const generateInstallLink = (skill: InstalledSkill): string => {
 };
 
 /**
+ * HTML 转义函数，防止 XSS
+ */
+const escapeHtml = (unsafe: string): string => {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
+/**
  * 生成卡片 HTML
  */
 const generateCardHTML = (config: ShareCardConfig): string => {
@@ -176,7 +188,7 @@ const generateCardHTML = (config: ShareCardConfig): string => {
           font-weight: 700;
           color: ${textColor};
           line-height: 1.3;
-        ">${config.title}</h1>
+        ">${escapeHtml(config.title)}</h1>
 
         <!-- 描述 -->
         <p style="
@@ -188,7 +200,7 @@ const generateCardHTML = (config: ShareCardConfig): string => {
           -webkit-line-clamp: 3;
           -webkit-box-orient: vertical;
           overflow: hidden;
-        ">${config.description}</p>
+        ">${escapeHtml(config.description)}</p>
 
         <!-- 质量徽章 -->
         <div style="display: flex; gap: 10px;">
@@ -265,7 +277,7 @@ const generateCardHTML = (config: ShareCardConfig): string => {
               font-size: 12px;
               color: ${subtextColor};
               word-break: break-all;
-            ">${config.link}</div>
+            ">${escapeHtml(config.link)}</div>
           </div>
         </div>
       </div>
