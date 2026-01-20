@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
+use sha2::{Digest, Sha256};
 use tauri::{State, Manager};
 use crate::services::config_service::ConfigService;
 
@@ -208,6 +209,52 @@ fn build_github_install_url(repo_url: &str, branch: Option<&str>, subpath: &str)
         }
     }
     base
+}
+
+fn calculate_skill_checksum_for_path(skill_dir: &PathBuf) -> Result<String, String> {
+    if !skill_dir.exists() {
+        return Err("Skill directory not found".to_string());
+    }
+
+    let mut hasher = Sha256::new();
+
+    for entry in WalkDir::new(skill_dir)
+        .follow_links(false)
+        .max_depth(10)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+
+        if let Ok(meta) = entry.metadata() {
+            let path_str = entry.path().to_string_lossy();
+            let modified = meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+
+            hasher.update(path_str.as_bytes());
+            hasher.update(meta.len().to_be_bytes());
+            hasher.update(modified.to_be_bytes());
+        }
+
+        if entry.file_name().to_string_lossy().eq_ignore_ascii_case("SKILL.md") {
+            if let Ok(content) = fs::read(entry.path()) {
+                hasher.update(content);
+            }
+        }
+    }
+
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+#[tauri::command]
+fn calculate_skill_checksum(skill_path: String) -> Result<String, String> {
+    calculate_skill_checksum_for_path(&PathBuf::from(skill_path))
 }
 
 fn upsert_origin_config(
@@ -600,6 +647,7 @@ async fn import_github_skill(
                 &subpath
             );
             let origin_url = install_url.clone();
+            let checksum = calculate_skill_checksum_for_path(&dir).ok();
             let origin = json!({
                 "sourceType": "github",
                 "repoUrl": base_repo_url.as_str(),
@@ -608,7 +656,8 @@ async fn import_github_skill(
                 "subpath": subpath,
                 "branch": branch.clone(),
                 "requestUrl": request_url.as_str(),
-                "installedAt": installed_at
+                "installedAt": installed_at,
+                "checksum": checksum
             });
             origins.push(OriginRecord {
                 skill_path: dir.to_string_lossy().to_string(),
@@ -998,6 +1047,7 @@ pub fn run() {
             import_github_skill,
             uninstall_skill,
             import_local_skill,
+            calculate_skill_checksum,
             open_url,
             read_skill,
             commands::analyzer::analyze_skill_quality,

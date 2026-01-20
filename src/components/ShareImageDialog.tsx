@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
 import { Download, Eye, Palette, ImageIcon, Loader2 } from 'lucide-react';
 import type { InstalledSkill } from '../types';
 import type { ShareCardTheme } from '../types/share';
@@ -29,12 +30,42 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [generationKey, setGenerationKey] = useState(0);
+  const [isModified, setIsModified] = useState<boolean | null>(null);
   const previewUrlRef = useRef<string | null>(null);
 
   // 同步 ref 和 state
   useEffect(() => {
     previewUrlRef.current = previewUrl;
   }, [previewUrl]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const origin = (skill.config as Record<string, unknown> | undefined)
+      ?.__origin as Record<string, unknown> | undefined;
+    const originChecksum =
+      typeof origin?.checksum === 'string' ? origin.checksum : undefined;
+
+    if (!originChecksum || !isOpen) {
+      setIsModified(null);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    invoke<string>('calculate_skill_checksum', { skillPath: skill.localPath })
+      .then((checksum) => {
+        if (!isMounted) return;
+        setIsModified(checksum !== originChecksum);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setIsModified(null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [skill.localPath, skill.config, isOpen]);
 
   // 生成预览
   useEffect(() => {
@@ -192,6 +223,14 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
           </div>
         ) : null}
       </div>
+
+      {isModified === true && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 p-3 rounded-lg text-sm mt-4">
+          {i18n.language === 'zh'
+            ? '此 Skill 已在本地修改，二维码安装链接不包含修改内容。'
+            : 'This skill has local changes; the QR install link excludes modifications.'}
+        </div>
+      )}
 
       {/* 提示信息 */}
       {previewUrl && !isGenerating && (
