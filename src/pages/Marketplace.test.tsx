@@ -24,6 +24,14 @@ vi.mock('../components/ImportSkillModal', () => ({
   ),
 }));
 
+vi.mock('../components/ImageDropZone', () => ({
+  ImageDropZone: () => <div data-testid="image-drop-zone">Drop Zone</div>,
+}));
+
+vi.mock('../components/ImageImportModal', () => ({
+  ImageImportModal: () => null,
+}));
+
 // Mock heavy UI components
 vi.mock('react-window', () => ({
   FixedSizeGrid: () => <div>Grid</div>,
