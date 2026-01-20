@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import type { MarketplaceSkill, InstalledSkill } from '../types';
+import type { MarketplaceSkill, InstalledSkill, ExportResult } from '../types';
 import { Switch } from './ui/Switch';
 import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
@@ -12,12 +12,6 @@ import { cn } from '../utils/cn';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
 import { Star, GitBranch, Trash2, Settings, Plug, Link2, Image as ImageIcon, Package } from 'lucide-react';
 import { toast } from '../store/useToastStore';
-
-type ExportResult = {
-    success: boolean;
-    message: string;
-    filePath?: string;
-};
 
 // 常量定义
 const ICON_SIZE = {

@@ -48,3 +48,9 @@ export interface SkillManifest {
   descriptionEn?: string; // 英文描述（可选）
   [key: string]: unknown;
 }
+
+export interface ExportResult {
+  success: boolean;
+  message: string;
+  filePath?: string;
+}

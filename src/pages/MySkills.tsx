@@ -177,7 +177,7 @@ const MySkills = () => {
         toast.success('成功从本地导入 Skill！');
       } else if (importType === 'package') {
         await importPackageMutation.mutateAsync(importPackagePath);
-        toast.success(i18n.language === 'zh' ? '成功导入 Skill 包！' : 'Skill package imported successfully!');
+        toast.success(t('importPackageSuccess'));
       }
       setShowImportModal(false);
       setImportUrl('');

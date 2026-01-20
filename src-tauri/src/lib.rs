@@ -26,6 +26,7 @@ mod security;
 mod services;
 
 const SKILL_SCAN_DEPTH: usize = 6;
+const MAX_PACKAGE_UNCOMPRESSED_SIZE: u64 = 100 * 1024 * 1024;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SkillInfo {
@@ -417,12 +418,27 @@ fn read_package_metadata(package_path: &PathBuf) -> Result<Option<Value>, String
 fn extract_skill_package(package_path: &PathBuf, dest_dir: &PathBuf) -> Result<(), String> {
     let file = fs::File::open(package_path).map_err(|e| e.to_string())?;
     let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
+    let mut total_size: u64 = 0;
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+        let entry_size = file.size();
+        if entry_size > MAX_PACKAGE_UNCOMPRESSED_SIZE {
+            return Err("Package entry too large".to_string());
+        }
+        total_size = total_size.saturating_add(entry_size);
+        if total_size > MAX_PACKAGE_UNCOMPRESSED_SIZE {
+            return Err("Package too large".to_string());
+        }
         let Some(enclosed) = file.enclosed_name() else {
             return Err("Package contains invalid paths".to_string());
         };
+        if enclosed.is_absolute()
+            || enclosed.has_root()
+            || enclosed.components().any(|component| matches!(component, Component::Prefix(_)))
+        {
+            return Err("Package contains absolute paths".to_string());
+        }
         let name = enclosed.to_string_lossy();
         if name == "skill-package.json" {
             continue;
@@ -1160,6 +1176,15 @@ fn import_skill_package(
         });
     }
 
+    let package_name_normalized = package_path.to_string_lossy().to_ascii_lowercase();
+    if !package_name_normalized.ends_with(".skillpack.zip") {
+        return Ok(ImportResult {
+            success: false,
+            message: "Invalid package file extension".to_string(),
+            blocked: false,
+        });
+    }
+
     let metadata = read_package_metadata(&package_path)?;
     let exported_at = metadata
         .as_ref()
@@ -1188,19 +1213,27 @@ fn import_skill_package(
         });
     }
 
-    let source_dir = skill_dir_name
+    let source_dir_from_metadata = skill_dir_name
         .as_ref()
         .map(|name| temp_dir.join(name))
-        .filter(|dir| dir.exists())
-        .or_else(|| {
-            let candidates = collect_skill_dirs(&temp_dir);
-            if candidates.len() == 1 {
-                Some(candidates[0].clone())
+        .filter(|dir| dir.exists());
+    let candidates = collect_skill_dirs(&temp_dir);
+    let source_dir = if let Some(dir) = source_dir_from_metadata {
+        dir
+    } else if candidates.len() == 1 {
+        candidates[0].clone()
+    } else {
+        let _ = fs::remove_dir_all(&temp_dir);
+        return Ok(ImportResult {
+            success: false,
+            message: if candidates.is_empty() {
+                "Package does not contain SKILL.md".to_string()
             } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| temp_dir.clone());
+                "Package contains multiple skills; select a single skill package".to_string()
+            },
+            blocked: false,
+        });
+    };
 
     let inferred_name = source_dir
         .file_name()
@@ -1222,6 +1255,7 @@ fn import_skill_package(
         .unwrap_or("skill-package")
         .to_string();
 
+    let mut origin_failures = Vec::new();
     for installed_dir in &outcome.installed_dirs {
         let checksum = calculate_skill_checksum_for_path(installed_dir).ok();
         let mut origin_object = origin_from_package.clone().unwrap_or_else(|| json!({}));
@@ -1253,12 +1287,22 @@ fn import_skill_package(
             origin_object
         ) {
             eprintln!("Failed to persist package origin info: {}", e);
+            origin_failures.push(installed_dir.to_string_lossy().to_string());
         }
     }
 
     let _ = fs::remove_dir_all(&temp_dir);
 
-    Ok(outcome.result)
+    let mut result = outcome.result;
+    if !origin_failures.is_empty() {
+        result.message = format!(
+            "{}; failed to save origin metadata for {}",
+            result.message,
+            origin_failures.join(", ")
+        );
+    }
+
+    Ok(result)
 }
 
 fn collect_skill_dirs(root: &PathBuf) -> Vec<PathBuf> {
