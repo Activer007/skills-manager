@@ -103,7 +103,8 @@ export const parseQRCodeData = (
     }
 
     return { success: true, data };
-  } catch (error) {
+  } catch {
+    // Ignore parsing errors and return generic error
     return { success: false, error: 'invalid_qr_data' };
   }
 };
@@ -228,7 +229,8 @@ export const importSkillFromImage = async (
       skillInfo,
       previewUrl,
     };
-  } catch (error) {
+  } catch {
+    // Ignore processing errors and return generic error
     return {
       success: false,
       previewUrl,

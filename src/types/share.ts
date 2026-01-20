@@ -26,7 +26,12 @@ export interface PlatformConfig {
 /**
  * 支持的平台
  */
-export type SharePlatform = 'twitter' | 'weibo' | 'mastodon' | 'generic';
+export type SharePlatform =
+  | 'twitter'
+  | 'weibo'
+  | 'mastodon'
+  | 'markdown'
+  | 'generic';
 
 /**
  * 分享图片配置

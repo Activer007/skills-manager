@@ -27,6 +27,8 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
   const [theme, setTheme] = useState<ShareCardTheme>('default');
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageBlob, setImageBlob] = useState<Blob | null>(null);
+  const [generationKey, setGenerationKey] = useState(0);
   const previewUrlRef = useRef<string | null>(null);
 
   // 同步 ref 和 state
@@ -42,10 +44,13 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
     const generate = async () => {
       if (!isMounted) return;
       setIsGenerating(true);
+      setPreviewUrl(null);
+      setImageBlob(null);
       try {
         const blob = await generateShareCard(skill, theme);
         if (!isMounted) return;
         const url = URL.createObjectURL(blob);
+        setImageBlob(blob);
         setPreviewUrl(url);
         previewUrlRef.current = url;
       } catch (error) {
@@ -79,18 +84,27 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
         previewUrlRef.current = null;
       }
     };
-  }, [isOpen, theme, skill, i18n.language]);  
+  }, [isOpen, theme, skill, i18n.language, generationKey]);  
 
   const handleDownload = async () => {
-    if (!previewUrl) return;
+    if (!previewUrl && !imageBlob) return;
 
     try {
+      const blob =
+        imageBlob ??
+        (previewUrl ? await fetch(previewUrl).then((res) => res.blob()) : null);
+      if (!blob) return;
+
+      const safeName = skill.name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim();
+      const filename = `${safeName || 'skill'}-share.png`;
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = previewUrl;
-      link.download = `${skill.name}-share.png`;
+      link.href = url;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
       toast.success(
         i18n.language === 'zh' ? '图片已保存' : 'Image saved'
@@ -110,7 +124,8 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
       previewUrlRef.current = null;
     }
     setPreviewUrl(null);
-    // useEffect will automatically regenerate due to previewUrl change
+    setImageBlob(null);
+    setGenerationKey((value) => value + 1);
   };
 
   return (

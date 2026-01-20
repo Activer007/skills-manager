@@ -1,5 +1,6 @@
 import type { InstalledSkill } from '../types';
 import type { PlatformConfig, SharePlatform } from '../types/share';
+import { resolveSkillLink } from './shareLink';
 
 /**
  * 平台配置
@@ -18,6 +19,11 @@ const PLATFORM_CONFIGS: Record<SharePlatform, PlatformConfig> = {
   mastodon: {
     maxLength: 500,
     hashtags: ['Claude', 'Skills'],
+    template: 'markdown',
+  },
+  markdown: {
+    maxLength: Infinity,
+    hashtags: [],
     template: 'markdown',
   },
   generic: {
@@ -65,6 +71,25 @@ const getSecurityLabel = (level: string, locale: string): string => {
   return labels[level] || level;
 };
 
+const normalizeShareStatus = (
+  status?: string
+): 'safe' | 'risk' | 'blocked' | 'unknown' => {
+  if (!status) return 'unknown';
+
+  switch (status) {
+    case 'safe':
+      return 'safe';
+    case 'risk':
+      return 'risk';
+    case 'blocked':
+      return 'blocked';
+    case 'unsafe':
+      return 'risk';
+    default:
+      return 'unknown';
+  }
+};
+
 /**
  * 生成质量等级字母
  */
@@ -83,10 +108,14 @@ export const generateShareText = (
   skill: InstalledSkill,
   locale: string = 'zh'
 ): string => {
-  const securityEmoji = SECURITY_EMOJIS[skill.status] || '❓';
-  const securityLabel = getSecurityLabel(skill.status, locale);
-  const qualityLine = skill.qualityScore
-    ? `\n⭐ 质量评分: ${skill.qualityScore}/100 [${getQualityGrade(skill.qualityScore)}]`
+  const sourceUrl = resolveSkillLink(skill) || '本地创建';
+  const status = normalizeShareStatus(skill.status);
+  const qualityScore = skill.qualityScore || (skill as typeof skill & { qualityScore?: number }).qualityScore;
+
+  const securityEmoji = SECURITY_EMOJIS[status] || '❓';
+  const securityLabel = getSecurityLabel(status, locale);
+  const qualityLine = qualityScore
+    ? `\n⭐ 质量评分: ${qualityScore}/100 [${getQualityGrade(qualityScore)}]`
     : '';
 
   // 生成文本
@@ -97,7 +126,7 @@ export const generateShareText = (
 
 📝 ${skill.description}
 
-🔗 链接: ${skill.sourceUrl || '本地创建'}
+🔗 链接: ${sourceUrl}
 
 ${securityEmoji} 安全等级: ${securityLabel}${qualityLine}
 
@@ -117,10 +146,14 @@ const generateCompactText = (
   skill: InstalledSkill,
   locale: string = 'zh'
 ): string => {
-  const securityEmoji = SECURITY_EMOJIS[skill.status] || '❓';
-  const securityLabel = getSecurityLabel(skill.status, locale);
-  const qualityText = skill.qualityScore
-    ? ` ⭐ ${skill.qualityScore}/100`
+  const sourceUrl = resolveSkillLink(skill) || '本地创建';
+  const status = normalizeShareStatus(skill.status);
+  const qualityScore = skill.qualityScore || (skill as typeof skill & { qualityScore?: number }).qualityScore;
+
+  const securityEmoji = SECURITY_EMOJIS[status] || '❓';
+  const securityLabel = getSecurityLabel(status, locale);
+  const qualityText = qualityScore
+    ? ` ⭐ ${qualityScore}/100`
     : '';
 
   const description =
@@ -128,7 +161,7 @@ const generateCompactText = (
       ? skill.description.substring(0, 100) + '...'
       : skill.description;
 
-  return `🤖 ${skill.name}\n\n${description}\n\n${securityEmoji} ${securityLabel}:${qualityText}\n🔗 ${skill.sourceUrl || '本地创建'}`;
+  return `🤖 ${skill.name}\n\n${description}\n\n${securityEmoji} ${securityLabel}:${qualityText}\n🔗 ${sourceUrl}`;
 };
 
 /**
@@ -138,16 +171,20 @@ const generateMarkdownText = (
   skill: InstalledSkill,
   locale: string = 'zh'
 ): string => {
-  const securityLabel = getSecurityLabel(skill.status, locale);
-  const qualityText = skill.qualityScore
-    ? `- ⭐ 质量评分: ${skill.qualityScore}/100 [${getQualityGrade(skill.qualityScore)}]\n`
+  const sourceUrl = resolveSkillLink(skill) || '本地创建';
+  const status = normalizeShareStatus(skill.status);
+  const qualityScore = skill.qualityScore || (skill as typeof skill & { qualityScore?: number }).qualityScore;
+
+  const securityLabel = getSecurityLabel(status, locale);
+  const qualityText = qualityScore
+    ? `- ⭐ 质量评分: ${qualityScore}/100 [${getQualityGrade(qualityScore)}]\n`
     : '';
 
   return `### ${skill.name}
 
 ${skill.description}
 
-- 🔗 链接: ${skill.sourceUrl || '本地创建'}
+- 🔗 链接: ${sourceUrl}
 - ✅ 安全等级: ${securityLabel}
 ${qualityText}
 ---
@@ -162,7 +199,7 @@ export const generatePlatformShareText = (
   platform: SharePlatform = 'generic',
   locale: string = 'zh'
 ): string => {
-  const config = PLATFORM_CONFIGS[platform];
+  const config = PLATFORM_CONFIGS[platform] ?? PLATFORM_CONFIGS.generic;
 
   let text: string;
 

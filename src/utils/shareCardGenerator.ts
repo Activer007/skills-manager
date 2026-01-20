@@ -2,6 +2,7 @@ import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import type { InstalledSkill } from '../types';
 import type { ShareCardConfig, ShareCardTheme, ShareImageData } from '../types/share';
+import { resolveSkillLink } from './shareLink';
 
 /**
  * 分享卡片主题预设
@@ -56,14 +57,15 @@ export const encodeShareData = (data: ShareImageData): string => {
  * 生成分享数据
  */
 export const generateShareData = (skill: InstalledSkill): ShareImageData => {
+  const sourceUrl = resolveSkillLink(skill);
   return {
     version: '1.0',
     type: 'skill',
     data: {
       id: skill.id,
       name: skill.name,
-      sourceUrl: skill.sourceUrl,
-      installUrl: skill.sourceUrl || `skills-manager://install?id=${skill.id}`,
+      sourceUrl,
+      installUrl: sourceUrl || `skills-manager://install?id=${skill.id}`,
       description: skill.description.substring(0, 100),
     },
     timestamp: Date.now(),
@@ -88,9 +90,8 @@ export const generateSkillQRCode = async (skill: InstalledSkill): Promise<string
  * 生成安装链接
  */
 const generateInstallLink = (skill: InstalledSkill): string => {
-  if (skill.sourceUrl) {
-    return skill.sourceUrl;
-  }
+  const link = resolveSkillLink(skill);
+  if (link) return link;
   return `skills-manager://install?id=${skill.id}`;
 };
 
@@ -106,6 +107,23 @@ const escapeHtml = (unsafe: string): string => {
     .replace(/'/g, '&#039;');
 };
 
+const normalizeShareSecurityLevel = (
+  status?: string
+): ShareCardConfig['securityLevel'] => {
+  switch (status) {
+    case 'safe':
+      return 'safe';
+    case 'risk':
+      return 'risk';
+    case 'blocked':
+      return 'blocked';
+    case 'unsafe':
+      return 'risk';
+    default:
+      return 'unknown';
+  }
+};
+
 /**
  * 生成卡片 HTML
  */
@@ -113,6 +131,7 @@ const generateCardHTML = (config: ShareCardConfig): string => {
   const isDark = config.theme === 'dark';
   const textColor = isDark ? '#ffffff' : '#1a1a1a';
   const subtextColor = isDark ? '#a0a0a0' : '#666666';
+  const cardId = 'skill-share-card';
 
   const securityColors: Record<string, string> = {
     safe: '#10B981',
@@ -128,8 +147,21 @@ const generateCardHTML = (config: ShareCardConfig): string => {
     unknown: '❓ 未知',
   };
 
+  const securityColor =
+    securityColors[config.securityLevel] || securityColors.unknown;
+  const securityLabel =
+    securityLabels[config.securityLevel] || securityLabels.unknown;
+
   return `
-    <div style="
+    <style>
+      #${cardId}, #${cardId} * {
+        box-sizing: border-box;
+        border-color: ${textColor};
+        outline-color: ${textColor};
+        color: inherit;
+      }
+    </style>
+    <div id="${cardId}" style="
       width: 100%;
       height: 100%;
       padding: 40px;
@@ -138,6 +170,7 @@ const generateCardHTML = (config: ShareCardConfig): string => {
       flex-direction: column;
       position: relative;
       background: ${isDark ? '#1a1a1a' : '#ffffff'};
+      color: ${textColor};
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     ">
       <!-- 顶部：Logo + 品牌标识 -->
@@ -206,14 +239,14 @@ const generateCardHTML = (config: ShareCardConfig): string => {
         <div style="display: flex; gap: 10px;">
           <div style="
             padding: 8px 16px;
-            background: ${securityColors[config.securityLevel]}20;
-            border: 1px solid ${securityColors[config.securityLevel]};
+            background: ${securityColor}20;
+            border: 1px solid ${securityColor};
             border-radius: 8px;
             display: flex;
             align-items: center;
             gap: 8px;
             font-size: 14px;
-            color: ${securityColors[config.securityLevel]};
+            color: ${securityColor};
             font-weight: 500;
           ">
             <span style="font-size: 18px;">
@@ -221,7 +254,7 @@ const generateCardHTML = (config: ShareCardConfig): string => {
                 config.securityLevel === 'risk' ? '⚠️' :
                 config.securityLevel === 'blocked' ? '🚫' : '❓'}
             </span>
-            ${securityLabels[config.securityLevel]}
+            ${securityLabel}
           </div>
 
           ${config.qualityScore ? `
@@ -347,34 +380,61 @@ export const generateShareCard = async (
     height: themeConfig.height || 600,
     title: skill.name,
     description: skill.description,
-    link: skill.sourceUrl || generateInstallLink(skill),
+    link: generateInstallLink(skill),
     qrCode,
     theme: themeConfig.theme || 'light',
     accentColor: themeConfig.accentColor || '#3B82F6',
     brandLogo: '',
-    securityLevel: skill.status,
+    securityLevel: normalizeShareSecurityLevel(skill.status),
     qualityScore: skill.qualityScore,
     footer: '来自 Skill Manager 分享',
     watermark: themeConfig.watermark || false,
   };
 
-  // 1. 创建临时 DOM 元素
-  const container = document.createElement('div');
-  container.style.cssText = `
+  // 1. 使用隔离 iframe，避免全局样式 (oklch) 影响 html2canvas 解析
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = `
     position: fixed;
     top: -9999px;
     left: -9999px;
     width: ${config.width}px;
     height: ${config.height}px;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
   `;
+  document.body.appendChild(iframe);
 
-  // 2. 生成卡片内容
-  container.innerHTML = generateCardHTML(config);
-  document.body.appendChild(container);
+  const iframeDoc = iframe.contentDocument;
+  if (!iframeDoc) {
+    document.body.removeChild(iframe);
+    throw new Error('Failed to create share card iframe');
+  }
+
+  iframeDoc.open();
+  iframeDoc.write(`<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          html, body { margin: 0; padding: 0; background: ${config.theme === 'dark' ? '#1a1a1a' : '#ffffff'}; }
+        </style>
+      </head>
+      <body>
+        ${generateCardHTML(config)}
+      </body>
+    </html>`);
+  iframeDoc.close();
+
+  const container = iframeDoc.getElementById('skill-share-card');
+  if (!container) {
+    document.body.removeChild(iframe);
+    throw new Error('Share card container not found');
+  }
 
   try {
     // 3. 等待图片加载
-    await waitForImages(container);
+    await waitForImages(iframeDoc.body);
 
     // 4. 使用 html2canvas 转换
     const canvas = await html2canvas(container, {
@@ -395,6 +455,6 @@ export const generateShareCard = async (
     });
   } finally {
     // 6. 清理临时元素
-    document.body.removeChild(container);
+    document.body.removeChild(iframe);
   }
 };

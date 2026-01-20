@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Copy, Check, Twitter, MessageCircle, Link2, Share2 } from 'lucide-react';
 import type { InstalledSkill } from '../types';
 import { generatePlatformShareText, copyToClipboard } from '../utils/shareTextGenerator';
+import { resolveSkillLink } from '../utils/shareLink';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { cn } from '../utils/cn';
@@ -25,6 +26,9 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
   const { i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'text' | 'social'>('text');
   const [copied, setCopied] = useState(false);
+  const shareLink = resolveSkillLink(skill);
+  const normalizedStatus =
+    skill.status === 'unsafe' ? 'risk' : (skill.status ?? 'unknown');
 
   // 使用 useMemo 缓存生成的分享文本，避免每次渲染都重新计算
   const shareText = useMemo(
@@ -102,35 +106,35 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
           <span
             className={cn(
               'px-2 py-1 rounded text-xs font-medium',
-              skill.status === 'safe' && 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-              skill.status === 'risk' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-              skill.status === 'blocked' && 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-              skill.status === 'unknown' && 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+              normalizedStatus === 'safe' && 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+              normalizedStatus === 'risk' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+              normalizedStatus === 'blocked' && 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+              normalizedStatus === 'unknown' && 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
             )}
           >
             {i18n.language === 'zh'
-              ? (skill.status === 'safe'
+              ? (normalizedStatus === 'safe'
                   ? '安全'
-                  : skill.status === 'risk'
+                  : normalizedStatus === 'risk'
                     ? '有风险'
-                    : skill.status === 'blocked'
+                    : normalizedStatus === 'blocked'
                       ? '已阻止'
                       : '未知')
-              : skill.status.charAt(0).toUpperCase() + skill.status.slice(1)}
+              : normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1)}
           </span>
         </div>
         <p className="text-sm text-base-content/70">{skill.description}</p>
-        {skill.sourceUrl && (
+        {shareLink && (
           <a
-            href={skill.sourceUrl}
+            href={shareLink}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline flex items-center gap-1 mt-2"
           >
             <Link2 className="w-3 h-3" />
-            {skill.sourceUrl.length > 60
-              ? skill.sourceUrl.substring(0, 60) + '...'
-              : skill.sourceUrl}
+            {shareLink.length > 60
+              ? shareLink.substring(0, 60) + '...'
+              : shareLink}
           </a>
         )}
       </div>
