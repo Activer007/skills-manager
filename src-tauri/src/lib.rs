@@ -366,7 +366,7 @@ fn write_skill_package(
 
     let file = fs::File::create(output_path).map_err(|e| e.to_string())?;
     let mut zip = ZipWriter::new(file);
-    let options = FileOptions::default()
+    let options = FileOptions::<()>::default()
         .compression_method(CompressionMethod::Deflated)
         .unix_permissions(0o644);
 
@@ -458,7 +458,7 @@ fn extract_skill_package_with_limit(
         if name == "skill-package.json" {
             continue;
         }
-        if should_skip_package_entry(enclosed) {
+        if should_skip_package_entry(&enclosed) {
             continue;
         }
 
@@ -1593,7 +1593,7 @@ mod package_tests {
         let package_path = temp.path().join("no-meta.skillpack.zip");
         let file = fs::File::create(&package_path).unwrap();
         let mut zip = ZipWriter::new(file);
-        let options = FileOptions::default()
+        let options = FileOptions::<()>::default()
             .compression_method(CompressionMethod::Deflated)
             .unix_permissions(0o644);
 
@@ -1611,7 +1611,7 @@ mod package_tests {
         let package_path = temp.path().join("bad.skillpack.zip");
         let file = fs::File::create(&package_path).unwrap();
         let mut zip = ZipWriter::new(file);
-        let options = FileOptions::default()
+        let options = FileOptions::<()>::default()
             .compression_method(CompressionMethod::Deflated)
             .unix_permissions(0o644);
 
@@ -1630,7 +1630,7 @@ mod package_tests {
         let package_path = temp.path().join("absolute.skillpack.zip");
         let file = fs::File::create(&package_path).unwrap();
         let mut zip = ZipWriter::new(file);
-        let options = FileOptions::default()
+        let options = FileOptions::<()>::default()
             .compression_method(CompressionMethod::Deflated)
             .unix_permissions(0o644);
 
@@ -1649,7 +1649,7 @@ mod package_tests {
         let package_path = temp.path().join("big.skillpack.zip");
         let file = fs::File::create(&package_path).unwrap();
         let mut zip = ZipWriter::new(file);
-        let options = FileOptions::default()
+        let options = FileOptions::<()>::default()
             .compression_method(CompressionMethod::Deflated)
             .unix_permissions(0o644);
 
@@ -1708,5 +1708,97 @@ mod package_tests {
         let expected_path = install_root.join(".claude").join("skills").join("imported-skill");
         assert_eq!(outcome.installed_dirs[0], expected_path);
         assert!(expected_path.join("SKILL.md").exists());
+    }
+
+    #[test]
+    fn test_is_skill_package_path_case_insensitive() {
+        // 测试大小写不敏感的扩展名验证
+        let valid_lowercase = PathBuf::from("C:/tmp/demo.skillpack.zip");
+        let valid_uppercase = PathBuf::from("C:/tmp/demo.SKILLPACK.ZIP");
+        let valid_mixed = PathBuf::from("C:/tmp/demo.SkillPack.Zip");
+        let invalid = PathBuf::from("C:/tmp/demo.zip");
+
+        assert!(is_skill_package_path(&valid_lowercase));
+        assert!(is_skill_package_path(&valid_uppercase));
+        assert!(is_skill_package_path(&valid_mixed));
+        assert!(!is_skill_package_path(&invalid));
+    }
+
+    #[test]
+    fn test_extract_package_with_windows_prefix_path() {
+        // 测试拒绝 Windows 驱动器前缀路径
+        let temp = tempdir().unwrap();
+        let package_path = temp.path().join("windows-prefix.skillpack.zip");
+        let file = fs::File::create(&package_path).unwrap();
+        let mut zip = ZipWriter::new(file);
+        let options = FileOptions::<()>::default()
+            .compression_method(CompressionMethod::Deflated)
+            .unix_permissions(0o644);
+
+        // Windows 驱动器前缀路径应该被拒绝
+        zip.start_file("C:/evil.txt", options).unwrap();
+        zip.write_all(b"malicious").unwrap();
+        zip.finish().unwrap();
+
+        let dest_dir = temp.path().join("dest");
+        let err = extract_skill_package(&package_path, &dest_dir)
+            .expect_err("expected prefix path error");
+        assert!(err.contains("absolute") || err.contains("invalid"));
+    }
+
+    #[test]
+    fn test_sanitize_filename_edge_cases() {
+        // 测试文件名清理函数的边界情况
+        assert_eq!(sanitize_filename("my-skill"), "my-skill");
+        assert_eq!(sanitize_filename("my skill"), "my_skill");
+        assert_eq!(sanitize_filename("skill@#$%"), "skill");  // 末尾下划线会被 trim 掉
+        assert_eq!(sanitize_filename("___skill___"), "skill");
+        assert_eq!(sanitize_filename("@#$"), "skill");
+        assert_eq!(sanitize_filename("正常文件名"), "skill");
+    }
+
+    #[test]
+    fn test_write_package_preserves_metadata() {
+        // 测试导出包时正确保留元数据
+        let temp = tempdir().unwrap();
+        let skill_dir = create_skill_dir(temp.path(), "meta-skill");
+        let package_path = temp.path().join("meta-skill.skillpack.zip");
+
+        let metadata = json!({
+            "formatVersion": "1.0",
+            "skill": {
+                "name": "Meta Skill",
+                "description": "Test metadata"
+            },
+            "origin": {
+                "sourceType": "github",
+                "url": "https://github.com/test/skill"
+            }
+        });
+
+        write_skill_package(&skill_dir, &package_path, &metadata).unwrap();
+
+        // 验证元数据可以正确读取
+        let read_metadata = read_package_metadata(&package_path).unwrap().unwrap();
+        assert_eq!(read_metadata["formatVersion"], "1.0");
+        assert_eq!(read_metadata["skill"]["name"], "Meta Skill");
+        assert_eq!(read_metadata["origin"]["sourceType"], "github");
+    }
+
+    #[test]
+    fn test_should_skip_package_entry() {
+        // 测试应该跳过的目录和文件
+        use std::path::Path;
+
+        // 应该跳过的目录
+        assert!(should_skip_package_entry(Path::new(".git")));
+        assert!(should_skip_package_entry(Path::new("node_modules")));
+        assert!(should_skip_package_entry(Path::new("target")));
+        assert!(should_skip_package_entry(Path::new("some/.git/config")));
+
+        // 不应该跳过的路径
+        assert!(!should_skip_package_entry(Path::new("SKILL.md")));
+        assert!(!should_skip_package_entry(Path::new("config/settings.json")));
+        assert!(!should_skip_package_entry(Path::new("src/main.rs")));
     }
 }
