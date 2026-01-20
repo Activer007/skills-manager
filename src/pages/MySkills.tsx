@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill } from '../hooks/useSkills';
+import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill, useImportPackageSkill } from '../hooks/useSkills';
 import { useSkillConfig } from '../hooks/useSkillConfig';
 import { useBatchSkillQuality } from '../hooks/useSkillQuality';
-import { Github, HardDrive, Plus, FolderOpen, FileText, Settings, History } from 'lucide-react';
+import { Github, HardDrive, Plus, FolderOpen, FileText, Settings, History, Package } from 'lucide-react';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
@@ -45,6 +45,7 @@ const MySkills = () => {
   const uninstallMutation = useUninstallSkill();
   const importGithubMutation = useImportSkill();
   const importLocalMutation = useImportLocalSkill();
+  const importPackageMutation = useImportPackageSkill();
   const queryClient = useQueryClient();
 
   // Fetch quality scores for all skills
@@ -60,9 +61,10 @@ const MySkills = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [importType, setImportType] = useState<'github' | 'local' | null>(null);
+  const [importType, setImportType] = useState<'github' | 'local' | 'package' | null>(null);
   const [importUrl, setImportUrl] = useState('');
   const [importPath, setImportPath] = useState('');
+  const [importPackagePath, setImportPackagePath] = useState('');
   const [securityReport, setSecurityReport] = useState<SecurityReport | null>(null);
   const [isScanningSecurity, setIsScanningSecurity] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -173,10 +175,14 @@ const MySkills = () => {
       } else if (importType === 'local') {
         await importLocalMutation.mutateAsync(importPath);
         toast.success('成功从本地导入 Skill！');
+      } else if (importType === 'package') {
+        await importPackageMutation.mutateAsync(importPackagePath);
+        toast.success(t('importPackageSuccess'));
       }
       setShowImportModal(false);
       setImportUrl('');
       setImportPath('');
+      setImportPackagePath('');
       setImportType(null);
     } catch (error: unknown) {
       toast.error(`导入失败: ${getErrorMessage(error)}`);
@@ -337,6 +343,7 @@ const MySkills = () => {
     setImportType(null);
     setImportUrl('');
     setImportPath('');
+    setImportPackagePath('');
   };
 
   return (
@@ -664,6 +671,7 @@ const MySkills = () => {
                   setImportType(null);
                   setImportUrl('');
                   setImportPath('');
+                  setImportPackagePath('');
                 }}
               >
                 {i18n.language === 'zh' ? '返回' : 'Back'}
@@ -674,11 +682,16 @@ const MySkills = () => {
                 disabled={
                   importGithubMutation.isPending ||
                   importLocalMutation.isPending ||
-                  (importType === 'github' ? !importUrl.trim() : !importPath.trim())
+                  importPackageMutation.isPending ||
+                  (importType === 'github'
+                    ? !importUrl.trim()
+                    : importType === 'local'
+                      ? !importPath.trim()
+                      : !importPackagePath.trim())
                 }
-                isLoading={importGithubMutation.isPending || importLocalMutation.isPending}
+                isLoading={importGithubMutation.isPending || importLocalMutation.isPending || importPackageMutation.isPending}
               >
-                {(importGithubMutation.isPending || importLocalMutation.isPending) ? (
+                {(importGithubMutation.isPending || importLocalMutation.isPending || importPackageMutation.isPending) ? (
                   t('importing')
                 ) : (
                   <>
@@ -736,14 +749,40 @@ const MySkills = () => {
                 </div>
               </div>
             </button>
+
+            <button
+              type="button"
+              className="w-full text-left card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
+              onClick={() => setImportType('package')}
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
+                  <Package size={24} />
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-base mb-1 text-slate-900 dark:text-slate-100">
+                    {i18n.language === 'zh' ? '从 Skill 包导入' : 'Import from Package'}
+                  </div>
+                  <div className="text-sm text-slate-500">
+                    {i18n.language === 'zh'
+                      ? '选择 .skillpack.zip 文件路径进行导入'
+                      : 'Select a .skillpack.zip file path to import'}
+                  </div>
+                </div>
+              </div>
+            </button>
           </div>
         ) : (
           <div className="space-y-6">
             <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300">
               <div className="flex items-center gap-3">
-                {importType === 'github' ? <Github size={20} /> : <HardDrive size={20} />}
+                {importType === 'github' ? <Github size={20} /> : importType === 'local' ? <HardDrive size={20} /> : <Package size={20} />}
                 <span className="text-sm font-medium">
-                  {importType === 'github' ? t('importFromGitHub') : t('importFromLocal')}
+                  {importType === 'github'
+                    ? t('importFromGitHub')
+                    : importType === 'local'
+                      ? t('importFromLocal')
+                      : (i18n.language === 'zh' ? '从 Skill 包导入' : 'Import from Package')}
                 </span>
               </div>
             </div>
@@ -759,7 +798,7 @@ const MySkills = () => {
                   : 'Repository must contain SKILL.md file'}
                 autoFocus
               />
-            ) : (
+            ) : importType === 'local' ? (
               <Input
                 label={i18n.language === 'zh' ? '本地文件夹路径' : 'Local Folder Path'}
                 placeholder="C:\\Users\\User\\Downloads\\my-skill"
@@ -768,6 +807,17 @@ const MySkills = () => {
                 helperText={i18n.language === 'zh'
                   ? '文件夹必须包含 SKILL.md 文件'
                   : 'Folder must contain SKILL.md file'}
+                autoFocus
+              />
+            ) : (
+              <Input
+                label={i18n.language === 'zh' ? 'Skill 包路径' : 'Skill Package Path'}
+                placeholder="C:\\Users\\User\\Downloads\\my-skill.skillpack.zip"
+                value={importPackagePath}
+                onChange={(e) => setImportPackagePath(e.target.value)}
+                helperText={i18n.language === 'zh'
+                  ? '选择导出的 .skillpack.zip 文件'
+                  : 'Select an exported .skillpack.zip file'}
                 autoFocus
               />
             )}

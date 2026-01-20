@@ -8,6 +8,7 @@ import {
   useImportSkill,
   useUninstallSkill,
   useImportLocalSkill,
+  useImportPackageSkill,
   useMarketplaceSkills,
   useInstallSkill
 } from './useSkills';
@@ -383,6 +384,41 @@ describe('useSkills Hooks', () => {
 
       await act(async () => {
         await result.current.mutateAsync('C:/Users/test/my-skill');
+      });
+
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['skills'] });
+    });
+  });
+
+  describe('useImportPackageSkill', () => {
+    it('calls import_skill_package correctly', async () => {
+      vi.mocked(invoke).mockResolvedValue({ success: true });
+
+      const { result } = renderHook(() => useImportPackageSkill(), { wrapper });
+
+      const packagePath = 'C:/Users/test/sample.skillpack.zip';
+
+      await act(async () => {
+        await result.current.mutateAsync(packagePath);
+      });
+
+      expect(invoke).toHaveBeenCalledWith('import_skill_package', {
+        request: {
+          packagePath,
+          skipSecurityCheck: false
+        }
+      });
+    });
+
+    it('invalidates skills query on success', async () => {
+      vi.mocked(invoke).mockResolvedValue({ success: true });
+
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(() => useImportPackageSkill(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync('C:/Users/test/sample.skillpack.zip');
       });
 
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['skills'] });

@@ -178,6 +178,27 @@ export function useImportLocalSkill() {
 }
 
 /**
+ * Hook for importing a skill from package
+ */
+export function useImportPackageSkill() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (packagePath: string) => {
+      return await invoke('import_skill_package', {
+        request: {
+          packagePath,
+          skipSecurityCheck: false
+        }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['skills'] });
+    },
+  });
+}
+
+/**
  * Hook for fetching marketplace skills
  */
 export function useMarketplaceSkills() {

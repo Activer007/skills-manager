@@ -105,6 +105,7 @@ const resources = {
       // Messages
       importSuccess: "Skill imported successfully",
       importError: "Failed to import skill",
+      importPackageSuccess: "Skill package imported successfully!",
       removeSuccess: "Skill removed successfully",
       removeError: "Failed to remove skill",
       saveSuccess: "Settings saved successfully",
@@ -222,6 +223,7 @@ const resources = {
       // 消息
       importSuccess: "Skill 导入成功",
       importError: "导入 Skill 失败",
+      importPackageSuccess: "成功导入 Skill 包！",
       removeSuccess: "Skill 移除成功",
       removeError: "移除 Skill 失败",
       saveSuccess: "设置保存成功",
