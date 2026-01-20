@@ -1,19 +1,46 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import Sidebar from './Sidebar';
 import ThemeManager from '../common/ThemeManager';
 import ToastContainer from '../common/ToastContainer';
+import { ImageImportModal } from '../ImageImportModal';
 import { cn } from '../../utils/cn';
 
 const Layout = () => {
     const location = useLocation();
     const isMarketplace = location.pathname.startsWith('/marketplace');
+    const [showImageImportModal, setShowImageImportModal] = useState(false);
+    const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+
+    // 全局剪贴板监听（仅在 Marketplace 页面）
+    useEffect(() => {
+        const handlePaste = async (e: ClipboardEvent) => {
+            // 仅在 Marketplace 页面响应
+            if (location.pathname !== '/marketplace') return;
+
+            const items = Array.from(e.clipboardData?.items || []);
+            const imageItem = items.find(item => item.kind === 'file' && item.type.startsWith('image/'));
+
+            if (imageItem) {
+                e.preventDefault();
+                const file = imageItem.getAsFile();
+                if (file) {
+                    setPendingImageFile(file);
+                    setShowImageImportModal(true);
+                }
+            }
+        };
+
+        window.addEventListener('paste', handlePaste);
+        return () => window.removeEventListener('paste', handlePaste);
+    }, [location.pathname]);
 
     return (
         <div className="flex h-screen bg-[#FAFBFC] dark:bg-base-300 font-sans text-slate-900 dark:text-slate-100 overflow-hidden selection:bg-primary/20 selection:text-primary">
             {/* Theme Manager handles side effects */}
             <ThemeManager />
-            
+
             {/* Custom Toast Container */}
             <ToastContainer />
 
@@ -52,6 +79,16 @@ const Layout = () => {
                     </div>
                 </div>
             </main>
+
+            {/* Image Import Modal */}
+            <ImageImportModal
+                isOpen={showImageImportModal}
+                onClose={() => {
+                    setShowImageImportModal(false);
+                    setPendingImageFile(null);
+                }}
+                imageFile={pendingImageFile}
+            />
         </div>
     );
 };
