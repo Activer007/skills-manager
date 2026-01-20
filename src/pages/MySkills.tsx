@@ -128,6 +128,12 @@ const MySkills = () => {
     return map;
   }, [qualityScores, skillPaths]);
 
+  const packagePathTrimmed = importPackagePath.trim();
+  const isPackagePathValid = packagePathTrimmed.toLowerCase().endsWith('.skillpack.zip');
+  const packagePathError = importType === 'package' && packagePathTrimmed && !isPackagePathValid
+    ? t('importPackageInvalid')
+    : undefined;
+
 
   const handleUninstall = (skill: InstalledSkill) => {
     if (uninstallMutation.isPending) return;
@@ -687,7 +693,7 @@ const MySkills = () => {
                     ? !importUrl.trim()
                     : importType === 'local'
                       ? !importPath.trim()
-                      : !importPackagePath.trim())
+                      : !isPackagePathValid)
                 }
                 isLoading={importGithubMutation.isPending || importLocalMutation.isPending || importPackageMutation.isPending}
               >
@@ -815,9 +821,8 @@ const MySkills = () => {
                 placeholder="C:\\Users\\User\\Downloads\\my-skill.skillpack.zip"
                 value={importPackagePath}
                 onChange={(e) => setImportPackagePath(e.target.value)}
-                helperText={i18n.language === 'zh'
-                  ? '选择导出的 .skillpack.zip 文件'
-                  : 'Select an exported .skillpack.zip file'}
+                helperText={t('importPackageHint')}
+                error={packagePathError}
                 autoFocus
               />
             )}
