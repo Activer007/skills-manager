@@ -45,3 +45,4 @@ Skill Manager.app
 package-lock.json
 
 
+.claude/settings.local.json

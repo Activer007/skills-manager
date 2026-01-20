@@ -204,7 +204,7 @@ export const SkillCard = ({
                              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onConfigure?.(); }}>
                                 <Settings size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" className="text-error" onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}>
+                             <Button size="sm" variant="ghost" className="text-error border border-error hover:bg-error/10" onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}>
                                 <Trash2 size={16} />
                              </Button>
                         </>
@@ -260,8 +260,8 @@ export const SkillCard = ({
                         onUninstall ? (
                             <Button
                                 size="sm"
-                                variant="primary"
-                                className="rounded-full h-8 min-h-0 px-4 text-xs shadow-primary/20 hover:shadow-primary/40 hover:shadow-lg"
+                                variant="ghost"
+                                className="rounded-full h-8 min-h-0 px-4 text-xs border border-error text-error hover:bg-error/10"
                                 onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}
                             >
                                 Uninstall

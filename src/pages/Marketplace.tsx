@@ -25,7 +25,7 @@ import ModalDialog from '../components/common/ModalDialog';
 // 常量定义
 const TOP_RATED_THRESHOLD = 50; // Stars threshold for top-rated filter
 const GUTTER_SIZE = 24;
-const ROW_HEIGHT = 380;
+const ROW_HEIGHT = 330;
 const HERO_BG_CANDIDATES = [
   '/marketplace/hero-bg.webp',
   '/marketplace/hero-bg.jpg',
@@ -61,14 +61,14 @@ const Cell = memo(({ columnIndex, rowIndex, style, data }: CellProps) => {
 
     const skill = skills[index];
 
-    // Adjust style to add gaps (gutter)
+    // Adjust style to add gaps (gutter) - simplified to avoid overflow
     const left = parseFloat(style.left?.toString() || '0') + GUTTER_SIZE / 2;
     const top = parseFloat(style.top?.toString() || '0') + GUTTER_SIZE / 2;
     const width = parseFloat(style.width?.toString() || '0') - GUTTER_SIZE;
     const height = parseFloat(style.height?.toString() || '0') - GUTTER_SIZE;
 
     return (
-        <div style={{ ...style, left, top, width, height }}>
+        <div style={{ position: 'absolute', left, top, width, height }}>
             <SkillCard
                 skill={{...skill, description: getLocalizedDescription(skill, language)}}
                 viewMode="grid"
@@ -340,13 +340,13 @@ const Marketplace = () => {
   }, []);
 
   return (
-    <div className="flex flex-col gap-8 h-full min-h-0">
+    <div className="flex flex-col gap-6 h-full min-h-0">
       {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 dark:from-primary/5 dark:to-purple-500/5 p-8 md:p-12">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 dark:from-primary/5 dark:to-purple-500/5 pl-8 pr-0 pb-6 pt-6">
           {heroBackgroundUrl && (
             <div
               aria-hidden="true"
-              className="absolute inset-0 z-0 bg-cover bg-center opacity-40"
+              className="absolute inset-0 z-0 bg-cover bg-top opacity-40 rounded-r-2xl"
               style={{ backgroundImage: `url(${heroBackgroundUrl})` }}
             />
           )}
@@ -528,7 +528,7 @@ const Marketplace = () => {
             />
           </div>
         ) : (
-          <div className="w-full h-full" ref={gridContainerRef}>
+          <div className="w-full h-full overflow-x-hidden overflow-y-auto" ref={gridContainerRef}>
               <AutoSizer
               renderProp={({ height, width }) => {
                   const resolvedHeight = height || gridSize.height;
@@ -572,7 +572,7 @@ const Marketplace = () => {
         description={selectedSkill?.description}
         width="lg"
         footer={
-            <div className="flex justify-end gap-[2ch]">
+            <div className="flex justify-end gap-4">
                 <Button
                     variant="ghost"
                     onClick={() => {
@@ -585,7 +585,8 @@ const Marketplace = () => {
                 {selectedSkill && (
                     selectedInstalled ? (
                         <Button
-                            variant="primary"
+                            variant="ghost"
+                            className="px-6 py-2 border border-error text-error hover:bg-error/10"
                             onClick={() => handleUninstall(selectedSkill)}
                             disabled={uninstallMutation.isPending}
                             isLoading={uninstallMutation.isPending}
