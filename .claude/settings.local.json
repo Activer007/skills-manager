@@ -14,7 +14,8 @@
       "Bash(if [ ! -d \"src/test/integration\" ])",
       "Bash(then mkdir -p src/test/integration)",
       "Bash(fi)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(gh pr merge:*)"
     ]
   }
 }
