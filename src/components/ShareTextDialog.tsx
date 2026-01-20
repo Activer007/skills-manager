@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
 import { Copy, Check, Twitter, MessageCircle, Link2, Share2 } from 'lucide-react';
 import type { InstalledSkill } from '../types';
 import { generatePlatformShareText, copyToClipboard } from '../utils/shareTextGenerator';
@@ -26,26 +27,56 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
   const { i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'text' | 'social'>('text');
   const [copied, setCopied] = useState(false);
+  const [isModified, setIsModified] = useState<boolean | null>(null);
   const shareLink = resolveSkillLink(skill);
   const normalizedStatus =
     skill.status === 'unsafe' ? 'risk' : (skill.status ?? 'unknown');
 
+  useEffect(() => {
+    let isMounted = true;
+    const origin = (skill.config as Record<string, unknown> | undefined)
+      ?.__origin as Record<string, unknown> | undefined;
+    const originChecksum =
+      typeof origin?.checksum === 'string' ? origin.checksum : undefined;
+
+    if (!originChecksum) {
+      setIsModified(null);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    invoke<string>('calculate_skill_checksum', { skillPath: skill.localPath })
+      .then((checksum) => {
+        if (!isMounted) return;
+        setIsModified(checksum !== originChecksum);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setIsModified(null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [skill.localPath, skill.config]);
+
   // 使用 useMemo 缓存生成的分享文本，避免每次渲染都重新计算
   const shareText = useMemo(
-    () => generatePlatformShareText(skill, 'generic', i18n.language),
-    [skill, i18n.language]
+    () => generatePlatformShareText(skill, 'generic', i18n.language, { modified: isModified === true }),
+    [skill, i18n.language, isModified]
   );
   const twitterText = useMemo(
-    () => generatePlatformShareText(skill, 'twitter', i18n.language),
-    [skill, i18n.language]
+    () => generatePlatformShareText(skill, 'twitter', i18n.language, { modified: isModified === true }),
+    [skill, i18n.language, isModified]
   );
   const weiboText = useMemo(
-    () => generatePlatformShareText(skill, 'weibo', i18n.language),
-    [skill, i18n.language]
+    () => generatePlatformShareText(skill, 'weibo', i18n.language, { modified: isModified === true }),
+    [skill, i18n.language, isModified]
   );
   const markdownText = useMemo(
-    () => generatePlatformShareText(skill, 'markdown', i18n.language),
-    [skill, i18n.language]
+    () => generatePlatformShareText(skill, 'markdown', i18n.language, { modified: isModified === true }),
+    [skill, i18n.language, isModified]
   );
 
   // 清理 setTimeout 避免内存泄漏
@@ -136,6 +167,13 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
               ? shareLink.substring(0, 60) + '...'
               : shareLink}
           </a>
+        )}
+        {isModified === true && (
+          <div className="mt-3 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded">
+            {i18n.language === 'zh'
+              ? '此 Skill 已在本地修改，原始链接不包含修改内容。'
+              : 'This skill has local changes; the original link excludes modifications.'}
+          </div>
         )}
       </div>
 

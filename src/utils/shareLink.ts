@@ -16,8 +16,12 @@ export const resolveSkillLink = (skill: InstalledSkill): string | undefined => {
     githubUrl?: string;
   };
   const config = skill.config as Record<string, unknown> | undefined;
+  const origin = config?.__origin as Record<string, unknown> | undefined;
 
   return (
+    getConfigString(origin, 'installUrl') ||
+    getConfigString(origin, 'originUrl') ||
+    getConfigString(origin, 'repoUrl') ||
     getConfigString({ sourceUrl: extendedSkill.sourceUrl }, 'sourceUrl') ||
     getConfigString({ githubUrl: extendedSkill.githubUrl }, 'githubUrl') ||
     getConfigString(config, 'repoUrl') ||

@@ -63,6 +63,10 @@ const SECURITY_LABELS_EN: Record<string, string> = {
   unknown: 'Unknown',
 };
 
+type ShareTextOptions = {
+  modified?: boolean;
+};
+
 /**
  * 获取安全等级标签
  */
@@ -197,7 +201,8 @@ ${qualityText}
 export const generatePlatformShareText = (
   skill: InstalledSkill,
   platform: SharePlatform = 'generic',
-  locale: string = 'zh'
+  locale: string = 'zh',
+  options?: ShareTextOptions
 ): string => {
   const config = PLATFORM_CONFIGS[platform] ?? PLATFORM_CONFIGS.generic;
 
@@ -214,6 +219,14 @@ export const generatePlatformShareText = (
     default:
       text = generateShareText(skill, locale);
       break;
+  }
+
+  if (options?.modified) {
+    const notice =
+      locale === 'zh'
+        ? '⚠️ 本地已修改，原始链接不包含修改内容'
+        : '⚠️ Locally modified; original link excludes changes';
+    text = `${text}\n\n${notice}`;
   }
 
   // 添加标签
