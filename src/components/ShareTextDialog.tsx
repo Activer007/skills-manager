@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, Check, Twitter, MessageCircle, Link2, Share2 } from 'lucide-react';
 import type { InstalledSkill } from '../types';
@@ -26,11 +26,40 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
   const [activeTab, setActiveTab] = useState<'text' | 'social'>('text');
   const [copied, setCopied] = useState(false);
 
-  // 生成分享文本
-  const shareText = generatePlatformShareText(skill, 'generic', i18n.language);
-  const twitterText = generatePlatformShareText(skill, 'twitter', i18n.language);
-  const weiboText = generatePlatformShareText(skill, 'weibo', i18n.language);
-  const markdownText = generatePlatformShareText(skill, 'markdown', i18n.language);
+  // 使用 useMemo 缓存生成的分享文本，避免每次渲染都重新计算
+  const shareText = useMemo(
+    () => generatePlatformShareText(skill, 'generic', i18n.language),
+    [skill, i18n.language]
+  );
+  const twitterText = useMemo(
+    () => generatePlatformShareText(skill, 'twitter', i18n.language),
+    [skill, i18n.language]
+  );
+  const weiboText = useMemo(
+    () => generatePlatformShareText(skill, 'weibo', i18n.language),
+    [skill, i18n.language]
+  );
+  const markdownText = useMemo(
+    () => generatePlatformShareText(skill, 'markdown', i18n.language),
+    [skill, i18n.language]
+  );
+
+  // 清理 setTimeout 避免内存泄漏
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    if (copied) {
+      timeoutId = setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [copied]);
 
   // 复制文本
   const handleCopy = async (text: string) => {
@@ -38,7 +67,6 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
     if (success) {
       setCopied(true);
       toast.success(i18n.language === 'zh' ? '已复制到剪贴板' : 'Copied to clipboard');
-      setTimeout(() => setCopied(false), 2000);
     } else {
       toast.error(i18n.language === 'zh' ? '复制失败' : 'Copy failed');
     }

@@ -227,14 +227,9 @@ export const SkillCard = ({
                              </Button>
                         </>
                     ) : (
-                        <>
-                             <Button size="sm" variant="ghost" onClick={handleShare} title="Share">
-                                <Share2 size={16} />
-                             </Button>
-                             <Button size="sm" variant="primary" onClick={handleInstall} isLoading={isLoading}>
-                                Install
-                            </Button>
-                        </>
+                        <Button size="sm" variant="primary" onClick={handleInstall} isLoading={isLoading}>
+                            Install
+                        </Button>
                     )}
                 </div>
             </div>
@@ -290,15 +285,17 @@ export const SkillCard = ({
                         {skill.author || 'Unknown'}
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            className="rounded-full h-8 min-h-0 px-3 text-xs"
-                            onClick={handleShare}
-                            title="Share"
-                        >
-                            <Share2 size={14} />
-                        </Button>
+                        {isInstalled && (
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="rounded-full h-8 min-h-0 px-3 text-xs"
+                                onClick={handleShare}
+                                title="Share"
+                            >
+                                <Share2 size={14} />
+                            </Button>
+                        )}
                         {isInstalled ? (
                             onUninstall ? (
                                 <Button
