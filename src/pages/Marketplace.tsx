@@ -20,8 +20,6 @@ import { AutoSizer } from 'react-virtualized-auto-sizer';
 import type { CSSProperties } from 'react';
 
 import { ImportSkillModal } from '../components/ImportSkillModal';
-import { ImageDropZone } from '../components/ImageDropZone';
-import { ImageImportModal } from '../components/ImageImportModal';
 import ModalDialog from '../components/common/ModalDialog';
 
 // 常量定义
@@ -103,8 +101,6 @@ const Marketplace = () => {
   const [selectedSkill, setSelectedSkill] = useState<MarketplaceSkill | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showImageImportModal, setShowImageImportModal] = useState(false);
-  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [pendingInstall, setPendingInstall] = useState<MarketplaceSkill | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledSkill | null>(null);
   const [gridSize, setGridSize] = useState({ width: 0, height: 0 });
@@ -251,11 +247,6 @@ const Marketplace = () => {
         console.error('Failed to open URL:', error);
         toast.error(i18n.language === 'zh' ? `无法打开链接: ${error}` : `Failed to open URL: ${error}`);
     }
-  };
-
-  const handleImageDrop = (file: File) => {
-    setPendingImageFile(file);
-    setShowImageImportModal(true);
   };
 
   const filteredSkills = useMemo(() => {
@@ -447,17 +438,6 @@ const Marketplace = () => {
             className="absolute bottom-0 left-0 -mb-20 -ml-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl pointer-events-none"
           />
       </div>
-
-      {/* Image Drop Zone - 仅在未搜索时显示 */}
-      {!searchTerm && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          <ImageDropZone onImageDrop={handleImageDrop} />
-        </motion.div>
-      )}
 
       {/* Filter Chips with Scroll Indicators */}
       <div className="relative">
@@ -738,15 +718,6 @@ const Marketplace = () => {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         initialUrl={isGithubUrl ? searchTerm : undefined}
-      />
-
-      <ImageImportModal
-        isOpen={showImageImportModal}
-        onClose={() => {
-          setShowImageImportModal(false);
-          setPendingImageFile(null);
-        }}
-        imageFile={pendingImageFile}
       />
 
       <ModalDialog

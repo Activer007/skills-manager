@@ -6,8 +6,10 @@ import { Button } from './ui/Button';
 import { Progress } from './ui/Progress';
 import { useInstallSkill } from '../hooks/useSkills';
 import { toast } from '../store/useToastStore';
-import { Download, AlertTriangle } from 'lucide-react';
+import { Download, AlertTriangle, ChevronDown, ChevronUp, Image as ImageIcon, Upload } from 'lucide-react';
 import type { MarketplaceSkill } from '../types';
+import { importSkillFromImage } from '../utils/qrCodeImporter';
+import { cn } from '../utils/cn';
 
 interface ImportSkillModalProps {
   isOpen: boolean;
@@ -21,6 +23,10 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
   const [error, setError] = useState('');
   const [installProgress, setInstallProgress] = useState(0);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [showImageDrop, setShowImageDrop] = useState(false);
+  const [isParsingImage, setIsParsingImage] = useState(false);
+  const [imageError, setImageError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const installTimerRef = useRef<number | null>(null);
   const installMutation = useInstallSkill();
 
@@ -30,6 +36,8 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
       setError('');
       setInstallProgress(0);
       setIsInstalling(false);
+      setShowImageDrop(false);
+      setImageError('');
     } else if (installTimerRef.current) {
       window.clearInterval(installTimerRef.current);
       installTimerRef.current = null;
@@ -71,6 +79,56 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
       window.clearInterval(installTimerRef.current);
       installTimerRef.current = null;
     }
+  };
+
+  // 处理图片文件
+  const handleImageDrop = async (file: File) => {
+    setIsParsingImage(true);
+    setImageError('');
+
+    const result = await importSkillFromImage(file, i18n.language === 'zh' ? 'zh' : 'en');
+
+    if (result.success && result.skillInfo) {
+      // 优先使用 sourceUrl，回退到 installUrl
+      const extractedUrl = result.skillInfo.sourceUrl || result.skillInfo.installUrl;
+      if (extractedUrl) {
+        setUrl(extractedUrl);
+        toast.success(i18n.language === 'zh' ? '成功识别二维码！' : 'QR code detected successfully!');
+      } else {
+        setImageError(i18n.language === 'zh' ? '二维码中未找到有效的链接' : 'No valid link found in QR code');
+      }
+    } else {
+      setImageError(result.errorMessage || (i18n.language === 'zh' ? '无法识别二维码' : 'Failed to detect QR code'));
+    }
+
+    setIsParsingImage(false);
+  };
+
+  // 处理文件拖拽
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFile = files.find((file) => file.type.startsWith('image/'));
+
+    if (imageFile) {
+      handleImageDrop(imageFile);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleImageDrop(file);
+    }
+    // 重置 input
+    e.target.value = '';
   };
 
   const handleInstall = async () => {
@@ -157,8 +215,8 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
             <AlertTriangle className="text-blue-500 shrink-0 mt-0.5" size={18} />
             <div className="text-sm text-blue-700 dark:text-blue-300">
                 {t('githubImportNotice', { defaultValue: i18n.language === 'zh'
-                    ? '请输入 GitHub 仓库链接。支持完整仓库链接或子目录链接。安装前会自动进行安全扫描。'
-                    : 'Enter the GitHub repository URL. Full repository URLs or subdirectory links are supported. Security scan will be performed before installation.' })}
+                    ? '请输入 GitHub 仓库链接或拖拽包含二维码的分享图片。安装前会自动进行安全扫描。'
+                    : 'Enter the GitHub repository URL or drag & drop an image with QR code. Security scan will be performed before installation.' })}
             </div>
         </div>
 
@@ -175,6 +233,82 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
           disabled={installMutation.isPending || isInstalling}
           autoFocus
         />
+
+        {/* 图片导入区域 */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowImageDrop(!showImageDrop)}
+            className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-colors"
+          >
+            {showImageDrop ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            <span className="font-medium">
+              {i18n.language === 'zh' ? '或从分享图片导入' : 'Or import from share image'}
+            </span>
+            <span className="text-xs">📷</span>
+          </button>
+
+          {showImageDrop && (
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              className={cn(
+                'relative border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 cursor-pointer',
+                'border-slate-300 dark:border-slate-600 hover:border-primary hover:bg-slate-50 dark:hover:bg-base-200/50',
+                isParsingImage && 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={isParsingImage}
+              />
+
+              {!isParsingImage ? (
+                <>
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-base-200 flex items-center justify-center text-slate-400 dark:text-slate-500">
+                      <ImageIcon size={24} />
+                    </div>
+                    <div className="text-center space-y-1">
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                        {i18n.language === 'zh' ? '拖拽分享图片到此处' : 'Drop share image here'}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {i18n.language === 'zh' ? '或点击选择文件' : 'or click to select file'}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-2"
+                    >
+                      <Upload size={14} className="mr-2" />
+                      {i18n.language === 'zh' ? '选择图片' : 'Select Image'}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    {i18n.language === 'zh' ? '正在识别二维码...' : 'Detecting QR code...'}
+                  </p>
+                </div>
+              )}
+
+              {imageError && (
+                <div className="mt-3 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded">
+                  {imageError}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {isInstalling && (
           <div className="rounded-lg border border-slate-200 dark:border-base-300 bg-slate-50 dark:bg-base-200/40 p-4 space-y-2">

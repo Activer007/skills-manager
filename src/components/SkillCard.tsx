@@ -245,16 +245,16 @@ export const SkillCard = ({
                 </div>
             </div>
             {/* Share Dialogs */}
-            {showShareTextDialog && 'sourceUrl' in skill && (
+            {showShareTextDialog && (
                 <ShareTextDialog
-                    skill={skill as InstalledSkill}
+                    skill={skill as any} // Use 'as any' since we're checking properties at runtime
                     isOpen={showShareTextDialog}
                     onClose={() => setShowShareTextDialog(false)}
                 />
             )}
-            {showShareImageDialog && 'sourceUrl' in skill && (
+            {showShareImageDialog && (
                 <ShareImageDialog
-                    skill={skill as InstalledSkill}
+                    skill={skill as any} // Use 'as any' since we're checking properties at runtime
                     isOpen={showShareImageDialog}
                     onClose={() => setShowShareImageDialog(false)}
                 />
@@ -356,16 +356,16 @@ export const SkillCard = ({
             </CardContent>
         </Card>
         {/* Share Dialogs */}
-        {showShareTextDialog && 'sourceUrl' in skill && (
+        {showShareTextDialog && (
             <ShareTextDialog
-                skill={skill as InstalledSkill}
+                skill={skill as any} // Use 'as any' since we're checking properties at runtime
                 isOpen={showShareTextDialog}
                 onClose={() => setShowShareTextDialog(false)}
             />
         )}
-        {showShareImageDialog && 'sourceUrl' in skill && (
+        {showShareImageDialog && (
             <ShareImageDialog
-                skill={skill as InstalledSkill}
+                skill={skill as any} // Use 'as any' since we're checking properties at runtime
                 isOpen={showShareImageDialog}
                 onClose={() => setShowShareImageDialog(false)}
             />
