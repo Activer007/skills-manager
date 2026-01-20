@@ -6,9 +6,10 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { TrustShield } from './TrustShield';
 import { ShareTextDialog } from './ShareTextDialog';
+import { ShareImageDialog } from './ShareImageDialog';
 import { cn } from '../utils/cn';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
-import { Star, GitBranch, Trash2, Settings, Plug, Share2 } from 'lucide-react';
+import { Star, GitBranch, Trash2, Settings, Plug, Link2, Image as ImageIcon } from 'lucide-react';
 
 // 常量定义
 const ICON_SIZE = {
@@ -76,16 +77,23 @@ export const SkillCard = ({
     onShare
 }: SkillCardProps) => {
     const [isLoading, setIsLoading] = useState(false);
-    const [showShareDialog, setShowShareDialog] = useState(false);
+    const [showShareTextDialog, setShowShareTextDialog] = useState(false);
+    const [showShareImageDialog, setShowShareImageDialog] = useState(false);
 
-    // 处理分享按钮点击
+    // 处理分享按钮点击 - 默认打开文本分享
     const handleShare = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (onShare) {
             onShare();
         } else {
-            setShowShareDialog(true);
+            setShowShareTextDialog(true);
         }
+    };
+
+    // 处理图片分享
+    const handleShareImage = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setShowShareImageDialog(true);
     };
 
     const handleInstall = async (e: React.MouseEvent) => {
@@ -219,8 +227,11 @@ export const SkillCard = ({
                              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onConfigure?.(); }}>
                                 <Settings size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" onClick={handleShare} title="Share">
-                                <Share2 size={16} />
+                             <Button size="sm" variant="ghost" onClick={handleShare} title="Share Text">
+                                <Link2 size={16} />
+                             </Button>
+                             <Button size="sm" variant="ghost" onClick={handleShareImage} title="Share Image">
+                                <ImageIcon size={16} />
                              </Button>
                              <Button size="sm" variant="ghost" className="text-error border border-error hover:bg-error/10" onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}>
                                 <Trash2 size={16} />
@@ -233,12 +244,19 @@ export const SkillCard = ({
                     )}
                 </div>
             </div>
-            {/* Share Dialog */}
-            {showShareDialog && 'sourceUrl' in skill && (
+            {/* Share Dialogs */}
+            {showShareTextDialog && 'sourceUrl' in skill && (
                 <ShareTextDialog
                     skill={skill as InstalledSkill}
-                    isOpen={showShareDialog}
-                    onClose={() => setShowShareDialog(false)}
+                    isOpen={showShareTextDialog}
+                    onClose={() => setShowShareTextDialog(false)}
+                />
+            )}
+            {showShareImageDialog && 'sourceUrl' in skill && (
+                <ShareImageDialog
+                    skill={skill as InstalledSkill}
+                    isOpen={showShareImageDialog}
+                    onClose={() => setShowShareImageDialog(false)}
                 />
             )}
         </>
@@ -286,15 +304,26 @@ export const SkillCard = ({
                     </div>
                     <div className="flex items-center gap-2">
                         {isInstalled && (
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                className="rounded-full h-8 min-h-0 px-3 text-xs"
-                                onClick={handleShare}
-                                title="Share"
-                            >
-                                <Share2 size={14} />
-                            </Button>
+                            <>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="rounded-full h-8 min-h-0 px-3 text-xs"
+                                    onClick={handleShare}
+                                    title="Share Text"
+                                >
+                                    <Link2 size={14} />
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="rounded-full h-8 min-h-0 px-3 text-xs"
+                                    onClick={handleShareImage}
+                                    title="Share Image"
+                                >
+                                    <ImageIcon size={14} />
+                                </Button>
+                            </>
                         )}
                         {isInstalled ? (
                             onUninstall ? (
@@ -326,12 +355,19 @@ export const SkillCard = ({
                 </div>
             </CardContent>
         </Card>
-        {/* Share Dialog */}
-        {showShareDialog && 'sourceUrl' in skill && (
+        {/* Share Dialogs */}
+        {showShareTextDialog && 'sourceUrl' in skill && (
             <ShareTextDialog
                 skill={skill as InstalledSkill}
-                isOpen={showShareDialog}
-                onClose={() => setShowShareDialog(false)}
+                isOpen={showShareTextDialog}
+                onClose={() => setShowShareTextDialog(false)}
+            />
+        )}
+        {showShareImageDialog && 'sourceUrl' in skill && (
+            <ShareImageDialog
+                skill={skill as InstalledSkill}
+                isOpen={showShareImageDialog}
+                onClose={() => setShowShareImageDialog(false)}
             />
         )}
     </>
