@@ -5,9 +5,10 @@ import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { TrustShield } from './TrustShield';
+import { ShareTextDialog } from './ShareTextDialog';
 import { cn } from '../utils/cn';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
-import { Star, GitBranch, Trash2, Settings, Plug } from 'lucide-react';
+import { Star, GitBranch, Trash2, Settings, Plug, Share2 } from 'lucide-react';
 
 // 常量定义
 const ICON_SIZE = {
@@ -59,6 +60,7 @@ interface SkillCardProps {
     onToggle?: () => Promise<void>;
     onConfigure?: () => void;
     onViewDetails?: () => void;
+    onShare?: () => void;
 }
 
 export const SkillCard = ({
@@ -70,9 +72,21 @@ export const SkillCard = ({
     onUninstall,
     onToggle,
     onConfigure,
-    onViewDetails
+    onViewDetails,
+    onShare
 }: SkillCardProps) => {
     const [isLoading, setIsLoading] = useState(false);
+    const [showShareDialog, setShowShareDialog] = useState(false);
+
+    // 处理分享按钮点击
+    const handleShare = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (onShare) {
+            onShare();
+        } else {
+            setShowShareDialog(true);
+        }
+    };
 
     const handleInstall = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -137,6 +151,7 @@ export const SkillCard = ({
 
     if (viewMode === 'list') {
         return (
+            <>
             <div
                 // 统一圆角：rounded-lg (12px)
                 // 统一过渡：duration-normal (200ms)
@@ -204,22 +219,35 @@ export const SkillCard = ({
                              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onConfigure?.(); }}>
                                 <Settings size={16} />
                              </Button>
+                             <Button size="sm" variant="ghost" onClick={handleShare} title="Share">
+                                <Share2 size={16} />
+                             </Button>
                              <Button size="sm" variant="ghost" className="text-error border border-error hover:bg-error/10" onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}>
                                 <Trash2 size={16} />
                              </Button>
                         </>
                     ) : (
-                         <Button size="sm" variant="primary" onClick={handleInstall} isLoading={isLoading}>
+                        <Button size="sm" variant="primary" onClick={handleInstall} isLoading={isLoading}>
                             Install
                         </Button>
                     )}
                 </div>
             </div>
+            {/* Share Dialog */}
+            {showShareDialog && 'sourceUrl' in skill && (
+                <ShareTextDialog
+                    skill={skill as InstalledSkill}
+                    isOpen={showShareDialog}
+                    onClose={() => setShowShareDialog(false)}
+                />
+            )}
+        </>
         );
     }
 
     // Grid View
     return (
+        <>
         <Card
             className="group cursor-pointer hover:-translate-y-1 transition-transform duration-300 h-full flex flex-col"
             onClick={onViewDetails}
@@ -256,34 +284,56 @@ export const SkillCard = ({
                     <div className="text-xs text-slate-400 font-medium">
                         {skill.author || 'Unknown'}
                     </div>
-                    {isInstalled ? (
-                        onUninstall ? (
+                    <div className="flex items-center gap-2">
+                        {isInstalled && (
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="rounded-full h-8 min-h-0 px-4 text-xs border border-error text-error hover:bg-error/10"
-                                onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}
+                                className="rounded-full h-8 min-h-0 px-3 text-xs"
+                                onClick={handleShare}
+                                title="Share"
                             >
-                                Uninstall
+                                <Share2 size={14} />
                             </Button>
+                        )}
+                        {isInstalled ? (
+                            onUninstall ? (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="rounded-full h-8 min-h-0 px-4 text-xs border border-error text-error hover:bg-error/10"
+                                    onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}
+                                >
+                                    Uninstall
+                                </Button>
+                            ) : (
+                                <Button size="sm" variant="outline" className="h-8 min-h-0 text-xs" onClick={(e) => { e.stopPropagation(); onViewDetails?.(); }}>
+                                    Open
+                                </Button>
+                            )
                         ) : (
-                            <Button size="sm" variant="outline" className="h-8 min-h-0 text-xs" onClick={(e) => { e.stopPropagation(); onViewDetails?.(); }}>
-                                Open
+                            <Button
+                                size="sm"
+                                variant="primary"
+                                className="rounded-full h-8 min-h-0 px-4 text-xs shadow-primary/20 hover:shadow-primary/40 hover:shadow-lg"
+                                onClick={handleInstall}
+                                isLoading={isLoading}
+                            >
+                                Get
                             </Button>
-                        )
-                    ) : (
-                        <Button
-                            size="sm"
-                            variant="primary"
-                            className="rounded-full h-8 min-h-0 px-4 text-xs shadow-primary/20 hover:shadow-primary/40 hover:shadow-lg"
-                            onClick={handleInstall}
-                            isLoading={isLoading}
-                        >
-                            Get
-                        </Button>
-                    )}
+                        )}
+                    </div>
                 </div>
             </CardContent>
         </Card>
+        {/* Share Dialog */}
+        {showShareDialog && 'sourceUrl' in skill && (
+            <ShareTextDialog
+                skill={skill as InstalledSkill}
+                isOpen={showShareDialog}
+                onClose={() => setShowShareDialog(false)}
+            />
+        )}
+    </>
     );
 };

@@ -15,7 +15,8 @@
       "Bash(then mkdir -p src/test/integration)",
       "Bash(fi)",
       "Bash(npx tsc:*)",
-      "Bash(gh pr merge:*)"
+      "Bash(gh pr merge:*)",
+      "Bash(npm run lint:*)"
     ]
   }
 }
