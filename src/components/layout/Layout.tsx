@@ -13,7 +13,7 @@ const Layout = () => {
         <div className="flex h-screen bg-[#FAFBFC] dark:bg-base-300 font-sans text-slate-900 dark:text-slate-100 overflow-hidden selection:bg-primary/20 selection:text-primary">
             {/* Theme Manager handles side effects */}
             <ThemeManager />
-            
+
             {/* Custom Toast Container */}
             <ToastContainer />
 

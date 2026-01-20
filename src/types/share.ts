@@ -26,7 +26,12 @@ export interface PlatformConfig {
 /**
  * 支持的平台
  */
-export type SharePlatform = 'twitter' | 'weibo' | 'mastodon' | 'generic';
+export type SharePlatform =
+  | 'twitter'
+  | 'weibo'
+  | 'mastodon'
+  | 'markdown'
+  | 'generic';
 
 /**
  * 分享图片配置
@@ -88,4 +93,40 @@ export interface SkillImportInfo {
   sourceUrl?: string;
   installUrl?: string;
   description: string;
+}
+
+/**
+ * 图片导入状态
+ */
+export type ImageImportStatus =
+  | 'idle' // 空闲
+  | 'detecting' // 正在识别 QR 码
+  | 'parsing' // 正在解析数据
+  | 'validating' // 正在验证数据
+  | 'confirmed' // 已确认，等待导入
+  | 'importing' // 正在导入
+  | 'success' // 导入成功
+  | 'error'; // 错误
+
+/**
+ * 图片导入错误类型
+ */
+export type ImageImportError =
+  | 'no_qrcode_found' // 未找到 QR 码
+  | 'invalid_qr_data' // QR 码数据格式错误
+  | 'invalid_share_format' // 分享格式无效
+  | 'version_mismatch' // 版本不匹配
+  | 'network_error' // 网络错误
+  | 'import_failed' // 导入失败
+  | 'unknown_error'; // 未知错误
+
+/**
+ * 图片导入状态
+ */
+export interface ImageImportState {
+  status: ImageImportStatus;
+  error?: ImageImportError;
+  errorMessage?: string;
+  skillInfo?: SkillImportInfo;
+  previewUrl?: string;
 }
