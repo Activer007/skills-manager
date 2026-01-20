@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { invoke } from '@tauri-apps/api/core';
 import { SkillCard } from './SkillCard';
 import type { MarketplaceSkill, InstalledSkill } from '../types';
 
@@ -53,6 +54,10 @@ const mockCriticalSkill: InstalledSkill = {
     securityScore: 40
 };
 describe('SkillCard', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
     it('renders in grid mode correctly', () => {
         render(<SkillCard skill={mockSkill} viewMode="grid" />);
         expect(screen.getByText('Test Skill')).toBeInTheDocument();
@@ -194,6 +199,21 @@ describe('SkillCard', () => {
             expect(handleInstall).toHaveBeenCalled();
         });
         expect(handleViewDetails).not.toHaveBeenCalled(); // Should not bubble up
+    });
+
+    it('exports package for installed skills', async () => {
+        vi.mocked(invoke).mockResolvedValueOnce({ success: true, filePath: '/tmp/test.skillpack.zip' });
+        render(<SkillCard skill={mockInstalledSkill} viewMode="list" isInstalled={true} />);
+
+        fireEvent.click(screen.getByTitle('Export Package'));
+
+        await waitFor(() => {
+            expect(invoke).toHaveBeenCalledWith('export_skill_package', {
+                request: {
+                    skillPath: mockInstalledSkill.localPath
+                }
+            });
+        });
     });
 
     it('calls onToggle when switch is clicked in list mode', async () => {

@@ -1464,3 +1464,118 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+#[cfg(test)]
+mod package_tests {
+    use super::*;
+    use serde_json::json;
+    use std::io::Write;
+    use tempfile::tempdir;
+    use zip::write::FileOptions;
+    use zip::CompressionMethod;
+
+    fn create_skill_dir(root: &Path, name: &str) -> PathBuf {
+        let skill_dir = root.join(name);
+        fs::create_dir_all(skill_dir.join("config")).unwrap();
+        fs::create_dir_all(skill_dir.join(".git")).unwrap();
+        fs::create_dir_all(skill_dir.join("node_modules")).unwrap();
+
+        fs::write(skill_dir.join("SKILL.md"), "# Demo Skill\n").unwrap();
+        fs::write(skill_dir.join("config").join("settings.json"), "{ \"ok\": true }").unwrap();
+        fs::write(skill_dir.join(".git").join("HEAD"), "ref: refs/heads/main").unwrap();
+        fs::write(skill_dir.join("node_modules").join("ignore.js"), "console.log('ignore');").unwrap();
+
+        skill_dir
+    }
+
+    #[test]
+    fn test_write_and_extract_skill_package_roundtrip() {
+        let temp = tempdir().unwrap();
+        let skill_dir = create_skill_dir(temp.path(), "my-skill");
+        let package_path = temp.path().join("my-skill.skillpack.zip");
+        let metadata = json!({
+            "formatVersion": 1,
+            "skill": {
+                "name": "My Skill",
+                "description": "Test"
+            }
+        });
+
+        write_skill_package(&skill_dir, &package_path, &metadata).unwrap();
+        assert!(package_path.exists());
+
+        let read_metadata = read_package_metadata(&package_path).unwrap().unwrap();
+        assert_eq!(read_metadata["formatVersion"], 1);
+        assert_eq!(read_metadata["skill"]["name"], "My Skill");
+
+        let dest_dir = temp.path().join("dest");
+        extract_skill_package(&package_path, &dest_dir).unwrap();
+
+        let extracted_root = dest_dir.join("my-skill");
+        assert!(extracted_root.join("SKILL.md").exists());
+        assert!(extracted_root.join("config").join("settings.json").exists());
+        assert!(!extracted_root.join(".git").exists());
+        assert!(!extracted_root.join("node_modules").exists());
+    }
+
+    #[test]
+    fn test_read_package_metadata_missing() {
+        let temp = tempdir().unwrap();
+        let package_path = temp.path().join("no-meta.skillpack.zip");
+        let file = fs::File::create(&package_path).unwrap();
+        let mut zip = ZipWriter::new(file);
+        let options = FileOptions::default()
+            .compression_method(CompressionMethod::Deflated)
+            .unix_permissions(0o644);
+
+        zip.start_file("demo/SKILL.md", options).unwrap();
+        zip.write_all(b"# Demo\n").unwrap();
+        zip.finish().unwrap();
+
+        let metadata = read_package_metadata(&package_path).unwrap();
+        assert!(metadata.is_none());
+    }
+
+    #[test]
+    fn test_extract_skill_package_rejects_traversal() {
+        let temp = tempdir().unwrap();
+        let package_path = temp.path().join("bad.skillpack.zip");
+        let file = fs::File::create(&package_path).unwrap();
+        let mut zip = ZipWriter::new(file);
+        let options = FileOptions::default()
+            .compression_method(CompressionMethod::Deflated)
+            .unix_permissions(0o644);
+
+        zip.start_file("../evil.txt", options).unwrap();
+        zip.write_all(b"nope").unwrap();
+        zip.finish().unwrap();
+
+        let dest_dir = temp.path().join("dest");
+        let err = extract_skill_package(&package_path, &dest_dir).expect_err("expected invalid path error");
+        assert!(err.contains("invalid paths"));
+    }
+
+    #[test]
+    fn test_import_from_source_dir_skip_security() {
+        let temp = tempdir().unwrap();
+        let source_dir = temp.path().join("source-skill");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::write(source_dir.join("SKILL.md"), "# Skill\n").unwrap();
+
+        let install_root = temp.path().join("install-root");
+        let outcome = import_from_source_dir(
+            &source_dir,
+            Some(install_root.to_string_lossy().to_string()),
+            "imported-skill",
+            true
+        )
+        .unwrap();
+
+        assert!(outcome.result.success);
+        assert_eq!(outcome.installed_dirs.len(), 1);
+
+        let expected_path = install_root.join(".claude").join("skills").join("imported-skill");
+        assert_eq!(outcome.installed_dirs[0], expected_path);
+        assert!(expected_path.join("SKILL.md").exists());
+    }
+}
