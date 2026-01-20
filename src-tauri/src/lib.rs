@@ -5,11 +5,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::io::{Read, Write};
 use walkdir::WalkDir;
 use sha2::{Digest, Sha256};
+use zip::{ZipArchive, ZipWriter};
+use zip::write::FileOptions;
+use zip::CompressionMethod;
 use tauri::{State, Manager};
 use crate::services::config_service::ConfigService;
 
@@ -80,6 +84,32 @@ pub struct ImportLocalRequest {
     pub skip_security_check: bool,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ExportSkillPackageRequest {
+    #[serde(rename = "skillPath")]
+    pub skill_path: String,
+    #[serde(rename = "outputDir")]
+    pub output_dir: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ExportResult {
+    pub success: bool,
+    pub message: String,
+    #[serde(rename = "filePath")]
+    pub file_path: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ImportPackageRequest {
+    #[serde(rename = "packagePath")]
+    pub package_path: String,
+    #[serde(rename = "installPath")]
+    pub install_path: Option<String>,
+    #[serde(rename = "skipSecurityCheck")]
+    pub skip_security_check: bool,
+}
+
 #[derive(Debug)]
 struct GithubImportInfo {
     request_url: String,
@@ -99,6 +129,12 @@ struct OriginRecord {
 struct ImportOutcome {
     result: ImportResult,
     origins: Vec<OriginRecord>,
+}
+
+#[derive(Debug)]
+struct LocalImportOutcome {
+    result: ImportResult,
+    installed_dirs: Vec<PathBuf>,
 }
 
 fn get_claude_skills_dir() -> Option<PathBuf> {
@@ -268,6 +304,146 @@ fn upsert_origin_config(
     let mut object = existing.as_object().cloned().unwrap_or_default();
     object.insert("__origin".to_string(), origin);
     config_service.set_skill_config(skill_path, Value::Object(object))
+}
+
+fn sanitize_filename(name: &str) -> String {
+    let mut sanitized = String::new();
+    for ch in name.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' || ch == '.' {
+            sanitized.push(ch);
+        } else {
+            sanitized.push('_');
+        }
+    }
+    let trimmed = sanitized.trim_matches('_').to_string();
+    if trimmed.is_empty() {
+        "skill".to_string()
+    } else {
+        trimmed
+    }
+}
+
+fn ensure_export_dir(output_dir: Option<String>) -> Result<PathBuf, String> {
+    let dir = if let Some(path) = output_dir {
+        PathBuf::from(path)
+    } else {
+        dirs::home_dir()
+            .map(|h| h.join(".claude").join("skill-exports"))
+            .ok_or("Cannot determine export directory")?
+    };
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+fn should_skip_package_entry(path: &Path) -> bool {
+    path.components().any(|component| {
+        if let Component::Normal(name) = component {
+            let value = name.to_string_lossy();
+            value == ".git" || value == "node_modules" || value == "target"
+        } else {
+            false
+        }
+    })
+}
+
+fn write_skill_package(
+    skill_dir: &PathBuf,
+    output_path: &PathBuf,
+    metadata: &Value,
+) -> Result<(), String> {
+    let skill_dir_name = skill_dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or("Invalid skill directory name")?;
+
+    let file = fs::File::create(output_path).map_err(|e| e.to_string())?;
+    let mut zip = ZipWriter::new(file);
+    let options = FileOptions::default()
+        .compression_method(CompressionMethod::Deflated)
+        .unix_permissions(0o644);
+
+    let metadata_json = serde_json::to_string_pretty(metadata).map_err(|e| e.to_string())?;
+    zip.start_file("skill-package.json", options)
+        .map_err(|e| e.to_string())?;
+    zip.write_all(metadata_json.as_bytes())
+        .map_err(|e| e.to_string())?;
+
+    for entry in WalkDir::new(skill_dir)
+        .follow_links(false)
+        .max_depth(10)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        if should_skip_package_entry(entry.path()) {
+            continue;
+        }
+
+        let rel_path = entry
+            .path()
+            .strip_prefix(skill_dir)
+            .map_err(|_| "Failed to resolve relative path")?;
+        let rel_str = rel_path.to_string_lossy().replace('\\', "/");
+        let zip_path = if rel_str.is_empty() {
+            skill_dir_name.to_string()
+        } else {
+            format!("{}/{}", skill_dir_name, rel_str)
+        };
+
+        zip.start_file(zip_path, options)
+            .map_err(|e| e.to_string())?;
+        let mut file = fs::File::open(entry.path()).map_err(|e| e.to_string())?;
+        std::io::copy(&mut file, &mut zip).map_err(|e| e.to_string())?;
+    }
+
+    zip.finish().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn read_package_metadata(package_path: &PathBuf) -> Result<Option<Value>, String> {
+    let file = fs::File::open(package_path).map_err(|e| e.to_string())?;
+    let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
+    if let Ok(mut entry) = archive.by_name("skill-package.json") {
+        let mut contents = String::new();
+        entry.read_to_string(&mut contents).map_err(|e| e.to_string())?;
+        let metadata: Value = serde_json::from_str(&contents).map_err(|e| e.to_string())?;
+        return Ok(Some(metadata));
+    }
+    Ok(None)
+}
+
+fn extract_skill_package(package_path: &PathBuf, dest_dir: &PathBuf) -> Result<(), String> {
+    let file = fs::File::open(package_path).map_err(|e| e.to_string())?;
+    let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+        let Some(enclosed) = file.enclosed_name() else {
+            return Err("Package contains invalid paths".to_string());
+        };
+        let name = enclosed.to_string_lossy();
+        if name == "skill-package.json" {
+            continue;
+        }
+        if should_skip_package_entry(enclosed) {
+            continue;
+        }
+
+        let out_path = dest_dir.join(enclosed);
+        if file.name().ends_with('/') {
+            fs::create_dir_all(&out_path).map_err(|e| e.to_string())?;
+        } else {
+            if let Some(parent) = out_path.parent() {
+                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            let mut outfile = fs::File::create(&out_path).map_err(|e| e.to_string())?;
+            std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
 }
 
 fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
@@ -731,37 +907,33 @@ fn uninstall_skill(request: UninstallRequest) -> Result<ImportResult, String> {
     }
 }
 
-#[tauri::command]
-fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, String> {
-    let source = PathBuf::from(&request.source_path);
-
-    if !source.exists() {
-        return Ok(ImportResult {
-            success: false,
-            message: "Source path does not exist".to_string(),
-            blocked: false,
-        });
-    }
-
-    let install_dir = if let Some(path) = &request.install_path {
+fn import_from_source_dir(
+    source: &PathBuf,
+    install_path: Option<String>,
+    skill_name: &str,
+    skip_security_check: bool,
+) -> Result<LocalImportOutcome, String> {
+    let install_dir = if let Some(path) = install_path {
         PathBuf::from(path).join(".claude").join("skills")
     } else {
-        get_claude_skills_dir().ok_or("Cannot determine skills directory")? 
+        get_claude_skills_dir().ok_or("Cannot determine skills directory")?
     };
 
     fs::create_dir_all(&install_dir).map_err(|e| e.to_string())?;
 
-    let target_dir = install_dir.join(&request.skill_name);
-
-    copy_dir_all(&source, &target_dir).map_err(|e| e.to_string())?;
+    let target_dir = install_dir.join(skill_name);
+    copy_dir_all(source, &target_dir).map_err(|e| e.to_string())?;
 
     let installed_dirs = match extract_skill_dirs(&target_dir, &install_dir) {
         Ok(dirs) => dirs,
         Err(e) => {
-            return Ok(ImportResult {
-                success: false,
-                message: e,
-                blocked: false,
+            return Ok(LocalImportOutcome {
+                result: ImportResult {
+                    success: false,
+                    message: e,
+                    blocked: false,
+                },
+                installed_dirs: Vec::new(),
             })
         }
     };
@@ -769,8 +941,9 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
     let mut installed = Vec::new();
     let mut blocked = Vec::new();
     let mut warnings = Vec::new();
+    let mut installed_paths = Vec::new();
 
-    if !request.skip_security_check {
+    if !skip_security_check {
         use crate::security::{SecurityScanner, ScanMode};
         use crate::services::whitelist_service::WhitelistService;
 
@@ -785,54 +958,58 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
         let scan_mode = ScanMode::Standard;
 
         for dir in installed_dirs {
-            let skill_name = dir
+            let current_name = dir
                 .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("skill")
                 .to_string();
             let is_whitelisted = whitelist_service
                 .as_ref()
-                .and_then(|service| service.is_skill_whitelisted(&skill_name).ok())
+                .and_then(|service| service.is_skill_whitelisted(&current_name).ok())
                 .unwrap_or(false);
 
             if is_whitelisted {
-                eprintln!("Skill {} is whitelisted, skipping security scan.", skill_name);
-                installed.push((skill_name, dir));
+                eprintln!("Skill {} is whitelisted, skipping security scan.", current_name);
+                installed.push((current_name, dir.clone()));
+                installed_paths.push(dir);
                 continue;
             }
 
-            match scanner.scan_directory(dir.to_str().unwrap(), &skill_name, "en", scan_mode, &whitelisted_rules) {
+            match scanner.scan_directory(dir.to_str().unwrap(), &current_name, "en", scan_mode, &whitelisted_rules) {
                 Ok(report) => {
                     if report.blocked {
                         if let Err(e) = fs::remove_dir_all(&dir) {
                             eprintln!("Failed to remove blocked skill directory {}: {}", dir.display(), e);
                         }
-                        blocked.push(skill_name);
+                        blocked.push(current_name);
                         continue;
                     }
 
-                    eprintln!("Security scan completed for {}: {} ({})", skill_name, report.score, report.level.as_str());
+                    eprintln!("Security scan completed for {}: {} ({})", current_name, report.score, report.level.as_str());
                     if !report.issues.is_empty() {
                         eprintln!("Security issues found: {}", report.issues.len());
                     }
 
                     if report.score < 70 {
-                        warnings.push(format!("{} ({})", skill_name, report.score));
+                        warnings.push(format!("{} ({})", current_name, report.score));
                     }
+                    installed.push((current_name, dir.clone()));
+                    installed_paths.push(dir);
                 }
                 Err(e) => {
-                    eprintln!("Security scan failed for {}: {}", skill_name, e);
+                    eprintln!("Security scan failed for {}: {}", current_name, e);
                 }
             }
         }
     } else {
         for dir in installed_dirs {
-            let skill_name = dir
+            let current_name = dir
                 .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("skill")
                 .to_string();
-            installed.push((skill_name, dir));
+            installed.push((current_name, dir.clone()));
+            installed_paths.push(dir);
         }
     }
 
@@ -845,10 +1022,13 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
                 blocked.join(", ")
             )
         };
-        return Ok(ImportResult {
-            success: false,
-            message,
-            blocked: !blocked.is_empty(),
+        return Ok(LocalImportOutcome {
+            result: ImportResult {
+                success: false,
+                message,
+                blocked: !blocked.is_empty(),
+            },
+            installed_dirs: Vec::new(),
         });
     }
 
@@ -865,11 +1045,220 @@ fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, Strin
         message = format!("{}; warnings: low security score for {}", message, warnings.join(", "));
     }
 
-    Ok(ImportResult {
-        success: true,
-        message,
-        blocked: !blocked.is_empty(),
+    Ok(LocalImportOutcome {
+        result: ImportResult {
+            success: true,
+            message,
+            blocked: !blocked.is_empty(),
+        },
+        installed_dirs: installed_paths,
     })
+}
+
+#[tauri::command]
+fn import_local_skill(request: ImportLocalRequest) -> Result<ImportResult, String> {
+    let source = PathBuf::from(&request.source_path);
+
+    if !source.exists() {
+        return Ok(ImportResult {
+            success: false,
+            message: "Source path does not exist".to_string(),
+            blocked: false,
+        });
+    }
+
+    let outcome = import_from_source_dir(
+        &source,
+        request.install_path,
+        &request.skill_name,
+        request.skip_security_check
+    )?;
+
+    Ok(outcome.result)
+}
+
+#[tauri::command]
+fn export_skill_package(
+    state: State<'_, ConfigService>,
+    request: ExportSkillPackageRequest
+) -> Result<ExportResult, String> {
+    let skill_dir = PathBuf::from(&request.skill_path);
+    if !skill_dir.exists() {
+        return Ok(ExportResult {
+            success: false,
+            message: "Skill path does not exist".to_string(),
+            file_path: None,
+        });
+    }
+
+    let skill_dir_name = skill_dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("skill");
+    let safe_name = sanitize_filename(skill_dir_name);
+    let output_dir = ensure_export_dir(request.output_dir)?;
+    let timestamp = now_millis();
+    let output_path = output_dir.join(format!("{}-{}.skillpack.zip", safe_name, timestamp));
+
+    let skill_md = skill_dir.join("SKILL.md");
+    let mut skill_name = skill_dir_name.to_string();
+    let mut skill_description = String::new();
+    if skill_md.exists() {
+        if let Ok(doc) = crate::analyzer::skill_document::SkillDocument::from_file(&skill_md) {
+            if !doc.metadata.name.is_empty() {
+                skill_name = doc.metadata.name;
+            }
+            if let Some(desc) = doc.metadata.description {
+                skill_description = desc;
+            } else {
+                skill_description = doc.content.lines().take(5).collect::<Vec<_>>().join(" ");
+            }
+        }
+    }
+
+    let origin = state
+        .get_skill_config(&request.skill_path)
+        .and_then(|value| value.get("__origin").cloned());
+
+    let metadata = json!({
+        "formatVersion": "1.0",
+        "exportedAt": timestamp,
+        "skillDir": skill_dir_name,
+        "skill": {
+            "name": skill_name,
+            "description": skill_description
+        },
+        "origin": origin
+    });
+
+    if let Err(e) = write_skill_package(&skill_dir, &output_path, &metadata) {
+        return Ok(ExportResult {
+            success: false,
+            message: e,
+            file_path: None,
+        });
+    }
+
+    Ok(ExportResult {
+        success: true,
+        message: "Skill package exported".to_string(),
+        file_path: Some(output_path.to_string_lossy().to_string()),
+    })
+}
+
+#[tauri::command]
+fn import_skill_package(
+    state: State<'_, ConfigService>,
+    request: ImportPackageRequest
+) -> Result<ImportResult, String> {
+    let package_path = PathBuf::from(&request.package_path);
+    if !package_path.exists() {
+        return Ok(ImportResult {
+            success: false,
+            message: "Package path does not exist".to_string(),
+            blocked: false,
+        });
+    }
+
+    let metadata = read_package_metadata(&package_path)?;
+    let exported_at = metadata
+        .as_ref()
+        .and_then(|m| m.get("exportedAt"))
+        .and_then(|v| v.as_i64());
+    let skill_dir_name = metadata
+        .as_ref()
+        .and_then(|m| m.get("skillDir"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let origin_from_package = metadata
+        .as_ref()
+        .and_then(|m| m.get("origin"))
+        .cloned();
+
+    let temp_dir = std::env::temp_dir().join(format!("skill_package_{}", now_millis()));
+    let _ = fs::remove_dir_all(&temp_dir);
+    fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+
+    if let Err(e) = extract_skill_package(&package_path, &temp_dir) {
+        let _ = fs::remove_dir_all(&temp_dir);
+        return Ok(ImportResult {
+            success: false,
+            message: e,
+            blocked: false,
+        });
+    }
+
+    let source_dir = skill_dir_name
+        .as_ref()
+        .map(|name| temp_dir.join(name))
+        .filter(|dir| dir.exists())
+        .or_else(|| {
+            let candidates = collect_skill_dirs(&temp_dir);
+            if candidates.len() == 1 {
+                Some(candidates[0].clone())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| temp_dir.clone());
+
+    let inferred_name = source_dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("skill-package")
+        .to_string();
+
+    let outcome = import_from_source_dir(
+        &source_dir,
+        request.install_path,
+        &inferred_name,
+        request.skip_security_check
+    )?;
+
+    let imported_at = now_millis();
+    let package_name = package_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("skill-package")
+        .to_string();
+
+    for installed_dir in &outcome.installed_dirs {
+        let checksum = calculate_skill_checksum_for_path(installed_dir).ok();
+        let mut origin_object = origin_from_package.clone().unwrap_or_else(|| json!({}));
+        if let Some(map) = origin_object.as_object_mut() {
+            if !map.contains_key("sourceType") {
+                map.insert("sourceType".to_string(), json!("package"));
+            }
+            map.insert("importedVia".to_string(), json!("package"));
+            map.insert("importedAt".to_string(), json!(imported_at));
+            map.insert("packageName".to_string(), json!(package_name.clone()));
+            if let Some(exported_at) = exported_at {
+                map.insert("exportedAt".to_string(), json!(exported_at));
+            }
+            map.insert("checksum".to_string(), json!(checksum));
+        } else {
+            origin_object = json!({
+                "sourceType": "package",
+                "importedVia": "package",
+                "importedAt": imported_at,
+                "packageName": package_name,
+                "exportedAt": exported_at,
+                "checksum": checksum
+            });
+        }
+
+        if let Err(e) = upsert_origin_config(
+            state.inner(),
+            &installed_dir.to_string_lossy(),
+            origin_object
+        ) {
+            eprintln!("Failed to persist package origin info: {}", e);
+        }
+    }
+
+    let _ = fs::remove_dir_all(&temp_dir);
+
+    Ok(outcome.result)
 }
 
 fn collect_skill_dirs(root: &PathBuf) -> Vec<PathBuf> {
@@ -1048,6 +1437,8 @@ pub fn run() {
             uninstall_skill,
             import_local_skill,
             calculate_skill_checksum,
+            export_skill_package,
+            import_skill_package,
             open_url,
             read_skill,
             commands::analyzer::analyze_skill_quality,

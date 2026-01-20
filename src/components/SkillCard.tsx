@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import type { MarketplaceSkill, InstalledSkill } from '../types';
 import { Switch } from './ui/Switch';
 import { Card, CardContent } from './ui/Card';
@@ -9,7 +10,14 @@ import { ShareTextDialog } from './ShareTextDialog';
 import { ShareImageDialog } from './ShareImageDialog';
 import { cn } from '../utils/cn';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
-import { Star, GitBranch, Trash2, Settings, Plug, Link2, Image as ImageIcon } from 'lucide-react';
+import { Star, GitBranch, Trash2, Settings, Plug, Link2, Image as ImageIcon, Package } from 'lucide-react';
+import { toast } from '../store/useToastStore';
+
+type ExportResult = {
+    success: boolean;
+    message: string;
+    filePath?: string;
+};
 
 // 常量定义
 const ICON_SIZE = {
@@ -79,6 +87,7 @@ export const SkillCard = ({
     const [isLoading, setIsLoading] = useState(false);
     const [showShareTextDialog, setShowShareTextDialog] = useState(false);
     const [showShareImageDialog, setShowShareImageDialog] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     // 处理分享按钮点击 - 默认打开文本分享
     const handleShare = (e: React.MouseEvent) => {
@@ -94,6 +103,32 @@ export const SkillCard = ({
     const handleShareImage = (e: React.MouseEvent) => {
         e.stopPropagation();
         setShowShareImageDialog(true);
+    };
+
+    const handleExportPackage = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!('localPath' in skill) || isExporting) {
+            return;
+        }
+
+        setIsExporting(true);
+        try {
+            const result = await invoke<ExportResult>('export_skill_package', {
+                request: {
+                    skillPath: (skill as InstalledSkill).localPath,
+                }
+            });
+            if (result.success && result.filePath) {
+                toast.success(`Exported to: ${result.filePath}`);
+            } else {
+                toast.error(result.message || 'Export failed');
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            toast.error(`Export failed: ${message}`);
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     const handleInstall = async (e: React.MouseEvent) => {
@@ -233,6 +268,15 @@ export const SkillCard = ({
                              <Button size="sm" variant="ghost" onClick={handleShareImage} title="Share Image">
                                 <ImageIcon size={16} />
                              </Button>
+                             <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={handleExportPackage}
+                                title="Export Package"
+                                disabled={isExporting}
+                             >
+                                <Package size={16} />
+                             </Button>
                              <Button size="sm" variant="ghost" className="text-error border border-error hover:bg-error/10" onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}>
                                 <Trash2 size={16} />
                              </Button>
@@ -322,6 +366,16 @@ export const SkillCard = ({
                                     title="Share Image"
                                 >
                                     <ImageIcon size={14} />
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="rounded-full h-8 min-h-0 px-3 text-xs"
+                                    onClick={handleExportPackage}
+                                    title="Export Package"
+                                    disabled={isExporting}
+                                >
+                                    <Package size={14} />
                                 </Button>
                             </>
                         )}
