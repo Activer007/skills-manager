@@ -2,10 +2,12 @@
 rust_i18n::i18n!("locales", fallback = "en");
 
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
 use tauri::{State, Manager};
 use crate::services::config_service::ConfigService;
@@ -77,8 +79,148 @@ pub struct ImportLocalRequest {
     pub skip_security_check: bool,
 }
 
+#[derive(Debug)]
+struct GithubImportInfo {
+    request_url: String,
+    base_repo_url: String,
+    base_subpath: String,
+    branch_from_url: Option<String>,
+    is_tree: bool,
+}
+
+#[derive(Debug)]
+struct OriginRecord {
+    skill_path: String,
+    origin: Value,
+}
+
+#[derive(Debug)]
+struct ImportOutcome {
+    result: ImportResult,
+    origins: Vec<OriginRecord>,
+}
+
 fn get_claude_skills_dir() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join(".claude").join("skills"))
+}
+
+fn now_millis() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
+
+fn normalize_repo_url(url: &str) -> String {
+    url.trim_end_matches('/')
+        .trim_end_matches(".git")
+        .to_string()
+}
+
+fn parse_github_import_url(repo_url: &str) -> GithubImportInfo {
+    let request_url = repo_url.trim_end_matches('/').to_string();
+
+    if request_url.contains("/tree/") {
+        let parts: Vec<&str> = request_url.split('/').collect();
+        if parts.len() >= 7 {
+            let base_repo_url = format!("https://github.com/{}/{}", parts[3], parts[4]);
+            let branch = parts.get(6).map(|s| s.to_string());
+            let base_subpath = if parts.len() > 7 {
+                parts[7..].join("/")
+            } else {
+                String::new()
+            };
+
+            return GithubImportInfo {
+                request_url,
+                base_repo_url,
+                base_subpath: base_subpath.trim_matches('/').to_string(),
+                branch_from_url: branch,
+                is_tree: true,
+            };
+        }
+    }
+
+    GithubImportInfo {
+        request_url: request_url.clone(),
+        base_repo_url: normalize_repo_url(&request_url),
+        base_subpath: String::new(),
+        branch_from_url: None,
+        is_tree: false,
+    }
+}
+
+fn detect_git_branch(repo_dir: &PathBuf) -> Option<String> {
+    let head_path = repo_dir.join(".git").join("HEAD");
+    let head_content = fs::read_to_string(head_path).ok()?;
+    let head = head_content.trim();
+    if let Some(reference) = head.strip_prefix("ref: refs/heads/") {
+        if !reference.trim().is_empty() {
+            return Some(reference.trim().to_string());
+        }
+    }
+    None
+}
+
+fn build_skill_subpath_map(
+    target_dir: &PathBuf,
+    base_subpath: &str
+) -> std::collections::HashMap<String, String> {
+    let mut map = std::collections::HashMap::new();
+    let normalized_base = base_subpath.trim_matches('/').to_string();
+
+    for skill_dir in collect_skill_dirs(target_dir) {
+        let skill_name = skill_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("skill")
+            .to_string();
+        let rel_path = skill_dir
+            .strip_prefix(target_dir)
+            .ok()
+            .map(|p| p.to_string_lossy().replace('\\', "/"))
+            .unwrap_or_default();
+        let subpath = if normalized_base.is_empty() {
+            rel_path
+        } else if rel_path.is_empty() {
+            normalized_base.clone()
+        } else {
+            format!("{}/{}", normalized_base, rel_path)
+        };
+        map.insert(skill_name, subpath);
+    }
+
+    map
+}
+
+fn build_github_install_url(repo_url: &str, branch: Option<&str>, subpath: &str) -> String {
+    let mut base = repo_url.trim_end_matches('/').to_string();
+    if let Some(branch) = branch {
+        if !branch.is_empty() {
+            base.push_str("/tree/");
+            base.push_str(branch);
+            let normalized = subpath.trim_matches('/');
+            if !normalized.is_empty() {
+                base.push('/');
+                base.push_str(normalized);
+            }
+            return base;
+        }
+    }
+    base
+}
+
+fn upsert_origin_config(
+    config_service: &ConfigService,
+    skill_path: &str,
+    origin: Value,
+) -> Result<(), String> {
+    let existing = config_service
+        .get_skill_config(skill_path)
+        .unwrap_or(json!({}));
+    let mut object = existing.as_object().cloned().unwrap_or_default();
+    object.insert("__origin".to_string(), origin);
+    config_service.set_skill_config(skill_path, Value::Object(object))
 }
 
 fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
@@ -162,20 +304,27 @@ fn scan_skills(state: State<'_, ConfigService>) -> Result<ScanResult, String> {
 }
 
 #[tauri::command(async)]
-async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResult, String> {
+async fn import_github_skill(
+    state: State<'_, ConfigService>,
+    request: ImportGithubRequest
+) -> Result<ImportResult, String> {
     let repo_url = request.repo_url.clone();
+    let github_info = parse_github_import_url(&repo_url);
 
-    let result = tokio::task::spawn_blocking(move || {
+    let outcome = tokio::task::spawn_blocking(move || {
         let parts: Vec<&str> = repo_url
             .trim_end_matches('/')
             .split('/')
             .collect();
 
         if parts.len() < 5 {
-            return ImportResult {
-                success: false,
-                message: "Invalid GitHub URL".to_string(),
-                blocked: false,
+            return ImportOutcome {
+                result: ImportResult {
+                    success: false,
+                    message: "Invalid GitHub URL".to_string(),
+                    blocked: false,
+                },
+                origins: Vec::new(),
             };
         }
 
@@ -184,19 +333,25 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
         } else {
             match get_claude_skills_dir() {
                 Some(dir) => dir,
-                None => return ImportResult {
-                    success: false,
-                    message: "Cannot determine skills directory".to_string(),
-                    blocked: false,
+                None => return ImportOutcome {
+                    result: ImportResult {
+                        success: false,
+                        message: "Cannot determine skills directory".to_string(),
+                        blocked: false,
+                    },
+                    origins: Vec::new(),
                 },
             }
         };
 
         if let Err(e) = fs::create_dir_all(&install_dir) {
-            return ImportResult {
-                success: false,
-                message: format!("Failed to create directory: {}", e),
-                blocked: false,
+            return ImportOutcome {
+                result: ImportResult {
+                    success: false,
+                    message: format!("Failed to create directory: {}", e),
+                    blocked: false,
+                },
+                origins: Vec::new(),
             };
         }
 
@@ -207,6 +362,7 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
         };
 
         let target_dir = install_dir.join(&target_dir_name);
+        let mut detected_branch: Option<String> = None;
 
         if repo_url.contains("/tree/") {
             let repo_base = format!("https://github.com/{}/{}", parts[3], parts[4]);
@@ -221,15 +377,21 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
                 .output();
 
             match output {
-                Err(e) => return ImportResult {
-                    success: false,
-                    message: format!("Git command failed: {}", e),
-                    blocked: false,
+                Err(e) => return ImportOutcome {
+                    result: ImportResult {
+                        success: false,
+                        message: format!("Git command failed: {}", e),
+                        blocked: false,
+                    },
+                    origins: Vec::new(),
                 },
-                Ok(o) if !o.status.success() => return ImportResult {
-                    success: false,
-                    message: format!("Git clone failed: {}", String::from_utf8_lossy(&o.stderr)),
-                    blocked: false,
+                Ok(o) if !o.status.success() => return ImportOutcome {
+                    result: ImportResult {
+                        success: false,
+                        message: format!("Git clone failed: {}", String::from_utf8_lossy(&o.stderr)),
+                        blocked: false,
+                    },
+                    origins: Vec::new(),
                 },
                 _ => {}
             }
@@ -244,15 +406,20 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
                 .args(["checkout", branch])
                 .output();
 
+            detected_branch = Some(branch.to_string());
+
             let source = temp_dir.join(&subpath);
             if source.exists() {
                 let _ = fs::remove_dir_all(&target_dir);
                 if let Err(e) = fs::rename(&source, &target_dir) {
                     let _ = fs::remove_dir_all(&temp_dir);
-                    return ImportResult {
-                        success: false,
-                        message: format!("Failed to move skill: {}", e),
-                        blocked: false,
+                    return ImportOutcome {
+                        result: ImportResult {
+                            success: false,
+                            message: format!("Failed to move skill: {}", e),
+                            blocked: false,
+                        },
+                        origins: Vec::new(),
                     };
                 }
             }
@@ -266,27 +433,40 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
                 .output();
 
             match output {
-                Err(e) => return ImportResult {
-                    success: false,
-                    message: format!("Git command failed: {}", e),
-                    blocked: false,
+                Err(e) => return ImportOutcome {
+                    result: ImportResult {
+                        success: false,
+                        message: format!("Git command failed: {}", e),
+                        blocked: false,
+                    },
+                    origins: Vec::new(),
                 },
-                Ok(o) if !o.status.success() => return ImportResult {
-                    success: false,
-                    message: format!("Git clone failed: {}", String::from_utf8_lossy(&o.stderr)),
-                    blocked: false,
+                Ok(o) if !o.status.success() => return ImportOutcome {
+                    result: ImportResult {
+                        success: false,
+                        message: format!("Git clone failed: {}", String::from_utf8_lossy(&o.stderr)),
+                        blocked: false,
+                    },
+                    origins: Vec::new(),
                 },
                 _ => {}
             }
+
+            detected_branch = detect_git_branch(&target_dir);
         }
+
+        let skill_subpaths = build_skill_subpath_map(&target_dir, &github_info.base_subpath);
 
         let installed_dirs = match extract_skill_dirs(&target_dir, &install_dir) {
             Ok(dirs) => dirs,
             Err(e) => {
-                return ImportResult {
-                    success: false,
-                    message: e,
-                    blocked: false,
+                return ImportOutcome {
+                    result: ImportResult {
+                        success: false,
+                        message: e,
+                        blocked: false,
+                    },
+                    origins: Vec::new(),
                 }
             }
         };
@@ -309,7 +489,7 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
             // TODO: Retrieve configured ScanMode from DB/Config instead of hardcoding Standard
             let scan_mode = ScanMode::Standard;
 
-            for dir in installed_dirs {
+            for dir in installed_dirs.iter() {
                 let skill_name = dir
                     .file_name()
                     .and_then(|n| n.to_str())
@@ -322,7 +502,7 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
 
                 if is_whitelisted {
                     eprintln!("Skill {} is whitelisted, skipping security scan.", skill_name);
-                    installed.push((skill_name, dir));
+                    installed.push((skill_name, dir.clone()));
                     continue;
                 }
 
@@ -351,13 +531,13 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
                 }
             }
         } else {
-            for dir in installed_dirs {
+            for dir in installed_dirs.iter() {
                 let skill_name = dir
                     .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("skill")
                     .to_string();
-                installed.push((skill_name, dir));
+                installed.push((skill_name, dir.clone()));
             }
         }
 
@@ -370,10 +550,13 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
                     blocked.join(", ")
                 )
             };
-            return ImportResult {
-                success: false,
-                message,
-                blocked: !blocked.is_empty(),
+            return ImportOutcome {
+                result: ImportResult {
+                    success: false,
+                    message,
+                    blocked: !blocked.is_empty(),
+                },
+                origins: Vec::new(),
             };
         }
 
@@ -390,14 +573,66 @@ async fn import_github_skill(request: ImportGithubRequest) -> Result<ImportResul
             message = format!("{}; warnings: low security score for {}", message, warnings.join(", "));
         }
 
-        ImportResult {
-            success: true,
-            message,
-            blocked: !blocked.is_empty(),
+        let branch = if github_info.is_tree {
+            github_info.branch_from_url.clone().or(detected_branch)
+        } else {
+            detected_branch
+        };
+        let installed_at = now_millis();
+        let base_repo_url = github_info.base_repo_url.clone();
+        let request_url = github_info.request_url.clone();
+        let base_subpath = github_info.base_subpath.clone();
+
+        let mut origins = Vec::new();
+        for dir in installed_dirs {
+            let skill_name = dir
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("skill")
+                .to_string();
+            let subpath = skill_subpaths
+                .get(&skill_name)
+                .cloned()
+                .unwrap_or_else(|| base_subpath.clone());
+            let install_url = build_github_install_url(
+                &base_repo_url,
+                branch.as_deref(),
+                &subpath
+            );
+            let origin_url = install_url.clone();
+            let origin = json!({
+                "sourceType": "github",
+                "repoUrl": base_repo_url.as_str(),
+                "installUrl": install_url,
+                "originUrl": origin_url,
+                "subpath": subpath,
+                "branch": branch.clone(),
+                "requestUrl": request_url.as_str(),
+                "installedAt": installed_at
+            });
+            origins.push(OriginRecord {
+                skill_path: dir.to_string_lossy().to_string(),
+                origin,
+            });
+        }
+
+        ImportOutcome {
+            result: ImportResult {
+                success: true,
+                message,
+                blocked: !blocked.is_empty(),
+            },
+            origins,
         }
     }).await.map_err(|e| e.to_string())?;
 
-    Ok(result)
+    for record in outcome.origins {
+        if let Err(e) = upsert_origin_config(state.inner(), &record.skill_path, record.origin) {
+            eprintln!("Failed to persist origin info for {}: {}", record.skill_path, e);
+        }
+    }
+
+    Ok(outcome.result)
 }
 
 #[tauri::command]
