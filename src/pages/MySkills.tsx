@@ -66,6 +66,7 @@ const MySkills = () => {
   const [importPath, setImportPath] = useState('');
   const [importPackagePath, setImportPackagePath] = useState('');
   const packageFileInputRef = useRef<HTMLInputElement>(null);
+  const [packageFileError, setPackageFileError] = useState<string | null>(null);
   const [securityReport, setSecurityReport] = useState<SecurityReport | null>(null);
   const [isScanningSecurity, setIsScanningSecurity] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -131,15 +132,22 @@ const MySkills = () => {
 
   const packagePathTrimmed = importPackagePath.trim();
   const isPackagePathValid = packagePathTrimmed.toLowerCase().endsWith('.skillpack.zip');
-  const packagePathError = importType === 'package' && packagePathTrimmed && !isPackagePathValid
+  const packagePathError = packageFileError ?? (importType === 'package' && packagePathTrimmed && !isPackagePathValid
     ? t('importPackageInvalid')
-    : undefined;
+    : undefined);
   const packageFileName = packagePathTrimmed.split(/[\\/]/).pop() || packagePathTrimmed;
 
   const handleSelectPackageFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const filePath = (file as { path?: string }).path ?? file.name;
+    if (!file.name.toLowerCase().endsWith('.skillpack.zip')) {
+      setImportPackagePath(filePath);
+      setPackageFileError(t('importPackageInvalid'));
+      event.target.value = '';
+      return;
+    }
+    setPackageFileError(null);
     setImportPackagePath(filePath);
     event.target.value = '';
   };
@@ -845,7 +853,12 @@ const MySkills = () => {
                     label={i18n.language === 'zh' ? 'Skill 包路径' : 'Skill Package Path'}
                     placeholder="C:\\Users\\User\\Downloads\\my-skill.skillpack.zip"
                     value={importPackagePath}
-                    onChange={(e) => setImportPackagePath(e.target.value)}
+                    onChange={(e) => {
+                      setImportPackagePath(e.target.value);
+                      if (packageFileError) {
+                        setPackageFileError(null);
+                      }
+                    }}
                     helperText={t('importPackageHint')}
                     error={packagePathError}
                     autoFocus
