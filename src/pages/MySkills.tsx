@@ -143,7 +143,7 @@ const MySkills = () => {
     const filePath = (file as { path?: string }).path ?? file.name;
     if (!file.name.toLowerCase().endsWith('.skillpack.zip')) {
       setImportPackagePath(filePath);
-      setPackageFileError(t('importPackageInvalid'));
+      setPackageFileError(t('importPackageInvalidWithName', { name: file.name }));
       event.target.value = '';
       return;
     }
