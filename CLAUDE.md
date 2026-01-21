@@ -9,15 +9,22 @@ Skill Manager 是一个用于管理 Claude Code Skills 的桌面应用程序，�
 ### 核心功能
 - **我的 Skills**：扫描和管理已安装的系统级/项目级 Skills，支持查看质量评分和安全状态
 - **Skill 市场**：浏览和安装来自 GitHub 的开源 Skills，支持实时导入进度显示
-- **Skill 导入**：支持从 GitHub 仓库或本地文件夹导入，智能识别多 Skill 仓库
+- **Skill 导入**：支持从 GitHub 仓库、本地文件夹、包文件或分享图片导入，智能识别多 Skill 仓库
+- **Skill 分享** 🎉：生成分享文本和图片卡片，支持二维码生成和从图片导入，包导出/导入功能
 - **安全扫描**：检测 Skills 中的安全风险，支持三种扫描模式和白名单管理
 - **扫描历史**：查看历史扫描记录，支持搜索、筛选和导出功能
 - **安全中心**：集中管理和监控所有 Skills 的安全状态
 - **Skill 质量评分**：基于内容质量、技术实现、维护性和用户体验的 100 分制评分系统
 - **项目路径配置**：自定义多个项目路径以扫描项目级 Skills
 
-### 最新特性 (v2.2.0)
-- 🎉 **市场导入进度显示**: 实时进度条提升用户体验
+### 最新特性 (v2.5.0)
+- 🎉 **Skill 分享功能** (Phase 1-5)：
+  - **Phase 1**: 基础分享功能（文本分享、分享对话框）
+  - **Phase 2**: 图片分享功能（多主题卡片、二维码生成）
+  - **Phase 3**: 从分享图片导入 Skill（QR 码识别、数据解析）
+  - **Phase 4**: 检测修改的 Skill（持久化 GitHub 元数据）
+  - **Phase 5**: Skill 包导出/导入（.zip 文件、离线分享）
+- 🎨 **市场导入进度显示**: 实时进度条提升用户体验
 - 🔧 **规范化 Skill 提取**: 智能识别和提取多 Skill 仓库
 - 🛡️ **容错能力增强**: 支持无效 frontmatter 的 Skill
 - 🎨 **UI/UX 持续优化**: 设计系统统一，组件库完善
@@ -59,12 +66,19 @@ cargo clippy              # Rust lint 检查
 - **路由**：React Router v7（位于 `src/App.tsx`）
 - **UI 组件**：Tailwind CSS 3.4 + DaisyUI 5.5
 - **主要页面**：
-  - `src/pages/MySkills.tsx` - 已安装 Skills 管理，集成质量评分和安全扫描
+  - `src/pages/MySkills.tsx` - 已安装 Skills 管理，集成质量评分和安全扫描，支持分享功能
   - `src/pages/Marketplace.tsx` - Skill 市场
   - `src/pages/Settings.tsx` - 项目路径配置
   - `src/pages/Security.tsx` - 安全中心，监控所有 Skills 安全状态
   - `src/pages/ScanHistory.tsx` - 扫描历史记录，支持搜索、筛选和导出
   - `src/pages/Dashboard.tsx` - 仪表板概览
+- **分享功能组件**：
+  - `src/components/ShareTextDialog.tsx` - 文本分享对话框
+  - `src/components/ShareImageDialog.tsx` - 图片分享对话框，支持主题切换和预览
+  - `src/utils/shareTextGenerator.ts` - 分享文本生成器（支持多平台）
+  - `src/utils/shareCardGenerator.ts` - 分享卡片生成器（生成 PNG 图片）
+  - `src/utils/shareLink.ts` - 分享链接工具
+- **分享功能类型**：`src/types/share.ts` - 包含所有分享相关的 TypeScript 类型定义
 
 ### 后端架构（Tauri + Rust）
 - **入口点**：`src-tauri/src/lib.rs`
@@ -96,6 +110,12 @@ cargo clippy              # Rust lint 检查
 - `extract_skill_dirs()` - 智能识别和提取仓库中的 Skill 目录
 - 导入时支持批量安全扫描和独立阻塞处理
 - 容错处理：支持解析无效的 Skill frontmatter
+
+**v2.5.0 新增特性（分享功能）**:
+- `calculate_skill_checksum` - 计算 Skill 目录的 SHA-256 校验和（用于检测修改）
+- `export_skill_package` - 将 Skill 打包为 `.zip` 文件（包含元数据和可选的依赖）
+- `import_skill_package` - 从 `.zip` 包文件导入 Skill（验证格式和安全性）
+- `parse_share_image_qr` - 解析分享图片中的 QR 码数据
 
 #### Skill 质量评分命令（src-tauri/src/commands/analyzer.rs）
 - `analyze_skill_quality` - 分析单个 Skill 质量
