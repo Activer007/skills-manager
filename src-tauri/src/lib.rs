@@ -1461,6 +1461,49 @@ fn open_url(url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn open_path_in_file_manager(path: String) -> Result<(), String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("Path is empty".to_string());
+    }
+
+    let mut target = PathBuf::from(trimmed);
+    if !target.exists() {
+        return Err(format!("Path does not exist: {}", trimmed));
+    }
+
+    if target.is_file() {
+        if let Some(parent) = target.parent() {
+            target = parent.to_path_buf();
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(&target)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer")
+            .arg(&target)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(&target)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 fn read_skill(skill_path: String) -> Result<String, String> {
     let path = PathBuf::from(&skill_path);
     let skill_md = path.join("SKILL.md");
@@ -1480,6 +1523,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             log::debug!("Initializing database...");
             if let Err(e) = crate::services::db::init_db() {
@@ -1509,6 +1553,7 @@ pub fn run() {
             export_skill_package,
             import_skill_package,
             open_url,
+            open_path_in_file_manager,
             read_skill,
             commands::analyzer::analyze_skill_quality,
             commands::analyzer::batch_analyze_skills,
