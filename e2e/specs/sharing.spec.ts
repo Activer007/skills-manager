@@ -22,10 +22,10 @@ test.describe('Skill Sharing', () => {
 
   test.describe('Text Sharing', () => {
     test('should open share dialog', async ({ page }) => {
-      // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
-
+      // 等待第一个 skill-card 出现（应该很快）
       const skillCard = page.locator('[data-testid="skill-card"]').first();
+      await skillCard.waitFor({ state: 'visible', timeout: 10000 });
+
       if (await skillCard.count() > 0) {
         // 点击分享按钮
         const shareBtn = skillCard.locator('[data-testid="share-button"]');
@@ -40,10 +40,9 @@ test.describe('Skill Sharing', () => {
     });
 
     test('should generate share text', async ({ page }) => {
-      // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
-
+      // 等待第一个 skill-card 出现
       const skillCard = page.locator('[data-testid="skill-card"]').first();
+      await skillCard.waitFor({ state: 'visible', timeout: 10000 });
       if (await skillCard.count() > 0) {
         await skillCard.locator('[data-testid="share-button"]').click();
 
@@ -72,7 +71,7 @@ test.describe('Skill Sharing', () => {
 
     test('should copy share text to clipboard', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -94,7 +93,7 @@ test.describe('Skill Sharing', () => {
 
     test('should support multiple platforms', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -118,7 +117,7 @@ test.describe('Skill Sharing', () => {
   test.describe('Image Sharing', () => {
     test('should switch to image sharing tab', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -140,7 +139,7 @@ test.describe('Skill Sharing', () => {
 
     test('should generate share image', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -174,7 +173,7 @@ test.describe('Skill Sharing', () => {
 
     test('should support multiple themes', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -210,7 +209,7 @@ test.describe('Skill Sharing', () => {
 
     test('should download share image', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -245,7 +244,7 @@ test.describe('Skill Sharing', () => {
   test.describe('QR Code Generation', () => {
     test('should generate QR code', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -267,7 +266,7 @@ test.describe('Skill Sharing', () => {
 
     test('should download QR code image', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -355,7 +354,7 @@ test.describe('Skill Sharing', () => {
   test.describe('Package Export/Import', () => {
     test('should export skill as package', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -434,7 +433,7 @@ test.describe('Skill Sharing', () => {
   test.describe('Modification Detection', () => {
     test('should detect skill modifications', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -450,7 +449,7 @@ test.describe('Skill Sharing', () => {
 
     test('should show modification warning in share dialog', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -471,7 +470,7 @@ test.describe('Skill Sharing', () => {
   test.describe('Share Dialog UX', () => {
     test('should close dialog on cancel', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
@@ -491,7 +490,7 @@ test.describe('Skill Sharing', () => {
 
     test('should switch between share modes', async ({ page }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {

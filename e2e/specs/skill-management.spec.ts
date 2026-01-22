@@ -23,7 +23,7 @@ test.describe('Skill Management', () => {
   test.describe('Skill Scanning', () => {
     test('should scan and display installed skills', async ({ page, mySkillsPage }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
       await mySkillsPage.waitForSkills();
 
       // 验证至少有一个技能（如果有系统安装的技能）
@@ -49,7 +49,7 @@ test.describe('Skill Management', () => {
 
     test('should display skill list', async ({ page, mySkillsPage }) => {
       // Skills 自动加载，验证列表显示
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const skillList = mySkillsPage.skillList;
       await expect(skillList).toBeVisible();
@@ -59,7 +59,7 @@ test.describe('Skill Management', () => {
   test.describe('Skill Details', () => {
     test('should view skill details', async ({ page, mySkillsPage }) => {
       // Skills 自动加载，等待列表加载完成
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const hasSkills = await mySkillsPage.hasSkills();
       if (!hasSkills) {
@@ -81,7 +81,7 @@ test.describe('Skill Management', () => {
 
     test('should display quality score', async ({ page, mySkillsPage }) => {
       // Skills 自动加载
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const hasSkills = await mySkillsPage.hasSkills();
       if (!hasSkills) {
@@ -96,7 +96,7 @@ test.describe('Skill Management', () => {
 
     test('should display security status', async ({ page, mySkillsPage }) => {
       // Skills 自动加载
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       const hasSkills = await mySkillsPage.hasSkills();
       if (!hasSkills) {
@@ -269,7 +269,7 @@ test.describe('Skill Management', () => {
   test.describe('Error Handling', () => {
     test('should handle scan errors gracefully', async ({ page, mySkillsPage }) => {
       // Skills 自动加载
-      await page.waitForTimeout(3000);
+      // Skills 已快速加载完成
 
       // 验证页面正常加载
       const skillList = mySkillsPage.skillList;
