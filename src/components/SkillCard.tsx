@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import type { MarketplaceSkill, InstalledSkill, ExportResult } from '../types';
 import { Switch } from './ui/Switch';
@@ -8,6 +9,7 @@ import { Badge } from './ui/Badge';
 import { TrustShield } from './TrustShield';
 import { ShareTextDialog } from './ShareTextDialog';
 import { ShareImageDialog } from './ShareImageDialog';
+import ModalDialog from './common/ModalDialog';
 import { cn } from '../utils/cn';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
 import { Star, GitBranch, Trash2, Settings, Plug, Link2, Image as ImageIcon, Package } from 'lucide-react';
@@ -53,6 +55,11 @@ const getBrightness = (hexColor: string): number => {
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 };
 
+const getExportDirectory = (filePath: string): string => {
+    const lastSeparator = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+    return lastSeparator >= 0 ? filePath.slice(0, lastSeparator) : '';
+};
+
 interface SkillCardProps {
     skill: MarketplaceSkill | InstalledSkill;
     viewMode?: 'grid' | 'list';
@@ -78,10 +85,13 @@ export const SkillCard = ({
     onViewDetails,
     onShare
 }: SkillCardProps) => {
+    const { i18n } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
     const [showShareTextDialog, setShowShareTextDialog] = useState(false);
     const [showShareImageDialog, setShowShareImageDialog] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [exportDialogPath, setExportDialogPath] = useState<string | null>(null);
+    const isZh = i18n.language === 'zh';
 
     // 处理分享按钮点击 - 默认打开文本分享
     const handleShare = (e: React.MouseEvent) => {
@@ -113,7 +123,7 @@ export const SkillCard = ({
                 }
             });
             if (result.success && result.filePath) {
-                toast.success(`Exported to: ${result.filePath}`);
+                setExportDialogPath(result.filePath);
             } else {
                 toast.error(result.message || 'Export failed');
             }
@@ -122,6 +132,20 @@ export const SkillCard = ({
             toast.error(`Export failed: ${message}`);
         } finally {
             setIsExporting(false);
+        }
+    };
+
+    const handleOpenExportFolder = async () => {
+        if (!exportDialogPath) {
+            return;
+        }
+        const targetPath = getExportDirectory(exportDialogPath) || exportDialogPath;
+        try {
+            await invoke('open_path_in_file_manager', { path: targetPath });
+            setExportDialogPath(null);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            toast.error(isZh ? `打开目录失败: ${message}` : `Failed to open folder: ${message}`);
         }
     };
 
@@ -163,6 +187,17 @@ export const SkillCard = ({
         // If brightness is high, use dark text; otherwise, use light text
         return brightness > 0.5 ? 'text-slate-900' : 'text-slate-50';
     }, [iconColor]);
+    const exportDialogTitle = isZh ? '导出完成' : 'Export complete';
+    const exportDialogMessage = exportDialogPath ? (
+        <div className="space-y-2 text-left">
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+                {isZh ? '导出路径：' : 'Export location:'}
+            </div>
+            <div className="rounded-md bg-slate-50 dark:bg-base-200 px-2 py-1 text-xs font-mono break-all text-slate-700 dark:text-slate-200">
+                {exportDialogPath}
+            </div>
+        </div>
+    ) : null;
 
 
     // Icon Placeholder Generator (based on name char)
@@ -297,6 +332,18 @@ export const SkillCard = ({
                     onClose={() => setShowShareImageDialog(false)}
                 />
             )}
+            {exportDialogPath && (
+                <ModalDialog
+                    isOpen={!!exportDialogPath}
+                    title={exportDialogTitle}
+                    message={exportDialogMessage ?? ''}
+                    type="info"
+                    confirmText={isZh ? '打开导出目录' : 'Open folder'}
+                    cancelText={isZh ? '关闭' : 'Close'}
+                    onConfirm={handleOpenExportFolder}
+                    onCancel={() => setExportDialogPath(null)}
+                />
+            )}
         </>
         );
     }
@@ -416,6 +463,18 @@ export const SkillCard = ({
                 skill={skill as any} // Use 'as any' since we're checking properties at runtime
                 isOpen={showShareImageDialog}
                 onClose={() => setShowShareImageDialog(false)}
+            />
+        )}
+        {exportDialogPath && (
+            <ModalDialog
+                isOpen={!!exportDialogPath}
+                title={exportDialogTitle}
+                message={exportDialogMessage ?? ''}
+                type="info"
+                confirmText={isZh ? '打开导出目录' : 'Open folder'}
+                cancelText={isZh ? '关闭' : 'Close'}
+                onConfirm={handleOpenExportFolder}
+                onCancel={() => setExportDialogPath(null)}
             />
         )}
     </>

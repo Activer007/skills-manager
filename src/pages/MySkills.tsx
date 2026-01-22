@@ -8,6 +8,7 @@ import { Github, HardDrive, Plus, FolderOpen, FileText, Settings, History, Packa
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { ConfigForm } from '../components/ConfigForm';
 import type { ConfigSchema } from '../components/ConfigForm';
 import { toast } from '../store/useToastStore';
@@ -38,6 +39,11 @@ const getErrorMessage = (error: unknown) => {
 };
 
 type SlideTab = 'overview' | 'config' | 'changelog';
+type ImportResult = {
+  success: boolean;
+  message: string;
+  blocked: boolean;
+};
 
 const MySkills = () => {
   const { t, i18n } = useTranslation();
@@ -73,6 +79,7 @@ const MySkills = () => {
     title: string;
     message: React.ReactNode;
     onConfirm: () => void;
+    onCancel?: () => void;
     confirmText?: string;
     cancelText?: string;
     isDestructive?: boolean;
@@ -136,11 +143,21 @@ const MySkills = () => {
     ? t('importPackageInvalid')
     : undefined);
   const packageFileName = packagePathTrimmed.split(/[\\/]/).pop() || packagePathTrimmed;
+  const refreshSkills = React.useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['skills'] });
+    await queryClient.refetchQueries({ queryKey: ['skills'], type: 'active' });
+  }, [queryClient]);
 
   const handleSelectPackageFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const filePath = (file as { path?: string }).path ?? file.name;
+    const filePath = (file as { path?: string }).path;
+    if (!filePath) {
+      setImportPackagePath('');
+      setPackageFileError(t('importPackagePathUnavailable'));
+      event.target.value = '';
+      return;
+    }
     if (!file.name.toLowerCase().endsWith('.skillpack.zip')) {
       setImportPackagePath(filePath);
       setPackageFileError(t('importPackageInvalidWithName', { name: file.name }));
@@ -150,6 +167,31 @@ const MySkills = () => {
     setPackageFileError(null);
     setImportPackagePath(filePath);
     event.target.value = '';
+  };
+
+  const handleBrowsePackageFile = async () => {
+    try {
+      const selected = await openDialog({
+        multiple: false,
+        filters: [
+          { name: 'Skill Package', extensions: ['zip'] }
+        ]
+      });
+      if (!selected || Array.isArray(selected)) {
+        return;
+      }
+      const filePath = selected;
+      const fileName = filePath.split(/[\\/]/).pop() || filePath;
+      if (!fileName.toLowerCase().endsWith('.skillpack.zip')) {
+        setImportPackagePath(filePath);
+        setPackageFileError(t('importPackageInvalidWithName', { name: fileName }));
+        return;
+      }
+      setPackageFileError(null);
+      setImportPackagePath(filePath);
+    } catch {
+      packageFileInputRef.current?.click();
+    }
   };
 
 
@@ -191,29 +233,40 @@ const MySkills = () => {
 
   const performImport = async () => {
     try {
+      const importErrorMessage = t('importError', 'Import failed');
+      let result: ImportResult | null = null;
+
       if (importType === 'github') {
-        await importGithubMutation.mutateAsync({
+        result = await importGithubMutation.mutateAsync({
           githubUrl: importUrl,
-        } as MarketplaceSkill);
-        toast.success('成功从 GitHub 导入 Skill！');
+        } as MarketplaceSkill) as ImportResult;
       } else if (importType === 'local') {
-        await importLocalMutation.mutateAsync(importPath);
-        toast.success('成功从本地导入 Skill！');
+        result = await importLocalMutation.mutateAsync(importPath) as ImportResult;
       } else if (importType === 'package') {
-        await importPackageMutation.mutateAsync(importPackagePath);
+        result = await importPackageMutation.mutateAsync(importPackagePath) as ImportResult;
+      }
+
+      if (!result || !result.success) {
+        throw new Error(result?.message || importErrorMessage);
+      }
+
+      if (importType === 'package') {
         toast.success(
           packagePathTrimmed
             ? t('importPackageSuccessWithName', { name: packageFileName || '-', path: packagePathTrimmed })
             : t('importPackageSuccess')
         );
+      } else {
+        toast.success(t('importSuccess'));
       }
+      await refreshSkills();
       setShowImportModal(false);
       setImportUrl('');
       setImportPath('');
       setImportPackagePath('');
       setImportType(null);
     } catch (error: unknown) {
-      toast.error(`导入失败: ${getErrorMessage(error)}`);
+      toast.error(`${t('importError', 'Import failed')}: ${getErrorMessage(error)}`);
     }
   };
 
@@ -226,6 +279,7 @@ const MySkills = () => {
       </div>
     ) : null;
 
+    setShowImportModal(false);
     setConfirmDialog({
       title: i18n.language === 'zh' ? '安全提示' : 'Security Notice',
       message: (
@@ -251,6 +305,10 @@ const MySkills = () => {
       ),
       confirmText: i18n.language === 'zh' ? '继续导入' : 'Continue Import',
       cancelText: i18n.language === 'zh' ? '取消' : 'Cancel',
+      onCancel: () => {
+        setConfirmDialog(null);
+        setShowImportModal(true);
+      },
       onConfirm: () => {
         setConfirmDialog(null);
         void performImport();
@@ -874,7 +932,7 @@ const MySkills = () => {
                   />
                   <Button
                     variant="outline"
-                    onClick={() => packageFileInputRef.current?.click()}
+                    onClick={handleBrowsePackageFile}
                   >
                     <FolderOpen size={16} className="mr-2" />
                     {t('selectFile')}
@@ -891,7 +949,13 @@ const MySkills = () => {
         title={confirmDialog?.title ?? ''}
         message={confirmDialog?.message ?? ''}
         onConfirm={confirmDialog?.onConfirm}
-        onCancel={() => setConfirmDialog(null)}
+        onCancel={() => {
+          if (confirmDialog?.onCancel) {
+            confirmDialog.onCancel();
+          } else {
+            setConfirmDialog(null);
+          }
+        }}
         confirmText={confirmDialog?.confirmText}
         cancelText={confirmDialog?.cancelText}
         isDestructive={confirmDialog?.isDestructive}
