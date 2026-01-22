@@ -387,6 +387,7 @@ const Marketplace = () => {
                           onChange={(e) => {
                               setSearchTerm(e.target.value);
                           }}
+                          data-testid="search-input"
                       />
                   </motion.div>
 
@@ -400,6 +401,7 @@ const Marketplace = () => {
                         variant="primary"
                         className="h-full rounded-xl shadow-lg shadow-primary/20"
                         onClick={() => setShowImportModal(true)}
+                        data-testid="import-button"
                      >
                         <Download size={20} className="mr-2" />
                         {isGithubUrl
@@ -471,6 +473,7 @@ const Marketplace = () => {
                               ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md"
                               : "bg-white dark:bg-base-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-base-100 border border-gray-100 dark:border-base-300"
                       )}
+                      data-testid={`filter-${chip.id}`}
                   >
                       {chip.label}
                   </button>
@@ -525,6 +528,7 @@ const Marketplace = () => {
                 onClick: () => setShowImportModal(true),
                 variant: 'primary',
               }}
+              data-testid="empty-state"
             />
           </div>
         ) : (
