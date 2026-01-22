@@ -17,7 +17,14 @@
       "Bash(npx tsc:*)",
       "Bash(gh pr merge:*)",
       "Bash(npm run lint:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(gh pr edit:*)",
+      "Bash(gh issue list:*)",
+      "Bash(powershell -Command \"Get-Content ''C:\\\\Users\\\\10747\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--LHA-skills-manager-client\\\\tasks\\\\bb34ab3.output'' -Tail 50\")",
+      "Bash(npx vitest:*)",
+      "Bash(if [ -f \"C:\\\\Users\\\\10747\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--LHA-skills-manager-client\\\\tasks\\\\be1d3d1.output\" ])",
+      "Bash(then cat \"C:\\\\Users\\\\10747\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--LHA-skills-manager-client\\\\tasks\\\\be1d3d1.output\")",
+      "Bash(else echo \"File not found or empty\")"
     ]
   }
 }
