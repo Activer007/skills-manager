@@ -24,7 +24,7 @@
 - **智能搜索栏**：自动识别 GitHub 链接，支持直接粘贴 URL 安装
 - **高级筛选**：按类别、评分、编程语言等维度筛选
 - **一键安装**：简洁的卡片式设计，支持一键安装到本地
-- **UI/UX 优化**：深色模式支持、丝滑的列表滚动、清晰的视觉反馈
+- **UI/UX 优化**：现代化设计系统、Grid/List 布局、清晰的视觉反馈
 
 ![Skill 市场](marketplace.png)
 
@@ -118,7 +118,16 @@
 - ✅ **数据可视化**：Recharts 折线图展示历史趋势
 - ✅ **自动刷新**：每分钟自动刷新数据
 
-### 9. **项目路径配置**
+### 9. **测试** 🧪
+- ✅ **测试覆盖**: 31 个测试文件，193 个测试用例，100% 通过率
+- ✅ **测试框架**: Vitest + React Testing Library
+- ✅ **测试类型**: 
+  - 单元测试（组件、Hooks、工具函数）
+  - 集成测试（API 层、安全扫描流程、质量评分流程）
+- ✅ **Mock 配置**: Tauri, i18next, Recharts
+- ✅ **持续集成**: npm test 命令可快速运行所有测试
+
+### 10. **项目路径配置**
 - 自定义多个项目路径
 - 自动扫描项目下的 `.claude/skills` 文件夹
 - 跨平台支持（Windows、macOS）
@@ -133,6 +142,7 @@
 - **图表**: Recharts
 - **桌面端**: Tauri v2 (Rust 后端)
 - **数据库**: SQLite (扫描历史)
+- **测试**: Vitest, React Testing Library, jsdom
 
 ## 开发
 
@@ -155,7 +165,29 @@ npm run tauri dev
 
 这将同时启动 Vite 开发服务器和 Tauri 应用程序。
 
-### 3. 生产环境构建
+### 3. 运行测试
+
+```bash
+# Watch 模式
+npm run test
+
+# 运行一次
+npm run test:run
+
+# UI 模式
+npm run test:ui
+
+# 覆盖率报告
+npm run test:coverage
+```
+
+### 4. 代码检查
+
+```bash
+npm run lint
+```
+
+### 5. 生产环境构建
 
 ```bash
 npm run tauri build
