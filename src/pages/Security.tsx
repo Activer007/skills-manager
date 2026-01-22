@@ -29,7 +29,7 @@ const Security = () => {
   const riskCount = installedSkills.filter(s => s.status === 'unsafe').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="security-page">
       <div className="flex justify-between items-center">
         <div>
              <h2 className="text-2xl font-bold">
