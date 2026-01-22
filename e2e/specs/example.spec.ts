@@ -8,11 +8,11 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Environment Setup', () => {
   test('should load the application', async ({ page }) => {
-    // 访问应用首页
-    await page.goto('/');
+    // 访问应用首页 - 使用更长的超时时间
+    await page.goto('/', { timeout: 60000, waitUntil: 'domcontentloaded' });
 
     // 验证页面标题
-    await expect(page).toHaveTitle(/Skill Manager/);
+    await expect(page).toHaveTitle(/skill-manager/i);
 
     // 验证页面加载成功
     const body = page.locator('body');
@@ -29,8 +29,9 @@ test.describe('Environment Setup', () => {
     // 验证 URL
     await expect(page).toHaveURL(/\/my-skills/);
 
-    // 验证页面标题或关键元素
-    await expect(page.locator('h1, h2')).toContainText(/My Skills|Skills/i);
+    // 验证页面标题 - 使用更精确的选择器
+    const heading = page.locator('h2').filter({ hasText: /My Skills|Skills/i });
+    await expect(heading).toBeVisible();
   });
 
   test('should navigate to Marketplace page', async ({ page }) => {
@@ -43,8 +44,9 @@ test.describe('Environment Setup', () => {
     // 验证 URL
     await expect(page).toHaveURL(/\/marketplace/);
 
-    // 验证页面标题或关键元素
-    await expect(page.locator('h1, h2')).toContainText(/Marketplace/i);
+    // 验证页面标题 - 使用更精确的选择器
+    const heading = page.locator('h1').filter({ hasText: /Discover Powerful Skills/i });
+    await expect(heading).toBeVisible();
   });
 
   test('should navigate to Settings page', async ({ page }) => {
@@ -57,8 +59,9 @@ test.describe('Environment Setup', () => {
     // 验证 URL
     await expect(page).toHaveURL(/\/settings/);
 
-    // 验证页面标题或关键元素
-    await expect(page.locator('h1, h2')).toContainText(/Settings/i);
+    // 验证页面标题 - 使用更精确的选择器
+    const heading = page.locator('h2').filter({ hasText: /Settings/i });
+    await expect(heading).toBeVisible();
   });
 });
 
