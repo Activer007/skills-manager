@@ -15,14 +15,14 @@ import { TEST_GITHUB_URLS, TEST_TIMEOUTS } from '../fixtures/test-data';
 
 test.describe('Security Scanning', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/marketplace');
+    await page.goto('/my-skills', { timeout: 60000, waitUntil: 'domcontentloaded' });
     await waitForAppReady(page);
   });
 
   test.describe('Dangerous Pattern Detection', () => {
     test('should block dangerous code patterns', async ({ page }) => {
-      // 打开导入对话框
-      await page.click('[data-testid="import-from-github"], button:has-text("Import from GitHub")');
+      // 打开导入对话框（在 MySkills 页面）
+      await page.click('[data-testid="import-skill-button"]');
 
       // 输入包含危险代码的 Skill URL
       await page.fill('[data-testid="github-url-input"]', TEST_GITHUB_URLS.DANGEROUS_SKILL);
@@ -40,7 +40,7 @@ test.describe('Security Scanning', () => {
     });
 
     test('should show detected dangerous patterns', async ({ page }) => {
-      await page.click('[data-testid="import-from-github"], button:has-text("Import from GitHub")');
+      await page.click('[data-testid="import-skill-button"]');
       await page.fill('[data-testid="github-url-input"]', TEST_GITHUB_URLS.DANGEROUS_SKILL);
       await page.click('[data-testid="import-confirm"]');
 
@@ -58,7 +58,7 @@ test.describe('Security Scanning', () => {
     });
 
     test('should allow safe skills', async ({ page }) => {
-      await page.click('[data-testid="import-from-github"], button:has-text("Import from GitHub")');
+      await page.click('[data-testid="import-skill-button"]');
       await page.fill('[data-testid="github-url-input"]', TEST_GITHUB_URLS.VALID_SKILL);
       await page.click('[data-testid="import-confirm"]');
 
@@ -81,7 +81,7 @@ test.describe('Security Scanning', () => {
 
   test.describe('Hard Block Mechanism', () => {
     test('should prevent installation of blocked skills', async ({ page }) => {
-      await page.click('[data-testid="import-from-github"], button:has-text("Import from GitHub")');
+      await page.click('[data-testid="import-skill-button"]');
       await page.fill('[data-testid="github-url-input"]', TEST_GITHUB_URLS.DANGEROUS_SKILL);
       await page.click('[data-testid="install-confirm"]');
 
@@ -96,7 +96,7 @@ test.describe('Security Scanning', () => {
     });
 
     test('should show warning message for blocked skills', async ({ page }) => {
-      await page.click('[data-testid="import-from-github"], button:has-text("Import from GitHub")');
+      await page.click('[data-testid="import-skill-button"]');
       await page.fill('[data-testid="github-url-input"]', TEST_GITHUB_URLS.DANGEROUS_SKILL);
       await page.click('[data-testid="import-confirm"]');
 
@@ -122,7 +122,7 @@ test.describe('Security Scanning', () => {
 
       // 返回市场并导入
       await page.goto('/marketplace');
-      await page.click('[data-testid="import-from-github"], button:has-text("Import from GitHub")');
+      await page.click('[data-testid="import-skill-button"]');
       await page.fill('[data-testid="github-url-input"]', TEST_GITHUB_URLS.VALID_SKILL);
       await page.click('[data-testid="import-confirm"]');
 
@@ -143,7 +143,7 @@ test.describe('Security Scanning', () => {
       await page.selectOption('[data-testid="security-mode-select"]', 'relaxed');
 
       await page.goto('/marketplace');
-      await page.click('[data-testid="import-from-github"], button:has-text("Import from GitHub")');
+      await page.click('[data-testid="import-skill-button"]');
       await page.fill('[data-testid="github-url-input"]', TEST_GITHUB_URLS.VALID_SKILL);
       await page.click('[data-testid="import-confirm"]');
 
@@ -168,7 +168,7 @@ test.describe('Security Scanning', () => {
       await page.selectOption('[data-testid="security-mode-select"]', 'standard');
 
       await page.goto('/marketplace');
-      await page.click('[data-testid="import-from-github"], button:has-text("Import from GitHub")');
+      await page.click('[data-testid="import-skill-button"]');
       await page.fill('[data-testid="github-url-input"]', TEST_GITHUB_URLS.VALID_SKILL);
       await page.click('[data-testid="import-confirm"]');
 
@@ -224,8 +224,8 @@ test.describe('Security Scanning', () => {
         await addWhitelistBtn.click();
 
         // 现在导入该 Skill
-        await page.goto('/marketplace');
-        await page.click('[data-testid="import-from-github"], button:has-text("Import from GitHub")');
+        await page.goto('/my-skills', { timeout: 60000, waitUntil: 'domcontentloaded' });
+        await page.click('[data-testid="import-skill-button"]');
         await page.fill('[data-testid="github-url-input"]', TEST_GITHUB_URLS.DANGEROUS_SKILL);
         await page.click('[data-testid="import-confirm"]');
 

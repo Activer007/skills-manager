@@ -31,11 +31,9 @@ test.describe('Settings', () => {
     });
 
     test('should add new project path', async ({ page, settingsPage }) => {
-      // Mock 文件夹选择对话框
+      // 直接添加路径（没有对话框）
       const mockPath = 'C:\\test\\my-project';
-      await mockFileDialog(page, mockPath);
 
-      await settingsPage.openAddPathDialog();
       await settingsPage.pathInput.fill(mockPath);
       await settingsPage.savePathButton.click();
 
@@ -48,9 +46,7 @@ test.describe('Settings', () => {
     });
 
     test('should validate project path', async ({ settingsPage }) => {
-      await settingsPage.openAddPathDialog();
-
-      // 输入无效路径
+      // 直接输入无效路径（没有对话框）
       await settingsPage.pathInput.fill('C:\\invalid\\path');
       await settingsPage.savePathButton.click();
 
@@ -93,9 +89,8 @@ test.describe('Settings', () => {
           .textContent();
 
         if (firstPath) {
-          // 尝试添加相同路径
+          // 尝试添加相同路径（没有对话框）
           await mockFileDialog(page, firstPath.trim());
-          await settingsPage.openAddPathDialog();
           await settingsPage.pathInput.fill(firstPath.trim());
           await settingsPage.savePathButton.click();
 
@@ -405,9 +400,7 @@ test.describe('Settings', () => {
 
   test.describe('Error Handling', () => {
     test('should handle invalid project path gracefully', async ({ page, settingsPage }) => {
-      await settingsPage.openAddPathDialog();
-
-      // 输入无效路径
+      // 直接输入无效路径（没有对话框）
       await settingsPage.pathInput.fill('');
       await settingsPage.savePathButton.click();
 
