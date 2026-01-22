@@ -15,8 +15,10 @@ export class BasePage {
   /**
    * 导航到指定路径
    */
-  async goto(path: string) {
-    await this.page.goto(path);
+  async goto(path: string, options?: { timeout?: number }) {
+    // 默认使用 60s 超时时间（Tauri 应用需要更长的启动时间）
+    const timeout = options?.timeout || 60000;
+    await this.page.goto(path, { timeout, waitUntil: 'domcontentloaded' });
   }
 
   /**
