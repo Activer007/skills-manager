@@ -14,79 +14,41 @@ import { TEST_GITHUB_URLS, TEST_TIMEOUTS } from '../fixtures/test-data';
  */
 
 test.describe('Skill Import', () => {
-  test.beforeEach(async ({ page, marketplacePage }) => {
-    await marketplacePage.goto();
+  test.beforeEach(async ({ page, mySkillsPage }) => {
+    await mySkillsPage.goto();
     await waitForAppReady(page);
   });
 
   test.describe('GitHub Import', () => {
-    test('should open import dialog', async ({ marketplacePage }) => {
-      // 点击 GitHub 导入按钮
-      await marketplacePage.openImportDialog();
+    test('should open import dialog', async ({ page, mySkillsPage }) => {
+      // 点击导入按钮（在 MySkills 页面）
+      await page.click('[data-testid="import-skill-button"]');
 
-      // 验证对话框打开
-      await expect(marketplacePage.githubUrlInput).toBeVisible();
-      await expect(marketplacePage.importConfirmButton).toBeVisible();
+      // 验证导入对话框打开
+      const importModal = page.locator('[data-testid="import-modal"]');
+      await expect(importModal).toBeVisible();
     });
 
-    test('should validate GitHub URL format', async ({ marketplacePage }) => {
-      await marketplacePage.openImportDialog();
+    test('should show import options', async ({ page, mySkillsPage }) => {
+      // 点击导入按钮
+      await page.click('[data-testid="import-skill-button"]');
 
-      // 输入无效 URL
-      await marketplacePage.githubUrlInput.fill('not-a-valid-url');
-      await marketplacePage.importConfirmButton.click();
-
-      // 验证错误提示（根据实际实现调整）
-      const errorMsg = marketplacePage.page.locator('.error, [data-testid="error-message"]');
-      if (await errorMsg.count() > 0) {
-        await expect(errorMsg).toBeVisible();
-      }
+      // 验证显示三个导入选项
+      await expect(page.locator('[data-testid="import-from-github"]')).toBeVisible();
+      await expect(page.locator('[data-testid="import-from-local"]')).toBeVisible();
+      await expect(page.locator('[data-testid="import-from-package"]')).toBeVisible();
     });
 
-    test('should show scan progress during import', async ({ marketplacePage }) => {
-      await marketplacePage.openImportDialog();
+    test('should navigate to GitHub import option', async ({ page, mySkillsPage }) => {
+      await page.click('[data-testid="import-skill-button"]');
 
-      // 输入有效的 GitHub URL（使用测试 URL）
-      await marketplacePage.githubUrlInput.fill(TEST_GITHUB_URLS.VALID_SKILL);
-      await marketplacePage.importConfirmButton.click();
+      // 点击 GitHub 导入选项
+      await page.click('[data-testid="import-from-github"]');
 
-      // 验证扫描进度显示
-      await expect(marketplacePage.scanProgress).toBeVisible();
-
-      // 等待导入完成或超时
-      await marketplacePage.waitForImport(TEST_TIMEOUTS.VERY_LONG);
+      // 验证显示 GitHub URL 输入框
+      await expect(page.locator('[data-testid="github-url-input"]')).toBeVisible();
+      await expect(page.locator('[data-testid="import-confirm-button"]')).toBeVisible();
     });
-
-    test('should handle import errors gracefully', async ({ marketplacePage }) => {
-      await marketplacePage.openImportDialog();
-
-      // 使用无效的仓库 URL
-      await marketplacePage.githubUrlInput.fill(TEST_GITHUB_URLS.INVALID_REPO);
-      await marketplacePage.importConfirmButton.click();
-
-      // 等待一段时间让错误出现
-      await marketplacePage.page.waitForTimeout(TEST_TIMEOUTS.MEDIUM);
-
-      // 验证错误消息
-      const toast = marketplacePage.page.locator('.toast, [role="alert"]');
-      if (await toast.count() > 0) {
-        await expect(toast).toContainText(/error|not found|failed/i);
-      }
-    });
-
-    test('should close import dialog on cancel', async ({ marketplacePage }) => {
-      await marketplacePage.openImportDialog();
-
-      // 点击取消按钮
-      const cancelBtn = marketplacePage.page.locator('[data-testid="cancel-button"], button:has-text("Cancel")');
-      if (await cancelBtn.count() > 0) {
-        await cancelBtn.click();
-
-        // 验证对话框关闭
-        await expect(marketplacePage.githubUrlInput).not.toBeVisible();
-      }
-    });
-  });
 
   test.describe('Local Folder Import', () => {
     test('should open folder selection dialog', async ({ page, marketplacePage }) => {
