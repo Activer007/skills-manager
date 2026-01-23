@@ -52,7 +52,7 @@ fn get_db_path() -> Result<PathBuf> {
 }
 
 /// Current database schema version
-const CURRENT_DB_VERSION: i32 = 3;
+const CURRENT_DB_VERSION: i32 = 4;
 
 /// Run database migrations to ensure schema is up to date.
 /// This function creates a schema_migrations table to track version.
@@ -101,6 +101,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             migrate_v3(conn)?;
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (3, ?)",
+                [chrono::Utc::now().timestamp_millis()],
+            )?;
+        }
+
+        // Migration v4: Create repositories and repository_scan_queue tables
+        if current_version < 4 {
+            migrate_v4(conn)?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (4, ?)",
                 [chrono::Utc::now().timestamp_millis()],
             )?;
         }
@@ -187,5 +196,68 @@ fn migrate_v3(conn: &Connection) -> Result<()> {
     )?;
 
     log::info!("Created whitelist table");
+    Ok(())
+}
+
+/// Migration v4: Create repositories and repository_scan_queue tables for multi-source repository management
+fn migrate_v4(conn: &Connection) -> Result<()> {
+    // Create repositories table to store repository metadata
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS repositories (
+            id TEXT PRIMARY KEY,
+            url TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            description TEXT,
+            enabled INTEGER DEFAULT 1,
+            scan_subdirs INTEGER DEFAULT 0,
+            added_at TEXT NOT NULL,
+            last_scanned TEXT,
+            cache_path TEXT,
+            cached_commit_sha TEXT,
+            featured INTEGER DEFAULT 0,
+            category TEXT DEFAULT 'custom'
+        )",
+        [],
+    )?;
+
+    // Create repository_scan_queue table for scan task queue
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS repository_scan_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            repository_id TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            started_at TEXT,
+            completed_at TEXT,
+            error_message TEXT,
+            skills_found INTEGER DEFAULT 0,
+            FOREIGN KEY (repository_id) REFERENCES repositories(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
+
+    // Create indexes for better query performance
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_repositories_url ON repositories(url)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_repositories_category ON repositories(category)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_repositories_enabled ON repositories(enabled)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_scan_queue_status ON repository_scan_queue(status)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_scan_queue_repository_id ON repository_scan_queue(repository_id)",
+        [],
+    )?;
+
+    log::info!("Created repositories and repository_scan_queue tables for multi-source repository management");
     Ok(())
 }
