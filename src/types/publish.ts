@@ -1,4 +1,4 @@
-import { SecurityIssue } from './security';
+import type { SecurityIssue } from './security';
 
 export interface CheckStatus {
   type: 'Pass' | 'Fail' | 'Warning';

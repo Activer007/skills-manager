@@ -6,7 +6,7 @@ import { CollectionCard } from '../components/CollectionCard';
 import { CollectionModal } from '../components/CollectionModal';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
-import { Collection } from '../types/collection';
+import type { Collection } from '../types/collection';
 import { toast } from '../store/useToastStore';
 import ModalDialog from '../components/common/ModalDialog';
 
