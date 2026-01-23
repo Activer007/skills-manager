@@ -30,7 +30,8 @@
       "Bash(cargo check)",
       "Bash(cargo test)",
       "Bash(git push:*)",
-      "Bash(git pull)"
+      "Bash(git pull)",
+      "Bash(git merge:*)"
     ]
   }
 }

@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
-import { ArrowLeft, Plus, Settings, Trash2, GripVertical, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Plus, Settings, Trash2, GripVertical, ExternalLink, Share2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { PageLoader } from '../components/ui/PageLoader';
 import { CollectionModal } from '../components/CollectionModal';
+import { ShareCollectionModal } from '../components/ShareCollectionModal';
 import { CollectionItem, Collection } from '../types/collection';
 import { toast } from '../store/useToastStore';
 import { cn } from '../utils/cn';
@@ -21,6 +22,7 @@ export const CollectionDetail = () => {
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const fetchCollection = async () => {
     if (!id) return;
@@ -119,6 +121,10 @@ export const CollectionDetail = () => {
           </div>
 
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsShareModalOpen(true)}>
+              <Share2 size={18} className="mr-2" />
+              {isZh ? '分享' : 'Share'}
+            </Button>
             <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
               <Settings size={18} className="mr-2" />
               {isZh ? '设置' : 'Settings'}
@@ -193,6 +199,12 @@ export const CollectionDetail = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onConfirm={handleUpdate}
+        collection={collection}
+      />
+
+      <ShareCollectionModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
         collection={collection}
       />
     </div>

@@ -1,5 +1,5 @@
-use crate::db::get_connection;
-use crate::models::fork::{ForkRequest, ForkStats, ForkType, LineageDepth, LineageNode, ParentSkillInfo, SkillFork, ForkInfo};
+use crate::services::db::get_connection;
+use crate::models::fork::{ForkRequest, ForkStats, ForkType, LineageNode, ParentSkillInfo, ForkInfo};
 use anyhow::{Context, Result};
 use rusqlite::{params, OptionalExtension};
 use std::collections::HashMap;
@@ -92,7 +92,7 @@ impl ForkService {
                     skill_path: ppath,
                     author,
                 }),
-                Some(ForkType::from_str(&ftype)?),
+                Some(ForkType::from_str(&ftype).map_err(|e| anyhow::anyhow!(e))?),
                 reason,
             )
         } else {

@@ -97,6 +97,14 @@ pub struct ExportSkillPackageRequest {
     pub output_dir: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ExportCollectionPackageRequest {
+    #[serde(rename = "collectionId")]
+    pub collection_id: String,
+    #[serde(rename = "outputDir")]
+    pub output_dir: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct ExportResult {
     pub success: bool,
@@ -992,131 +1000,8 @@ fn update_frontmatter(
     Ok(format!("---\n{}---\n{}", clean_yaml, markdown_content))
 }
 
-#[tauri::command]
-fn fork_skill(request: ForkSkillRequest) -> Result<ImportResult, String> {
-    let source_path = PathBuf::from(&request.original_skill_path);
-    if !source_path.exists() {
-        return Ok(ImportResult {
-            success: false,
-            message: "Original skill path does not exist".to_string(),
-            blocked: false,
-        });
-    }
-
-    let install_dir = if let Some(path) = request.install_path {
-        PathBuf::from(path).join(".claude").join("skills")
-    } else {
-        get_claude_skills_dir().ok_or("Cannot determine skills directory")?
-    };
-
-    let safe_name = sanitize_filename(&request.new_skill_name);
-    let dest_dir = install_dir.join(&safe_name);
-
-    if dest_dir.exists() {
-        return Ok(ImportResult {
-            success: false,
-            message: format!("Skill with name '{}' already exists", safe_name),
-            blocked: false,
-        });
-    }
-
-    if let Err(e) = fs::create_dir_all(&dest_dir) {
-        return Ok(ImportResult {
-            success: false,
-            message: format!("Failed to create destination directory: {}", e),
-            blocked: false,
-        });
-    }
-
-    // Filter out .git directories during copy
-    let copy_options = fs_extra::dir::CopyOptions::new().content_only(true);
-    // Note: fs_extra is not in dependencies, we implemented copy_dir_all manually.
-    // Let's use our manual copy_dir_all and remove .git afterwards.
-
-    if let Err(e) = copy_dir_all(&source_path, &dest_dir) {
-        let _ = fs::remove_dir_all(&dest_dir);
-        return Ok(ImportResult {
-            success: false,
-            message: format!("Failed to copy skill files: {}", e),
-            blocked: false,
-        });
-    }
-
-    // Remove .git directory if copied
-    let git_dir = dest_dir.join(".git");
-    if git_dir.exists() {
-        let _ = fs::remove_dir_all(git_dir);
-    }
-
-    // Update SKILL.md
-    let skill_md_path = dest_dir.join("SKILL.md");
-    if skill_md_path.exists() {
-        match fs::read_to_string(&skill_md_path) {
-            Ok(content) => {
-                match update_frontmatter(
-                    &content,
-                    &request.new_skill_name,
-                    request.derived_from_url.as_deref(),
-                    &request.fork_type,
-                ) {
-                    Ok(new_content) => {
-                        if let Err(e) = fs::write(&skill_md_path, new_content) {
-                            // Cleanup on failure
-                            let _ = fs::remove_dir_all(&dest_dir);
-                            return Ok(ImportResult {
-                                success: false,
-                                message: format!("Failed to write updated SKILL.md: {}", e),
-                                blocked: false,
-                            });
-                        }
-                    },
-                    Err(e) => {
-                        // Warn but proceed? Or fail?
-                        // If we can't update metadata, it's not a proper fork.
-                        let _ = fs::remove_dir_all(&dest_dir);
-                        return Ok(ImportResult {
-                            success: false,
-                            message: format!("Failed to parse SKILL.md frontmatter: {}", e),
-                            blocked: false,
-                        });
-                    }
-                }
-            },
-            Err(e) => {
-                let _ = fs::remove_dir_all(&dest_dir);
-                return Ok(ImportResult {
-                    success: false,
-                    message: format!("Failed to read SKILL.md: {}", e),
-                    blocked: false,
-                });
-            }
-        }
-    } else {
-        // No SKILL.md - create a basic one
-        let content = format!(
-            "---\nname: {}\nderivedFrom: {}\nforkType: {}\n---\n\n# {}\n\nForked from {}",
-            request.new_skill_name,
-            request.derived_from_url.as_deref().unwrap_or(""),
-            request.fork_type,
-            request.new_skill_name,
-            request.original_skill_path
-        );
-        if let Err(e) = fs::write(&skill_md_path, content) {
-             let _ = fs::remove_dir_all(&dest_dir);
-             return Ok(ImportResult {
-                 success: false,
-                 message: format!("Failed to create SKILL.md: {}", e),
-                 blocked: false,
-             });
-        }
-    }
-
-    Ok(ImportResult {
-        success: true,
-        message: format!("Skill forked successfully to {}", dest_dir.display()),
-        blocked: false,
-    })
-}
+// #[tauri::command]
+// fn fork_skill(request: ForkSkillRequest) -> Result<ImportResult, String> { ... }
 
 #[tauri::command]
 fn uninstall_skill(request: UninstallRequest) -> Result<ImportResult, String> {
@@ -1400,6 +1285,87 @@ fn export_skill_package(
     Ok(ExportResult {
         success: true,
         message: "Skill package exported".to_string(),
+        file_path: Some(output_path.to_string_lossy().to_string()),
+    })
+}
+
+#[tauri::command]
+fn export_collection_package(
+    request: ExportCollectionPackageRequest
+) -> Result<ExportResult, String> {
+    let collection = crate::services::collection_service::CollectionService::get_collection(&request.collection_id)
+        .map_err(|e| e.to_string())?
+        .ok_or("Collection not found")?;
+
+    let items = crate::services::collection_service::CollectionService::get_collection_items(&request.collection_id)
+        .map_err(|e| e.to_string())?;
+
+    let output_dir = ensure_export_dir(request.output_dir)?;
+    let safe_name = sanitize_filename(&collection.name);
+    let timestamp = now_millis();
+    let output_path = output_dir.join(format!("{}-{}.skillcollection.zip", safe_name, timestamp));
+
+    let file = fs::File::create(&output_path).map_err(|e| e.to_string())?;
+    let mut zip = ZipWriter::new(file);
+    let options = FileOptions::<()>::default()
+        .compression_method(CompressionMethod::Deflated)
+        .unix_permissions(0o644);
+
+    // Write collection.json
+    let metadata = json!({
+        "formatVersion": "1.0",
+        "type": "collection",
+        "exportedAt": timestamp,
+        "collection": {
+            "id": collection.id,
+            "name": collection.name,
+            "description": collection.description,
+            "author": collection.author,
+            "items_count": items.len()
+        }
+    });
+    let metadata_json = serde_json::to_string_pretty(&metadata).map_err(|e| e.to_string())?;
+    zip.start_file("collection.json", options).map_err(|e| e.to_string())?;
+    zip.write_all(metadata_json.as_bytes()).map_err(|e| e.to_string())?;
+
+    // Write skills
+    for item in items {
+        if let Some(skill_path_str) = item.skill_path {
+            let skill_path = PathBuf::from(skill_path_str);
+            if skill_path.exists() {
+                let skill_dir_name = skill_path.file_name().unwrap_or_default().to_string_lossy();
+                let base_path_in_zip = format!("skills/{}", skill_dir_name);
+
+                for entry in WalkDir::new(&skill_path)
+                    .follow_links(false)
+                    .max_depth(10)
+                    .into_iter()
+                    .filter_map(|e| e.ok())
+                {
+                    if !entry.file_type().is_file() {
+                        continue;
+                    }
+                    if should_skip_package_entry(entry.path()) {
+                        continue;
+                    }
+
+                    let rel_path = entry.path().strip_prefix(&skill_path).map_err(|e| e.to_string())?;
+                    let rel_str = rel_path.to_string_lossy().replace('\\', "/");
+                    let zip_path = format!("{}/{}", base_path_in_zip, rel_str);
+
+                    zip.start_file(zip_path, options).map_err(|e| e.to_string())?;
+                    let mut f = fs::File::open(entry.path()).map_err(|e| e.to_string())?;
+                    std::io::copy(&mut f, &mut zip).map_err(|e| e.to_string())?;
+                }
+            }
+        }
+    }
+
+    zip.finish().map_err(|e| e.to_string())?;
+
+    Ok(ExportResult {
+        success: true,
+        message: "Collection package exported".to_string(),
         file_path: Some(output_path.to_string_lossy().to_string()),
     })
 }
@@ -1770,43 +1736,8 @@ pub fn run() {
             import_local_skill,
             calculate_skill_checksum,
             export_skill_package,
+            export_collection_package,
             import_skill_package,
-            fork_skill,
-            open_url,
-            open_path_in_file_manager,
-            read_skill,
-            commands::analyzer::analyze_skill_quality,
-            commands::analyzer::batch_analyze_skills,
-            commands::analyzer::batch_analyze_skills_detailed,
-            commands::security::scan_skill_security,
-            commands::security::batch_scan_skills,
-            commands::security::scan_skill_security_incremental,
-            commands::security::batch_scan_skills_incremental,
-            commands::security::get_security_config,
-            commands::security::update_security_config,
-            commands::security::get_scan_history,
-            commands::security::add_whitelist_entry,
-            commands::security::remove_whitelist_entry,
-            commands::security::get_whitelist,
-            commands::cache::get_cache_stats,
-            commands::cache::clear_cache,
-            commands::config::get_skill_config,
-            commands::config::set_skill_config,
-            commands::config::get_project_paths,
-            commands::config::save_project_paths,
-            // Publish commands
-            commands::publish::run_publish_preflight,
-            commands::publish::publish_skill,
-            // Repository management commands
-            commands::repository::get_repositories,
-            commands::repository::get_repository,
-            commands::repository::add_repository,
-            commands::repository::delete_repository,
-            commands::repository::toggle_repository_enabled,
-            commands::repository::get_featured_repositories,
-            commands::repository::refresh_featured_repositories,
-            commands::repository::get_unscanned_repositories,
-            commands::repository::get_repository_stats,
             // Fork/Remix commands
             commands::fork::fork_skill,
             commands::fork::get_skill_lineage,
