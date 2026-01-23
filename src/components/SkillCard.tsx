@@ -292,10 +292,10 @@ export const SkillCard = ({
                              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onConfigure?.(); }}>
                                 <Settings size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" onClick={handleShare} title="Share Text">
+                             <Button size="sm" variant="ghost" onClick={handleShare} title="Share Text" data-testid="share-button">
                                 <Link2 size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" onClick={handleShareImage} title="Share Image">
+                             <Button size="sm" variant="ghost" onClick={handleShareImage} title="Share Image" data-testid="share-image-button">
                                 <ImageIcon size={16} />
                              </Button>
                              <Button
@@ -398,6 +398,7 @@ export const SkillCard = ({
                                     className="rounded-full h-8 min-h-0 px-3 text-xs"
                                     onClick={handleShare}
                                     title="Share Text"
+                                    data-testid="share-button"
                                 >
                                     <Link2 size={14} />
                                 </Button>
@@ -407,6 +408,7 @@ export const SkillCard = ({
                                     className="rounded-full h-8 min-h-0 px-3 text-xs"
                                     onClick={handleShareImage}
                                     title="Share Image"
+                                    data-testid="share-image-button"
                                 >
                                     <ImageIcon size={14} />
                                 </Button>

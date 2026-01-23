@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
 import { waitForAppReady } from '../helpers/tauri-helpers';
 import { TEST_TIMEOUTS } from '../fixtures/test-data';
 
@@ -31,8 +31,8 @@ test.describe('Skill Sharing', () => {
         const shareBtn = skillCard.locator('[data-testid="share-button"]');
         await shareBtn.click();
 
-        // 验证对话框打开
-        const shareDialog = page.locator('[data-testid="share-dialog"]');
+        // 验证对话框打开 - 使用正确的 test-id
+        const shareDialog = page.locator('[data-testid="share-text-dialog"]');
         await expect(shareDialog).toBeVisible();
       } else {
         test.skip();
@@ -481,7 +481,7 @@ test.describe('Skill Sharing', () => {
         await closeBtn.click();
 
         // 验证对话框关闭
-        const shareDialog = page.locator('[data-testid="share-dialog"]');
+        const shareDialog = page.locator('[data-testid="share-text-dialog"]');
         await expect(shareDialog).not.toBeVisible();
       } else {
         test.skip();
