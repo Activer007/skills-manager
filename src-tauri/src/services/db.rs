@@ -52,7 +52,7 @@ fn get_db_path() -> Result<PathBuf> {
 }
 
 /// Current database schema version
-const CURRENT_DB_VERSION: i32 = 5;
+const CURRENT_DB_VERSION: i32 = 6;
 
 /// Run database migrations to ensure schema is up to date.
 /// This function creates a schema_migrations table to track version.
@@ -119,6 +119,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             migrate_v5(conn)?;
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (5, ?)",
+                [chrono::Utc::now().timestamp_millis()],
+            )?;
+        }
+
+        // Migration v6: Create creators and followed_creators tables
+        if current_version < 6 {
+            migrate_v6(conn)?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (6, ?)",
                 [chrono::Utc::now().timestamp_millis()],
             )?;
         }
@@ -347,5 +356,48 @@ fn migrate_v5(conn: &Connection) -> Result<()> {
     )?;
 
     log::info!("Created fork system tables");
+    Ok(())
+}
+
+/// Migration v6: Create creators and followed_creators tables
+fn migrate_v6(conn: &Connection) -> Result<()> {
+    // Create creators table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS creators (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            avatar_url TEXT,
+            bio TEXT,
+            github_url TEXT,
+            website_url TEXT,
+            skill_count INTEGER DEFAULT 0,
+            verified BOOLEAN DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+
+    // Create followed_creators table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS followed_creators (
+            creator_id TEXT PRIMARY KEY,
+            followed_at INTEGER NOT NULL,
+            FOREIGN KEY(creator_id) REFERENCES creators(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
+
+    // Create indexes
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_creators_name ON creators(name)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_followed_creators_date ON followed_creators(followed_at DESC)",
+        [],
+    )?;
+
+    log::info!("Created creator system tables");
     Ok(())
 }
