@@ -6,6 +6,7 @@ import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { TrustShield } from './TrustShield';
+import { CompatibilityBadge } from './CompatibilityBadge';
 import { ShareSheet } from './ShareSheet';
 import { cn } from '../utils/cn';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
@@ -185,6 +186,7 @@ export const SkillCard = ({
                                 <Plug size={10} /> MCP
                             </Badge>
                         )}
+                        <CompatibilityBadge compatibility={skill.compatibility} size="sm" />
                         {isInstalled && (
                             <Badge variant={isActive ? "success" : "neutral"} size="xs">
                                 {isActive ? "Active" : "Disabled"}
@@ -266,6 +268,7 @@ export const SkillCard = ({
                 <div className="flex justify-between items-start">
                     {renderIcon()}
                     <div className="flex flex-col items-end gap-1">
+                        <CompatibilityBadge compatibility={skill.compatibility} size="sm" />
                         {isMcp && (
                             <div className="flex items-center gap-1 text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full border border-blue-200 dark:border-blue-800">
                                 <Plug size={12} />

@@ -22,6 +22,16 @@ export interface MarketplaceSkill {
   // 安全评分（可选，来自缓存或预扫描）
   securityScore?: number;
   securityIssues?: SecurityIssue[];
+  compatibility?: CompatibilityInfo;
+}
+
+export type AgentType = 'claude-code' | 'cursor' | 'windsurf' | 'v0' | 'unknown';
+
+export interface CompatibilityInfo {
+  supportedAgents: AgentType[];
+  minVersion?: string;
+  os?: ('windows' | 'macos' | 'linux')[];
+  requiresMcp?: boolean;
 }
 
 export interface InstalledSkill extends Partial<MarketplaceSkill> {

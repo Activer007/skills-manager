@@ -24,6 +24,8 @@ import { cn } from '../utils/cn';
 import { toast } from '../store/useToastStore';
 import { InstallConfirmDialog, type InstallOptions } from '../components/InstallConfirmDialog';
 import { InstallProgress, type InstallStage } from '../components/InstallProgress';
+import { CompatibilityBadge } from '../components/CompatibilityBadge';
+import type { CompatibilityInfo } from '../types';
 
 /**
  * 分享预览页面
@@ -47,6 +49,7 @@ const SharePreview = () => {
     securityLevel?: 'safe' | 'risk' | 'blocked' | 'unknown';
     qualityScore?: number;
     createdAt: number;
+    compatibility?: CompatibilityInfo;
   } | null>(null);
 
   // 安装流程状态
@@ -82,6 +85,7 @@ const SharePreview = () => {
         securityLevel: parsed.data.securityLevel,
         qualityScore: parsed.data.qualityScore,
         createdAt: parsed.data.createdAt,
+        compatibility: parsed.data.metadata?.compatibility as CompatibilityInfo | undefined,
       });
       setStatus('ready');
     }
@@ -322,6 +326,9 @@ const SharePreview = () => {
                     <Badge variant="outline" size="sm">
                       v{skillData.version}
                     </Badge>
+                  )}
+                  {skillData?.compatibility && (
+                    <CompatibilityBadge compatibility={skillData.compatibility} size="sm" showLabel />
                   )}
                   <span className={cn('flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium', securityInfo.color)}>
                     {securityInfo.icon}
