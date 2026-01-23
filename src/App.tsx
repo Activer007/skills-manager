@@ -9,6 +9,7 @@ const Marketplace = lazy(() => import('./pages/Marketplace'));
 const Repositories = lazy(() => import('./pages/Repositories'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ScanHistory = lazy(() => import('./pages/ScanHistory'));
+const SharePreview = lazy(() => import('./pages/SharePreview'));
 
 const router = createBrowserRouter([
   {
@@ -60,6 +61,14 @@ const router = createBrowserRouter([
         ),
       },
     ],
+  },
+  {
+    path: 'share/:shareId',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <SharePreview />
+      </Suspense>
+    ),
   },
   {
     path: '*',

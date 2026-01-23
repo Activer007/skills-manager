@@ -29,6 +29,16 @@ Skill Manager 是一个用于管理 Claude Code Skills 的桌面应用程序，�
 - 🛡️ **容错能力增强**: 支持无效 frontmatter 的 Skill
 - 🎨 **UI/UX 持续优化**: 设计系统统一，组件库完善
 
+### 最新特性 (v2.6.0) - Share-First 生态
+- 🚀 **统一分享入口 (ShareSheet)**：
+  - 整合所有分享功能为单一入口
+  - 支持 4 种分享方式：链接、文本、图片、包导出
+  - `useShare` Hook 统一管理分享逻辑
+- 🔗 **分享链接系统**：
+  - 生成/解析分享链接
+  - 分享预览页面 (`/share/:shareId`)
+  - 安全等级显示和一键安装
+
 ## 开发命令
 
 ### 前端开发
@@ -73,11 +83,18 @@ cargo clippy              # Rust lint 检查
   - `src/pages/ScanHistory.tsx` - 扫描历史记录，支持搜索、筛选和导出
   - `src/pages/Dashboard.tsx` - 仪表板概览
 - **分享功能组件**：
-  - `src/components/ShareTextDialog.tsx` - 文本分享对话框
-  - `src/components/ShareImageDialog.tsx` - 图片分享对话框，支持主题切换和预览
+  - `src/components/ShareSheet/` - 统一分享入口组件 (v2.6.0)
+    - `ShareSheet.tsx` - 主组件，整合 4 种分享方式
+    - `ShareTextPanel.tsx` - 文本分享面板
+    - `ShareImagePanel.tsx` - 图片分享面板
+    - `SharePackagePanel.tsx` - 包导出面板
+  - `src/components/ShareTextDialog.tsx` - 文本分享对话框（旧版）
+  - `src/components/ShareImageDialog.tsx` - 图片分享对话框（旧版）
   - `src/utils/shareTextGenerator.ts` - 分享文本生成器（支持多平台）
   - `src/utils/shareCardGenerator.ts` - 分享卡片生成器（生成 PNG 图片）
-  - `src/utils/shareLink.ts` - 分享链接工具
+  - `src/utils/shareLink.ts` - 分享链接工具（生成、解析、编码）
+  - `src/hooks/useShare.ts` - 统一分享逻辑 Hook (v2.6.0)
+  - `src/pages/SharePreview.tsx` - 分享预览页面 (v2.6.0)
 - **分享功能类型**：`src/types/share.ts` - 包含所有分享相关的 TypeScript 类型定义
 
 ### 后端架构（Tauri + Rust）

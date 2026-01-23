@@ -130,3 +130,191 @@ export interface ImageImportState {
   skillInfo?: SkillImportInfo;
   previewUrl?: string;
 }
+
+// ============================================
+// ShareSheet 相关类型定义 (T3-1)
+// ============================================
+
+/**
+ * 分享方式
+ */
+export type ShareMethod = 'link' | 'text' | 'image' | 'package';
+
+/**
+ * 分享面板类型
+ */
+export type SharePanelType = ShareMethod;
+
+/**
+ * 包导出结果
+ */
+export interface ExportResult {
+  success: boolean;
+  filePath?: string;
+  fileName?: string;
+  fileSize?: number;
+  error?: string;
+}
+
+/**
+ * 包导出状态
+ */
+export type ExportStatus = 'idle' | 'exporting' | 'success' | 'error';
+
+/**
+ * useShare Hook 配置选项
+ */
+export interface UseShareOptions {
+  /** 是否在挂载时自动检测修改状态 */
+  autoCheckModified?: boolean;
+  /** 默认分享主题 */
+  defaultTheme?: ShareCardTheme;
+  /** 默认分享平台 */
+  defaultPlatform?: SharePlatform;
+}
+
+/**
+ * useShare Hook 返回值
+ */
+export interface UseShareReturn {
+  // 状态
+  shareLink: string | undefined;
+  isModified: boolean | null;
+  isCheckingModified: boolean;
+
+  // 复制链接
+  copyLink: () => Promise<boolean>;
+  linkCopied: boolean;
+
+  // 文本分享
+  generateText: (platform: SharePlatform) => string;
+  copyText: (text: string) => Promise<boolean>;
+  textCopied: boolean;
+  shareToSocial: (platform: 'twitter' | 'weibo') => void;
+
+  // 图片分享
+  generateCard: (theme: ShareCardTheme) => Promise<Blob>;
+  cardPreviewUrl: string | null;
+  isGeneratingCard: boolean;
+  downloadCard: (filename?: string) => Promise<void>;
+
+  // 包导出
+  exportPackage: (outputDir?: string) => Promise<ExportResult>;
+  exportStatus: ExportStatus;
+  exportResult: ExportResult | null;
+
+  // 工具方法
+  reset: () => void;
+  cleanup: () => void;
+}
+
+/**
+ * ShareSheet 组件 Props
+ */
+export interface ShareSheetProps {
+  /** 要分享的 Skill */
+  skill: import('./index').InstalledSkill;
+  /** 是否打开 */
+  isOpen: boolean;
+  /** 关闭回调 */
+  onClose: () => void;
+  /** 初始面板类型 */
+  initialPanel?: SharePanelType;
+}
+
+/**
+ * 分享面板通用 Props
+ */
+export interface SharePanelProps {
+  /** 要分享的 Skill */
+  skill: import('./index').InstalledSkill;
+  /** 分享链接 */
+  shareLink: string | undefined;
+  /** 是否已修改 */
+  isModified: boolean | null;
+  /** 语言 */
+  locale: string;
+}
+
+// ============================================
+// ShareLink 相关类型定义 (T3-2)
+// ============================================
+
+/**
+ * 分享链接类型
+ */
+export type ShareLinkType = 'github' | 'local' | 'package' | 'deep';
+
+/**
+ * 分享链接可见性
+ */
+export type ShareLinkVisibility = 'public' | 'private' | 'unlisted';
+
+/**
+ * 分享链接数据结构
+ */
+export interface ShareLink {
+  /** 唯一标识符 */
+  id: string;
+  /** 链接类型 */
+  type: ShareLinkType;
+  /** 关联的对象 ID (Skill ID) */
+  objectId: string;
+  /** Skill 名称 */
+  name: string;
+  /** Skill 描述 */
+  description: string;
+  /** 作者 */
+  author?: string;
+  /** 版本 */
+  version?: string;
+  /** 源 URL (GitHub 链接等) */
+  sourceUrl?: string;
+  /** 安装 URL */
+  installUrl?: string;
+  /** 安全等级 */
+  securityLevel?: 'safe' | 'risk' | 'blocked' | 'unknown';
+  /** 质量评分 */
+  qualityScore?: number;
+  /** 可见性 */
+  visibility: ShareLinkVisibility;
+  /** 创建时间 */
+  createdAt: number;
+  /** 过期时间 (可选) */
+  expiresAt?: number;
+  /** 额外元数据 */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * 解析后的分享链接信息
+ */
+export interface ParsedShareLink {
+  /** 是否有效 */
+  valid: boolean;
+  /** 解析的数据 */
+  data?: ShareLink;
+  /** 错误信息 */
+  error?: string;
+  /** 原始链接 */
+  rawLink: string;
+}
+
+/**
+ * 分享预览页面状态
+ */
+export type SharePreviewStatus =
+  | 'loading'      // 加载中
+  | 'ready'        // 就绪
+  | 'installing'   // 安装中
+  | 'installed'    // 已安装
+  | 'error'        // 错误
+  | 'expired';     // 已过期
+
+/**
+ * 分享预览页面 Props
+ */
+export interface SharePreviewProps {
+  /** 分享链接 ID */
+  shareId: string;
+}
