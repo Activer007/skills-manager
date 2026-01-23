@@ -1806,7 +1806,12 @@ pub fn run() {
             commands::repository::get_featured_repositories,
             commands::repository::refresh_featured_repositories,
             commands::repository::get_unscanned_repositories,
-            commands::repository::get_repository_stats
+            commands::repository::get_repository_stats,
+            // Fork/Remix commands
+            commands::fork::fork_skill,
+            commands::fork::get_skill_lineage,
+            commands::fork::get_fork_info,
+            commands::fork::get_fork_stats
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
