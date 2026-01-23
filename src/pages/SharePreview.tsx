@@ -22,6 +22,10 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { cn } from '../utils/cn';
 import { toast } from '../store/useToastStore';
+import { InstallConfirmDialog, type InstallOptions } from '../components/InstallConfirmDialog';
+import { InstallProgress, type InstallStage } from '../components/InstallProgress';
+import { CompatibilityBadge } from '../components/CompatibilityBadge';
+import type { CompatibilityInfo } from '../types';
 
 /**
  * 分享预览页面
@@ -45,7 +49,14 @@ const SharePreview = () => {
     securityLevel?: 'safe' | 'risk' | 'blocked' | 'unknown';
     qualityScore?: number;
     createdAt: number;
+    compatibility?: CompatibilityInfo;
   } | null>(null);
+
+  // 安装流程状态
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [installStage, setInstallStage] = useState<InstallStage>('preparing');
+  const [installProgress, setInstallProgress] = useState(0);
+  const [installError, setInstallError] = useState<string | undefined>();
 
   // 解析分享链接
   useEffect(() => {
@@ -74,44 +85,84 @@ const SharePreview = () => {
         securityLevel: parsed.data.securityLevel,
         qualityScore: parsed.data.qualityScore,
         createdAt: parsed.data.createdAt,
+        compatibility: parsed.data.metadata?.compatibility as CompatibilityInfo | undefined,
       });
       setStatus('ready');
     }
   }, [shareId, locale]);
 
-  // 处理安装
-  const handleInstall = async () => {
+  // 点击安装按钮
+  const handleInstallClick = () => {
     if (!skillData?.installUrl && !skillData?.sourceUrl) {
       toast.error(locale === 'zh' ? '无可用的安装链接' : 'No install URL available');
       return;
     }
+    setShowConfirm(true);
+  };
 
+  // 确认安装
+  const handleConfirmInstall = async (options: InstallOptions) => {
+    setShowConfirm(false);
     setStatus('installing');
+    setInstallStage('preparing');
+    setInstallProgress(0);
+    setInstallError(undefined);
 
     try {
-      const installUrl = skillData.installUrl || skillData.sourceUrl;
+      // 模拟进度 - 准备阶段
+      setInstallStage('downloading');
+      for (let i = 0; i <= 30; i += 5) {
+        setInstallProgress(i);
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      const installUrl = skillData?.installUrl || skillData?.sourceUrl;
+      if (!installUrl) throw new Error('No install URL');
+
+      // 模拟进度 - 扫描阶段
+      setInstallStage('scanning');
+      for (let i = 30; i <= 60; i += 5) {
+        setInstallProgress(i);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      // 模拟进度 - 安装阶段
+      setInstallStage('installing');
+      setInstallProgress(70);
 
       // 调用后端导入命令
+      // 注意：根据 T1-5 和 lib.rs，import_github_skill 参数格式需为 request 对象
       const result = await invoke<{ success: boolean; message?: string }>('import_github_skill', {
-        skill: {
-          name: skillData.name,
-          description: skillData.description,
-          githubUrl: installUrl,
-          author: skillData.author,
-        },
+        request: {
+          repoUrl: installUrl,
+          installPath: options.projectPath, // 如果选择了项目路径
+          skipSecurityCheck: false // 强制安全检查
+        }
       });
 
       if (result.success) {
+        setInstallProgress(100);
+        setInstallStage('completed');
         setStatus('installed');
         toast.success(locale === 'zh' ? '安装成功！' : 'Installation successful!');
       } else {
         throw new Error(result.message || 'Installation failed');
       }
     } catch (err) {
-      setStatus('ready');
       const message = err instanceof Error ? err.message : String(err);
+      setInstallError(message);
+      setInstallStage('error');
+      // 保持 status 为 installing 以显示错误页面，或者可以处理为 error 状态
       toast.error(`${locale === 'zh' ? '安装失败' : 'Installation failed'}: ${message}`);
     }
+  };
+
+  // 取消/重试安装
+  const handleCancelInstall = () => {
+    setStatus('ready');
+    setInstallStage('preparing');
+    setInstallProgress(0);
+    setInstallError(undefined);
   };
 
   // 打开源链接
@@ -202,6 +253,22 @@ const SharePreview = () => {
     );
   }
 
+  // 安装中状态（使用 InstallProgress）
+  if (status === 'installing') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-base-200 p-4">
+        <InstallProgress
+          stage={installStage}
+          progress={installProgress}
+          error={installError}
+          onCancel={handleCancelInstall}
+          onDone={handleBack}
+          skillName={skillData?.name || 'Skill'}
+        />
+      </div>
+    );
+  }
+
   // 已安装状态
   if (status === 'installed') {
     return (
@@ -259,6 +326,9 @@ const SharePreview = () => {
                     <Badge variant="outline" size="sm">
                       v{skillData.version}
                     </Badge>
+                  )}
+                  {skillData?.compatibility && (
+                    <CompatibilityBadge compatibility={skillData.compatibility} size="sm" showLabel />
                   )}
                   <span className={cn('flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium', securityInfo.color)}>
                     {securityInfo.icon}
@@ -338,6 +408,7 @@ const SharePreview = () => {
               </div>
             )}
 
+            {/* 已阻止提示 */}
             {skillData?.securityLevel === 'blocked' && (
               <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
                 <Shield className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -360,20 +431,11 @@ const SharePreview = () => {
             <Button
               variant="primary"
               className="flex-1"
-              onClick={handleInstall}
+              onClick={handleInstallClick}
               disabled={status === 'installing' || skillData?.securityLevel === 'blocked'}
             >
-              {status === 'installing' ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {locale === 'zh' ? '安装中...' : 'Installing...'}
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4 mr-2" />
-                  {locale === 'zh' ? '安装 Skill' : 'Install Skill'}
-                </>
-              )}
+              <Download className="w-4 h-4 mr-2" />
+              {locale === 'zh' ? '安装 Skill' : 'Install Skill'}
             </Button>
             {skillData?.sourceUrl && (
               <Button variant="outline" onClick={handleOpenSource}>
@@ -392,6 +454,21 @@ const SharePreview = () => {
           </div>
         </div>
       </div>
+
+      {/* 安装确认对话框 */}
+      {skillData && (
+        <InstallConfirmDialog
+          isOpen={showConfirm}
+          onClose={() => setShowConfirm(false)}
+          onConfirm={handleConfirmInstall}
+          skill={{
+            name: skillData.name,
+            description: skillData.description,
+            securityLevel: skillData.securityLevel,
+            version: skillData.version,
+          }}
+        />
+      )}
     </div>
   );
 };
