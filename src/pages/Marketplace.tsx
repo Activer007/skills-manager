@@ -25,6 +25,8 @@ import { SortDropdown, type SortOption } from '../components/SortDropdown';
 import { FilterPanel, type SecurityFilter, type CompatibilityFilter } from '../components/FilterPanel';
 import { Filter as FilterIcon } from 'lucide-react';
 
+import { scoreToTrustLevel } from '../utils/securityHelpers';
+
 // 常量定义
 const TOP_RATED_THRESHOLD = 50; // Stars threshold for top-rated filter
 const GUTTER_SIZE = 24;
@@ -257,8 +259,8 @@ const Marketplace = () => {
     }
   };
 
-  const filteredSkills = useMemo(() => {
-    return marketplaceSkills.filter(skill => {
+  const filteredAndSortedSkills = useMemo(() => {
+    const result = marketplaceSkills.filter(skill => {
         const name = skill.name ?? '';
         const description = skill.description ?? '';
         const author = skill.author ?? '';
@@ -268,17 +270,58 @@ const Marketplace = () => {
 
         if (!matchesSearch) return false;
 
-        if (filter === 'top-rated') return skill.stars > TOP_RATED_THRESHOLD;
-
-        if (filter !== 'all') {
+        // 1. Primary Filter (Category/Top Rated)
+        if (filter === 'top-rated') {
+            if (skill.stars <= TOP_RATED_THRESHOLD) return false;
+        } else if (filter !== 'all') {
             const keywords = CATEGORY_KEYWORDS[filter as keyof typeof CATEGORY_KEYWORDS];
             const textToCheck = `${name} ${description} ${skill.tags?.join(' ') || ''}`.toLowerCase();
-            return keywords.some(k => textToCheck.includes(k));
+            if (!keywords.some(k => textToCheck.includes(k))) return false;
+        }
+
+        // 2. Security Filter
+        if (securityFilter !== 'all') {
+            const trustLevel = scoreToTrustLevel(skill.securityScore);
+            if (securityFilter === 'safe') {
+                if (trustLevel !== 'safe' && trustLevel !== 'verified') return false;
+            } else if (securityFilter === 'risk') {
+                if (trustLevel !== 'warning' && trustLevel !== 'critical') return false;
+            } else if (securityFilter === 'unknown') {
+                if (trustLevel !== 'unknown') return false;
+            }
+        }
+
+        // 3. Compatibility Filter
+        if (compatibilityFilter !== 'all') {
+            // If compatibility info is missing, assume unknown/incompatible for now, or check generic tags
+            // For now, check explicit compatibility field
+            const supported = skill.compatibility?.supportedAgents?.includes(compatibilityFilter);
+
+            // Fallback: Check tags for the agent name
+            const hasTag = skill.tags?.some(t => t.toLowerCase() === compatibilityFilter.toLowerCase());
+
+            if (!supported && !hasTag) return false;
         }
 
         return true;
     });
-  }, [marketplaceSkills, searchTerm, filter]);
+
+    // 4. Sorting
+    return result.sort((a, b) => {
+        switch (sortOption) {
+            case 'stars':
+                return b.stars - a.stars;
+            case 'updated':
+                return (b.updatedAt || 0) - (a.updatedAt || 0);
+            case 'name':
+                return a.name.localeCompare(b.name);
+            case 'name-desc':
+                return b.name.localeCompare(a.name);
+            default:
+                return 0;
+        }
+    });
+  }, [marketplaceSkills, searchTerm, filter, securityFilter, compatibilityFilter, sortOption]);
 
   // State for scroll indicators
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -555,7 +598,7 @@ const Marketplace = () => {
               </Button>
             </div>
           </div>
-        ) : filteredSkills.length === 0 ? (
+        ) : filteredAndSortedSkills.length === 0 ? (
           // Empty State Component - Using new EmptyState
           <div className="flex h-full items-center justify-center">
             <EmptyState
@@ -584,7 +627,7 @@ const Marketplace = () => {
 
                   const columnCount = Math.floor(resolvedWidth / (280 + GUTTER_SIZE)) || 1;
                   const columnWidth = resolvedWidth / columnCount;
-                  const rowCount = Math.ceil(filteredSkills.length / columnCount);
+                  const rowCount = Math.ceil(filteredAndSortedSkills.length / columnCount);
 
                   return (
                       <Grid
@@ -596,7 +639,7 @@ const Marketplace = () => {
                           width={resolvedWidth}
                           itemData={{
                               ...baseItemData,
-                              skills: filteredSkills,
+                              skills: filteredAndSortedSkills,
                               columnCount
                           }}
                       >
