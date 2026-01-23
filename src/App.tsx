@@ -9,6 +9,7 @@ const Marketplace = lazy(() => import('./pages/Marketplace'));
 const Repositories = lazy(() => import('./pages/Repositories'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Collections = lazy(() => import('./pages/Collections'));
+const CollectionDetail = lazy(() => import('./pages/CollectionDetail'));
 const ScanHistory = lazy(() => import('./pages/ScanHistory'));
 const SharePreview = lazy(() => import('./pages/SharePreview'));
 
@@ -34,6 +35,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <Collections />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'collections/:id',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <CollectionDetail />
           </Suspense>
         ),
       },

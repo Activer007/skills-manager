@@ -1,92 +1,115 @@
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, CardContent } from './ui/Card';
-import { Button } from './ui/Button';
-import { Badge } from './ui/Badge';
-import { Folder, Trash2, Edit2, Clock } from 'lucide-react';
+import { Folder, MoreVertical, Edit, Trash2, Calendar, Layers } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { Collection } from '../types/collection';
 import { cn } from '../utils/cn';
 
 interface CollectionCardProps {
   collection: Collection;
-  onClick?: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
+  onEdit?: (collection: Collection) => void;
+  onDelete?: (collection: Collection) => void;
 }
 
-export const CollectionCard = ({
+export const CollectionCard: React.FC<CollectionCardProps> = ({
   collection,
-  onClick,
   onEdit,
-  onDelete
-}: CollectionCardProps) => {
-  const { i18n } = useTranslation();
+  onDelete,
+}) => {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const isZh = i18n.language === 'zh';
+
+  const handleClick = () => {
+    navigate(`/collections/${collection.id}`);
+  };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', {
+    return new Date(timestamp).toLocaleDateString(isZh ? 'zh-CN' : 'en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
   return (
-    <Card
-      className="group cursor-pointer hover:-translate-y-1 transition-transform duration-300 h-full flex flex-col"
-      onClick={onClick}
+    <div
+      className="group relative bg-base-100 border border-base-200 rounded-xl p-4 hover:shadow-md hover:border-primary/50 transition-all cursor-pointer"
+      onClick={handleClick}
     >
-      <CardContent className="flex-1 flex flex-col p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div
-            className={cn(
-              "w-12 h-12 rounded-lg flex items-center justify-center text-xl shadow-sm",
-              !collection.color && "bg-primary/10 text-primary"
-            )}
-            style={collection.color ? { backgroundColor: `${collection.color}20`, color: collection.color } : undefined}
+      {/* 图标和标题 */}
+      <div className="flex items-start gap-3 mb-3">
+        <div className={cn(
+          "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+          collection.color ? `bg-${collection.color}-100 text-${collection.color}-600` : "bg-primary/10 text-primary"
+        )}>
+          {collection.icon ? (
+            <span className="text-xl">{collection.icon}</span>
+          ) : (
+            <Folder className="w-5 h-5" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-base truncate pr-6">{collection.name}</h3>
+          <p className="text-xs text-base-content/60 line-clamp-1">
+            {collection.description || (isZh ? '暂无描述' : 'No description')}
+          </p>
+        </div>
+      </div>
+
+      {/* 统计信息 */}
+      <div className="flex items-center gap-4 text-xs text-base-content/50 mb-4">
+        <div className="flex items-center gap-1">
+          <Layers className="w-3 h-3" />
+          <span>{collection.items_count || 0} {isZh ? '个 Skill' : 'Skills'}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Calendar className="w-3 h-3" />
+          <span>{formatDate(collection.updated_at)}</span>
+        </div>
+      </div>
+
+      {/* 操作菜单 */}
+      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="dropdown dropdown-end">
+          <button
+            tabIndex={0}
+            className="btn btn-ghost btn-xs btn-square"
+            onClick={(e) => e.stopPropagation()}
           >
-            {collection.icon ? (
-              <span>{collection.icon}</span>
-            ) : (
-              <Folder size={24} />
-            )}
-          </div>
-          <Badge variant="neutral" size="sm">
-            {collection.itemsCount || 0} items
-          </Badge>
+            <MoreVertical className="w-4 h-4" />
+          </button>
+          <ul
+            tabIndex={0}
+            className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-32 border border-base-200"
+          >
+            <li>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.(collection);
+                }}
+                className="flex items-center gap-2"
+              >
+                <Edit className="w-3 h-3" />
+                {isZh ? '编辑' : 'Edit'}
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(collection);
+                }}
+                className="flex items-center gap-2 text-error"
+              >
+                <Trash2 className="w-3 h-3" />
+                {isZh ? '删除' : 'Delete'}
+              </button>
+            </li>
+          </ul>
         </div>
-
-        <h3 className="font-bold text-lg mb-2 text-slate-900 dark:text-slate-100 line-clamp-1">
-          {collection.name}
-        </h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 flex-1">
-          {collection.description || (i18n.language === 'zh' ? '暂无描述' : 'No description')}
-        </p>
-
-        <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100 dark:border-base-200">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400">
-            <Clock size={12} />
-            <span>{formatDate(collection.updatedAt)}</span>
-          </div>
-
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0"
-              onClick={(e) => { e.stopPropagation(); onEdit?.(); }}
-            >
-              <Edit2 size={14} />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 text-error hover:bg-error/10"
-              onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
-            >
-              <Trash2 size={14} />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
