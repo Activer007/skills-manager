@@ -128,6 +128,49 @@ const resources = {
       error: "Error",
       success: "Success",
       warning: "Warning",
+
+      // Repositories
+      repositories: {
+        title: "Repositories",
+        subtitle: "Manage external skill repositories (Total: {{count}})",
+        add: "Add Repository",
+        myRepositories: "My Repositories",
+        featured: {
+          title: "Featured Repositories",
+          refresh: "Refresh List"
+        },
+        featuredBadge: "Featured",
+        addedAt: "Added",
+        lastScanned: "Scanned",
+        neverScanned: "Never scanned",
+        scan: "Scan",
+        delete: "Delete",
+        addFirst: "Add your first repository",
+        empty: "No repositories found. Add one to discover skills.",
+        deleteConfirm: "Are you sure you want to delete {{name}}?",
+        added: "Added",
+        
+        addDialog: {
+          title: "Add Repository",
+          url: "Repository URL",
+          urlHelp: "Support GitHub URL (e.g. https://github.com/owner/repo)",
+          name: "Name (Optional)",
+          namePlaceholder: "My Skills Repo",
+          scanSubdirs: "Scan subdirectories (Depth 1)",
+          scanSubdirsHelp: "Enable this if skills are located in subfolders"
+        },
+
+        toast: {
+          added: "Repository added successfully",
+          error: "Failed to add repository",
+          deleted: "Repository deleted",
+          deleteError: "Failed to delete repository",
+          foundSkills: "Scan complete. Skills updated.",
+          scanError: "Scan failed",
+          enabled: "Repository enabled",
+          disabled: "Repository disabled"
+        }
+      }
     }
   },
   zh: {
@@ -255,6 +298,49 @@ const resources = {
       error: "错误",
       success: "成功",
       warning: "警告",
+
+      // 仓库管理
+      repositories: {
+        title: "仓库管理",
+        subtitle: "管理外部 Skill 仓库 (共 {{count}} 个)",
+        add: "添加仓库",
+        myRepositories: "我的仓库",
+        featured: {
+          title: "精选仓库",
+          refresh: "刷新列表"
+        },
+        featuredBadge: "精选",
+        addedAt: "添加于",
+        lastScanned: "上次扫描",
+        neverScanned: "从未扫描",
+        scan: "扫描",
+        delete: "删除",
+        addFirst: "添加第一个仓库",
+        empty: "暂无仓库，添加仓库以发现更多 Skills",
+        deleteConfirm: "确定要删除 {{name}} 吗？",
+        added: "已添加",
+
+        addDialog: {
+          title: "添加仓库",
+          url: "仓库地址",
+          urlHelp: "支持 GitHub 链接 (如 https://github.com/owner/repo)",
+          name: "名称 (可选)",
+          namePlaceholder: "我的 Skills 仓库",
+          scanSubdirs: "扫描子目录 (深度 1)",
+          scanSubdirsHelp: "如果 Skills 位于子文件夹中，请启用此选项"
+        },
+
+        toast: {
+          added: "仓库添加成功",
+          error: "添加仓库失败",
+          deleted: "仓库已删除",
+          deleteError: "删除仓库失败",
+          foundSkills: "扫描完成，Skills 已更新",
+          scanError: "扫描失败",
+          enabled: "仓库已启用",
+          disabled: "仓库已禁用"
+        }
+      }
     }
   }
 };
