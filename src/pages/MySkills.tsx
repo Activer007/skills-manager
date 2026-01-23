@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill, useImportPackageSkill, useForkSkill } from '../hooks/useSkills';
 import { useSkillConfig } from '../hooks/useSkillConfig';
 import { useBatchSkillQuality } from '../hooks/useSkillQuality';
-import { Github, HardDrive, Plus, FolderOpen, FileText, Settings, History, Package } from 'lucide-react';
+import { Github, HardDrive, Plus, FolderOpen, FileText, Settings, History, Package, GitFork } from 'lucide-react';
 import type { InstalledSkill, MarketplaceSkill } from '../types';
 import { getLocalizedDescription } from '../utils/i18n';
 import { invoke } from '@tauri-apps/api/core';
@@ -450,8 +450,8 @@ const MySkills = () => {
     if (!skillToFork) return;
 
     try {
-      // Determine derivedFrom URL (priority: githubUrl > sourceUrl > localPath)
-      const derivedFrom = skillToFork.githubUrl || skillToFork.sourceUrl || skillToFork.localPath;
+      // Determine derivedFrom URL (priority: githubUrl > localPath)
+      const derivedFrom = skillToFork.githubUrl || skillToFork.localPath;
 
       const result: ImportResult = await forkSkillMutation.mutateAsync({
         originalSkillPath: skillToFork.localPath,
@@ -723,6 +723,33 @@ const MySkills = () => {
                             report={securityReport}
                             loading={isScanningSecurity}
                         />
+
+                        {/* Lineage Info */}
+                        {selectedSkill.derivedFrom && (
+                          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-100 dark:border-amber-900/50">
+                            <div className="flex items-start gap-3">
+                              <div className="mt-1 p-1.5 bg-amber-100 dark:bg-amber-900/40 rounded-lg text-amber-600 dark:text-amber-400">
+                                <GitFork size={16} />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-amber-900 dark:text-amber-100 text-sm">
+                                  {selectedSkill.forkType === 'remix' ? (i18n.language === 'zh' ? 'Remix 版本' : 'Remix Version') : (i18n.language === 'zh' ? 'Fork 版本' : 'Fork Version')}
+                                </h4>
+                                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                  {i18n.language === 'zh' ? '此 Skill 衍生自：' : 'This skill is derived from: '}
+                                  <a
+                                    href={selectedSkill.derivedFrom}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-medium underline hover:text-amber-900 dark:hover:text-amber-100 transition-colors break-all"
+                                  >
+                                    {selectedSkill.derivedFrom}
+                                  </a>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="prose prose-sm max-w-none bg-white dark:bg-base-100 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-base-200">
                           <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed font-mono bg-transparent">

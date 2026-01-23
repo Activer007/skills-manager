@@ -8,7 +8,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { CreatorProfileCard } from '../components/CreatorProfileCard';
 import { EditCreatorModal } from '../components/EditCreatorModal';
 import { useCreator, useFollowCreator, useUnfollowCreator, useUpdateCreator } from '../hooks/useCreator';
-import { toast } from '../store/useToastStore';
+import { CreatorSkillsList } from '../components/CreatorSkillsList';
 
 export const CreatorProfile = () => {
   const { id } = useParams<{ id: string }>();
@@ -91,10 +91,7 @@ export const CreatorProfile = () => {
 
       <div className="mt-8">
         <h3 className="text-xl font-bold mb-4 px-1">{isZh ? '作品列表' : 'Skills'}</h3>
-        <div className="p-8 text-center text-base-content/50 bg-base-100 rounded-xl border border-base-200 border-dashed">
-          {isZh ? '该创作者暂无公开作品' : 'No public skills yet'}
-          {/* TODO: Add Skills List here */}
-        </div>
+        <CreatorSkillsList creatorName={creator.name} />
       </div>
 
       <EditCreatorModal

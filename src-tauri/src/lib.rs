@@ -40,6 +40,7 @@ pub struct SkillInfo {
     pub tags: Vec<String>,
     #[serde(rename = "configSchema")]
     pub config_schema: Option<serde_json::Value>,
+    pub author: Option<String>,
     #[serde(rename = "derivedFrom")]
     pub derived_from: Option<String>,
     #[serde(rename = "forkType")]
@@ -550,6 +551,7 @@ fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
 
     let tags = doc.metadata.tags.unwrap_or_default();
     let config_schema = doc.metadata.config_schema;
+    let author = doc.metadata.author;
     let derived_from = doc.metadata.derived_from;
     let fork_type = doc.metadata.fork_type;
 
@@ -564,6 +566,7 @@ fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
         is_mcp,
         tags,
         config_schema,
+        author,
         derived_from,
         fork_type,
     })
