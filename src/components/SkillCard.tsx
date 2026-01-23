@@ -10,7 +10,7 @@ import { CompatibilityBadge } from './CompatibilityBadge';
 import { ShareSheet } from './ShareSheet';
 import { cn } from '../utils/cn';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
-import { Star, GitBranch, Trash2, Settings, Plug, Share2, User } from 'lucide-react';
+import { Star, GitBranch, Trash2, Settings, Plug, Share2, User, GitFork } from 'lucide-react';
 
 // 常量定义
 const ICON_SIZE = {
@@ -68,6 +68,7 @@ interface SkillCardProps {
     onConfigure?: () => void;
     onViewDetails?: () => void;
     onShare?: () => void;
+    onFork?: () => void;
 }
 
 export const SkillCard = ({
@@ -80,7 +81,8 @@ export const SkillCard = ({
     onToggle,
     onConfigure,
     onViewDetails,
-    onShare
+    onShare,
+    onFork
 }: SkillCardProps) => {
     const { i18n } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
@@ -95,6 +97,11 @@ export const SkillCard = ({
         } else {
             setShowShareSheet(true);
         }
+    };
+
+    const handleFork = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onFork?.();
     };
 
     const handleInstall = async (e: React.MouseEvent) => {
@@ -248,6 +255,9 @@ export const SkillCard = ({
                              <Button size="sm" variant="ghost" onClick={handleShare} title={isZh ? '分享' : 'Share'} data-testid="share-button">
                                 <Share2 size={16} />
                              </Button>
+                             <Button size="sm" variant="ghost" onClick={handleFork} title={isZh ? 'Fork/Remix' : 'Fork/Remix'} data-testid="fork-button">
+                                <GitFork size={16} />
+                             </Button>
                              <Button size="sm" variant="ghost" className="text-error border border-error hover:bg-error/10" onClick={(e) => { e.stopPropagation(); onUninstall?.(); }} data-testid="uninstall-button">
                                 <Trash2 size={16} />
                              </Button>
@@ -326,16 +336,28 @@ export const SkillCard = ({
                     </div>
                     <div className="flex items-center gap-2">
                         {isInstalled && (
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                className="rounded-full h-8 min-h-0 px-3 text-xs"
-                                onClick={handleShare}
-                                title={isZh ? '分享' : 'Share'}
-                                data-testid="share-button"
-                            >
-                                <Share2 size={14} />
-                            </Button>
+                            <>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="rounded-full h-8 min-h-0 px-3 text-xs"
+                                    onClick={handleFork}
+                                    title={isZh ? 'Fork/Remix' : 'Fork/Remix'}
+                                    data-testid="fork-button"
+                                >
+                                    <GitFork size={14} />
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="rounded-full h-8 min-h-0 px-3 text-xs"
+                                    onClick={handleShare}
+                                    title={isZh ? '分享' : 'Share'}
+                                    data-testid="share-button"
+                                >
+                                    <Share2 size={14} />
+                                </Button>
+                            </>
                         )}
                         {isInstalled ? (
                             onUninstall ? (

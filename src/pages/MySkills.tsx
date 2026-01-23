@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill, useImportPackageSkill } from '../hooks/useSkills';
+import { useSkills, useUninstallSkill, useImportSkill, useImportLocalSkill, useImportPackageSkill, useForkSkill } from '../hooks/useSkills';
 import { useSkillConfig } from '../hooks/useSkillConfig';
 import { useBatchSkillQuality } from '../hooks/useSkillQuality';
 import { Github, HardDrive, Plus, FolderOpen, FileText, Settings, History, Package } from 'lucide-react';
@@ -27,6 +27,7 @@ import type { SkillScore } from '../types/scorer';
 import type { SecurityReport } from '../types/security';
 import { inferSchemaFromValues } from '../utils/schemaInference';
 import ModalDialog from '../components/common/ModalDialog';
+import { ForkSkillModal } from '../components/ForkSkillModal';
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) {
@@ -52,6 +53,7 @@ const MySkills = () => {
   const importGithubMutation = useImportSkill();
   const importLocalMutation = useImportLocalSkill();
   const importPackageMutation = useImportPackageSkill();
+  const forkSkillMutation = useForkSkill();
   const queryClient = useQueryClient();
 
   // Fetch quality scores for all skills
@@ -60,6 +62,7 @@ const MySkills = () => {
 
   const [activeTab, setActiveTab] = useState<'all' | 'system' | 'project'>('all');
   const [selectedSkill, setSelectedSkill] = useState<InstalledSkill | null>(null);
+  const [skillToFork, setSkillToFork] = useState<InstalledSkill | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [activeSlideTab, setActiveSlideTab] = useState<SlideTab>('overview');
   const [skillContent, setSkillContent] = useState<string>('');
@@ -441,6 +444,36 @@ const MySkills = () => {
     setImportPackagePath('');
   };
 
+  const handleForkSkill = async (newName: string, forkType: 'fork' | 'remix') => {
+    if (!skillToFork) return;
+
+    try {
+      // Determine derivedFrom URL (priority: githubUrl > sourceUrl > localPath)
+      const derivedFrom = skillToFork.githubUrl || skillToFork.sourceUrl || skillToFork.localPath;
+
+      const result: ImportResult = await forkSkillMutation.mutateAsync({
+        originalSkillPath: skillToFork.localPath,
+        newSkillName: newName,
+        forkType,
+        derivedFromUrl: derivedFrom,
+      });
+
+      if (result.success) {
+        toast.success(i18n.language === 'zh'
+          ? `成功创建 Fork: ${newName}`
+          : `Successfully forked to ${newName}`);
+        setSkillToFork(null);
+        await refreshSkills();
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      toast.error(i18n.language === 'zh'
+        ? `Fork 失败: ${getErrorMessage(error)}`
+        : `Fork failed: ${getErrorMessage(error)}`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -499,6 +532,7 @@ const MySkills = () => {
                     onToggle={async () => {
                       await handleToggleSkill(skill);
                     }}
+                    onFork={() => setSkillToFork(skill)}
                 />
             ))
         ) : (
@@ -534,6 +568,7 @@ const MySkills = () => {
                     onToggle={async () => {
                       await handleToggleSkill(skill);
                     }}
+                    onFork={() => setSkillToFork(skill)}
                 />
             ))
         ) : (
@@ -568,6 +603,7 @@ const MySkills = () => {
                     onToggle={async () => {
                       await handleToggleSkill(skill);
                     }}
+                    onFork={() => setSkillToFork(skill)}
                 />
             ))
         ) : (
@@ -971,6 +1007,15 @@ const MySkills = () => {
         isDestructive={confirmDialog?.isDestructive}
         type={confirmDialog?.isDestructive ? 'confirm' : 'info'}
       />
+
+      {skillToFork && (
+        <ForkSkillModal
+          isOpen={!!skillToFork}
+          onClose={() => setSkillToFork(null)}
+          onConfirm={handleForkSkill}
+          skill={skillToFork}
+        />
+      )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Share2, Link2, FileText, ImageIcon, Package, AlertTriangle } from 'lucide-react';
+import { Share2, Link2, FileText, ImageIcon, Package, AlertTriangle, Code } from 'lucide-react';
 import type { ShareSheetProps, SharePanelType } from '../../types/share';
 import { useShare } from '../../hooks/useShare';
 import { Modal } from '../ui/Modal';
@@ -8,6 +8,7 @@ import { cn } from '../../utils/cn';
 import { ShareTextPanel } from './ShareTextPanel';
 import { ShareImagePanel } from './ShareImagePanel';
 import { SharePackagePanel } from './SharePackagePanel';
+import { ShareEmbedPanel } from './ShareEmbedPanel';
 import { PublishWizard } from '../PublishWizard';
 import { Globe } from 'lucide-react';
 
@@ -91,6 +92,12 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
       icon: <Package className="w-5 h-5" />,
       label: locale === 'zh' ? '导出包' : 'Export Package',
       description: locale === 'zh' ? '打包为 .zip 文件' : 'Export as .zip file',
+    },
+    {
+      type: 'embed',
+      icon: <Code className="w-5 h-5" />,
+      label: locale === 'zh' ? '嵌入代码' : 'Embed Card',
+      description: locale === 'zh' ? '生成嵌入代码' : 'Generate embed code',
     },
     {
       type: 'publish',
@@ -247,6 +254,14 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
           skill={skill}
           shareLink={shareLink}
           isModified={isModified}
+          locale={locale}
+        />
+      )}
+
+      {activePanel === 'embed' && (
+        <ShareEmbedPanel
+          skill={skill}
+          shareLink={shareLink}
           locale={locale}
         />
       )}

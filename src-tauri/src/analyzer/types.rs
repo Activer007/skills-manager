@@ -171,6 +171,10 @@ pub struct SkillMetadata {
     pub last_updated: Option<String>,
     #[serde(rename = "configSchema")]
     pub config_schema: Option<serde_json::Value>,
+    #[serde(rename = "derivedFrom")]
+    pub derived_from: Option<String>,
+    #[serde(rename = "forkType")]
+    pub fork_type: Option<String>,
 }
 
 /// Error types for the analyzer
@@ -263,6 +267,8 @@ impl Default for SkillMetadata {
             tags: None,
             last_updated: None,
             config_schema: None,
+            derived_from: None,
+            fork_type: None,
         }
     }
 }

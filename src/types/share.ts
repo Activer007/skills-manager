@@ -138,7 +138,7 @@ export interface ImageImportState {
 /**
  * 分享方式
  */
-export type ShareMethod = 'link' | 'text' | 'image' | 'package';
+export type ShareMethod = 'link' | 'text' | 'image' | 'package' | 'embed';
 
 /**
  * 分享面板类型

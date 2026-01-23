@@ -235,3 +235,39 @@ export function useInstallSkill() {
     },
   });
 }
+
+/**
+ * Hook for forking a skill
+ */
+export function useForkSkill() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      originalSkillPath,
+      newSkillName,
+      forkType,
+      derivedFromUrl,
+      installPath
+    }: {
+      originalSkillPath: string;
+      newSkillName: string;
+      forkType: 'fork' | 'remix';
+      derivedFromUrl?: string;
+      installPath?: string;
+    }) => {
+      return await invoke('fork_skill', {
+        request: {
+          originalSkillPath,
+          newSkillName,
+          forkType,
+          derivedFromUrl,
+          installPath
+        }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['skills'] });
+    },
+  });
+}
