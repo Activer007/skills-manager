@@ -31,10 +31,35 @@ export const test = base.extend({
         state.projectPaths = [];
       }
       if (!Array.isArray(state.skills)) {
-        state.skills = [];
+        // 预置一个测试 Skill 用于分享/详情等测试
+        state.skills = [
+          {
+            id: 'e2e-test-skill-001',
+            name: 'E2E Test Skill',
+            description: 'A test skill for E2E testing - 用于端到端测试的 Skill',
+            descriptionZh: '用于端到端测试的 Skill',
+            descriptionEn: 'A test skill for E2E testing',
+            installDate: Date.now() - 86400000, // 1 day ago
+            localPath: 'C:\\mock\\skills\\e2e-test-skill',
+            path: 'C:\\mock\\skills\\e2e-test-skill',
+            status: 'safe',
+            type: 'system',
+            version: '1.0.0',
+            enabled: true,
+            config: { enabled: true },
+            author: 'E2E Test',
+            authorAvatar: 'https://github.com/user.png',
+            githubUrl: 'https://github.com/test/e2e-test-skill',
+            stars: 42,
+            forks: 5,
+            securityScore: 90,
+          },
+        ];
       }
       if (typeof state.skillConfigs !== 'object' || state.skillConfigs === null) {
-        state.skillConfigs = {};
+        state.skillConfigs = {
+          'e2e-test-skill-001': { enabled: true },
+        };
       }
       if (typeof state.securityMode !== 'string') {
         state.securityMode = 'standard';
@@ -117,11 +142,22 @@ export const test = base.extend({
               persist();
               return true;
             case 'scan_skills':
-              return { systemSkills: state.skills, projectSkills: [] };
+              // 将 state.skills 转换为 ScanSkillEntry 格式
+              const systemSkills = (state.skills || []).map((skill) => ({
+                name: skill.name || 'Unknown Skill',
+                description: skill.description || '',
+                path: skill.localPath || skill.path || '',
+                skillType: skill.skillType || skill.type || 'system',
+                isMcp: skill.isMcp || false,
+                tags: skill.tags || [],
+                configSchema: skill.configSchema || {},
+              }));
+              return { systemSkills, projectSkills: [] };
             case 'batch_scan_skills':
               return (Array.isArray(args?.skillPaths) ? args.skillPaths : []).map((path) => {
                 const id = path.split(/[\\/]/).pop() || path;
-                const blocked = id.includes('dangerous');
+                // E2E test skill 默认安全，其他包含 dangerous 的才不安全
+                const blocked = id.includes('dangerous') && !id.includes('e2e-test');
                 return buildSecurityReport(id, blocked);
               });
             case 'import_github_skill': {

@@ -282,7 +282,7 @@ export const SkillCard = ({
                 <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
                     {isInstalled ? (
                         <>
-                             <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                             <div onClick={(e) => e.stopPropagation()} className="flex items-center" data-testid="skill-switch">
                                 <Switch
                                     checked={isActive}
                                     onChange={handleToggle}
@@ -292,10 +292,10 @@ export const SkillCard = ({
                              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onConfigure?.(); }}>
                                 <Settings size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" onClick={handleShare} title="Share Text">
+                             <Button size="sm" variant="ghost" onClick={handleShare} title="Share Text" data-testid="share-button">
                                 <Link2 size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" onClick={handleShareImage} title="Share Image">
+                             <Button size="sm" variant="ghost" onClick={handleShareImage} title="Share Image" data-testid="share-image-button">
                                 <ImageIcon size={16} />
                              </Button>
                              <Button
@@ -307,12 +307,12 @@ export const SkillCard = ({
                              >
                                 <Package size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" className="text-error border border-error hover:bg-error/10" onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}>
+                             <Button size="sm" variant="ghost" className="text-error border border-error hover:bg-error/10" onClick={(e) => { e.stopPropagation(); onUninstall?.(); }} data-testid="uninstall-button">
                                 <Trash2 size={16} />
                              </Button>
                         </>
                     ) : (
-                        <Button size="sm" variant="primary" onClick={handleInstall} isLoading={isLoading}>
+                        <Button size="sm" variant="primary" onClick={handleInstall} isLoading={isLoading} data-testid="install-button">
                             Install
                         </Button>
                     )}
@@ -398,6 +398,7 @@ export const SkillCard = ({
                                     className="rounded-full h-8 min-h-0 px-3 text-xs"
                                     onClick={handleShare}
                                     title="Share Text"
+                                    data-testid="share-button"
                                 >
                                     <Link2 size={14} />
                                 </Button>
@@ -407,6 +408,7 @@ export const SkillCard = ({
                                     className="rounded-full h-8 min-h-0 px-3 text-xs"
                                     onClick={handleShareImage}
                                     title="Share Image"
+                                    data-testid="share-image-button"
                                 >
                                     <ImageIcon size={14} />
                                 </Button>
@@ -429,6 +431,7 @@ export const SkillCard = ({
                                     variant="ghost"
                                     className="rounded-full h-8 min-h-0 px-4 text-xs border border-error text-error hover:bg-error/10"
                                     onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}
+                                    data-testid="uninstall-button"
                                 >
                                     Uninstall
                                 </Button>
@@ -444,6 +447,7 @@ export const SkillCard = ({
                                 className="rounded-full h-8 min-h-0 px-4 text-xs shadow-primary/20 hover:shadow-primary/40 hover:shadow-lg"
                                 onClick={handleInstall}
                                 isLoading={isLoading}
+                                data-testid="install-button"
                             >
                                 Get
                             </Button>
