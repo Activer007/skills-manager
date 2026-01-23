@@ -272,38 +272,80 @@ fn migrate_v4(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Migration v5: Create collections tables
+/// Migration v5: Create fork system tables
 fn migrate_v5(conn: &Connection) -> Result<()> {
+    // Create skill_forks table
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS collections (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            description TEXT,
-            icon TEXT,
-            color TEXT,
-            created_at INTEGER NOT NULL,
+        "CREATE TABLE IF NOT EXISTS skill_forks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            child_skill_id TEXT NOT NULL,
+            child_skill_name TEXT NOT NULL,
+            child_skill_path TEXT NOT NULL,
+            parent_skill_id TEXT NOT NULL,
+            parent_skill_name TEXT NOT NULL,
+            parent_skill_path TEXT,
+            fork_type TEXT NOT NULL DEFAULT 'fork',
+            fork_reason TEXT,
+            author TEXT,
+            created_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+
+    // Create indexes for skill_forks
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_skill_forks_child ON skill_forks(child_skill_id)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_skill_forks_parent ON skill_forks(parent_skill_id)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_skill_forks_type ON skill_forks(fork_type)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_skill_forks_created ON skill_forks(created_at DESC)",
+        [],
+    )?;
+
+    // Create skill_fork_stats view
+    conn.execute(
+        "CREATE VIEW IF NOT EXISTS skill_fork_stats AS
+        SELECT
+            parent_skill_id,
+            parent_skill_name,
+            COUNT(*) as fork_count,
+            COUNT(CASE WHEN fork_type = 'fork' THEN 1 END) as fork_count_only,
+            COUNT(CASE WHEN fork_type = 'remix' THEN 1 END) as remix_count,
+            MAX(created_at) as last_forked_at
+        FROM skill_forks
+        GROUP BY parent_skill_id, parent_skill_name",
+        [],
+    )?;
+
+    // Create skill_lineage_depth table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS skill_lineage_depth (
+            skill_id TEXT PRIMARY KEY,
+            depth INTEGER NOT NULL DEFAULT 0,
+            root_skill_id TEXT,
             updated_at INTEGER NOT NULL
         )",
         [],
     )?;
 
+    // Create indexes for skill_lineage_depth
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS collection_items (
-            collection_id TEXT NOT NULL,
-            skill_identifier TEXT NOT NULL,
-            added_at INTEGER NOT NULL,
-            note TEXT,
-            PRIMARY KEY (collection_id, skill_identifier),
-            FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
-        )",
+        "CREATE INDEX IF NOT EXISTS idx_lineage_depth ON skill_lineage_depth(depth)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_lineage_root ON skill_lineage_depth(root_skill_id)",
         [],
     )?;
 
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_collection_items_collection_id ON collection_items(collection_id)",
-        [],
-    )?;
-
-    log::info!("Created collections and collection_items tables");
+    log::info!("Created fork system tables");
     Ok(())
 }
