@@ -1,6 +1,18 @@
 
 // Mock Tauri API for browser development
-if (typeof window !== 'undefined' && !window.__TAURI__) {
+const hasWindow = typeof window !== 'undefined';
+const hasTauriGlobal = hasWindow && '__TAURI__' in window;
+const hasTauriInternals =
+  hasWindow &&
+  ('__TAURI_INTERNALS__' in window ||
+    Object.getOwnPropertyDescriptor(window, '__TAURI_INTERNALS__') !== undefined ||
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(window), '__TAURI_INTERNALS__') !== undefined);
+const isTauriRuntime =
+  hasWindow &&
+  (hasTauriInternals ||
+    (typeof navigator !== 'undefined' && /tauri/i.test(navigator.userAgent)));
+
+if (hasWindow && !isTauriRuntime && !hasTauriGlobal) {
   console.log('🌟 Initializing Tauri Mock for Browser Environment');
   
   window.__TAURI__ = {
@@ -55,7 +67,13 @@ if (typeof window !== 'undefined' && !window.__TAURI__) {
   } as any;
   
   // Also mock internal if needed, but core is usually enough for invoke
-  (window as any).__TAURI_INTERNALS__ = {};
+  try {
+    if (!('__TAURI_INTERNALS__' in window)) {
+      (window as any).__TAURI_INTERNALS__ = {};
+    }
+  } catch {
+    // Ignore if runtime provides a read-only __TAURI_INTERNALS__.
+  }
 }
 
 export {};
