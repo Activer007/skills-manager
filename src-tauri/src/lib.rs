@@ -1811,7 +1811,17 @@ pub fn run() {
             commands::fork::fork_skill,
             commands::fork::get_skill_lineage,
             commands::fork::get_fork_info,
-            commands::fork::get_fork_stats
+            commands::fork::get_fork_stats,
+            // Collection commands
+            commands::collection::create_collection,
+            commands::collection::get_collections,
+            commands::collection::get_collection,
+            commands::collection::get_collection_items,
+            commands::collection::update_collection,
+            commands::collection::delete_collection,
+            commands::collection::add_collection_item,
+            commands::collection::remove_collection_item,
+            commands::collection::reorder_collection_items
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

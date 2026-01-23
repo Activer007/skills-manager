@@ -1,41 +1,46 @@
 use serde::{Deserialize, Serialize};
 
+/// Skill 合集
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Collection {
     pub id: String,
     pub name: String,
     pub description: Option<String>,
+    pub author: Option<String>,
     pub icon: Option<String>,
     pub color: Option<String>,
-    #[serde(rename = "createdAt")]
+    pub is_public: bool,
     pub created_at: i64,
-    #[serde(rename = "updatedAt")]
     pub updated_at: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub items: Option<Vec<CollectionItem>>,
-    #[serde(rename = "itemsCount", skip_deserializing)]
-    pub items_count: Option<usize>,
+    #[serde(default)]
+    pub items_count: i32, // 计算字段
 }
 
+/// 合集条目
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CollectionItem {
-    #[serde(rename = "collectionId")]
+    pub id: i64,
     pub collection_id: String,
-    #[serde(rename = "skillIdentifier")]
-    pub skill_identifier: String, // Can be skill ID or path
-    #[serde(rename = "addedAt")]
+    pub skill_id: String,
+    pub skill_name: String,
+    pub skill_path: Option<String>,
+    pub skill_identifier: Option<String>,
     pub added_at: i64,
     pub note: Option<String>,
+    pub sort_order: i32,
 }
 
+/// 创建合集请求
 #[derive(Debug, Deserialize)]
 pub struct CreateCollectionRequest {
     pub name: String,
     pub description: Option<String>,
+    pub author: Option<String>,
     pub icon: Option<String>,
     pub color: Option<String>,
 }
 
+/// 更新合集请求
 #[derive(Debug, Deserialize)]
 pub struct UpdateCollectionRequest {
     pub id: String,
@@ -43,21 +48,30 @@ pub struct UpdateCollectionRequest {
     pub description: Option<String>,
     pub icon: Option<String>,
     pub color: Option<String>,
+    pub is_public: Option<bool>,
 }
 
+/// 添加条目请求
 #[derive(Debug, Deserialize)]
 pub struct AddItemRequest {
-    #[serde(rename = "collectionId")]
     pub collection_id: String,
-    #[serde(rename = "skillIdentifier")]
-    pub skill_identifier: String,
+    pub skill_id: String,
+    pub skill_name: String,
+    pub skill_path: Option<String>,
+    pub skill_identifier: Option<String>,
     pub note: Option<String>,
 }
 
+/// 移除条目请求
 #[derive(Debug, Deserialize)]
 pub struct RemoveItemRequest {
-    #[serde(rename = "collectionId")]
     pub collection_id: String,
-    #[serde(rename = "skillIdentifier")]
-    pub skill_identifier: String,
+    pub skill_id: String,
+}
+
+/// 排序请求
+#[derive(Debug, Deserialize)]
+pub struct ReorderItemsRequest {
+    pub collection_id: String,
+    pub item_ids: Vec<i64>, // 按新顺序排列的 ID 列表
 }
