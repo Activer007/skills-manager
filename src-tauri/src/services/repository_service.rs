@@ -34,8 +34,8 @@ impl RepositoryService {
                 repo.description,
                 repo.enabled as i32,
                 repo.scan_subdirs as i32,
-                repo.added_at.to_rfc3339(),
-                repo.last_scanned.as_ref().map(|d| d.to_rfc3339()),
+                repo.added_at.timestamp_millis(),
+                repo.last_scanned.as_ref().map(|d| d.timestamp_millis()),
                 repo.cache_path,
                 repo.cached_commit_sha,
                 repo.featured as i32,
@@ -140,7 +140,7 @@ impl RepositoryService {
                 repo.description,
                 repo.enabled as i32,
                 repo.scan_subdirs as i32,
-                repo.last_scanned.as_ref().map(|d| d.to_rfc3339()),
+                repo.last_scanned.as_ref().map(|d| d.timestamp_millis()),
                 repo.cache_path,
                 repo.cached_commit_sha,
                 repo.featured as i32,
@@ -168,7 +168,7 @@ impl RepositoryService {
              WHERE id = ?4",
             params![
                 cache_path,
-                last_scanned.to_rfc3339(),
+                last_scanned.timestamp_millis(),
                 commit_sha,
                 id,
             ],
@@ -261,7 +261,7 @@ impl RepositoryService {
             params![
                 repository_id,
                 ScanStatus::Pending.to_string(),
-                Utc::now().to_rfc3339(),
+                Utc::now().timestamp_millis(),
             ],
         )?;
 
@@ -278,7 +278,7 @@ impl RepositoryService {
     ) -> Result<()> {
         let conn = get_connection()?;
 
-        let now = Utc::now().to_rfc3339();
+        let now = Utc::now().timestamp_millis();
 
         match status {
             ScanStatus::Running => {
@@ -355,8 +355,8 @@ impl RepositoryService {
     // ==================== Helper Methods ====================
 
     fn row_to_repository(&self, row: &rusqlite::Row) -> rusqlite::Result<Repository> {
-        let added_at_str: String = row.get(6)?;
-        let last_scanned_str: Option<String> = row.get(7)?;
+        let added_at_millis: i64 = row.get(6)?;
+        let last_scanned_millis: Option<i64> = row.get(7)?;
         let category_str: String = row.get(11)?;
 
         Ok(Repository {
@@ -366,14 +366,10 @@ impl RepositoryService {
             description: row.get(3)?,
             enabled: row.get::<_, i32>(4)? == 1,
             scan_subdirs: row.get::<_, i32>(5)? == 1,
-            added_at: DateTime::parse_from_rfc3339(&added_at_str)
-                .map(|dt| dt.with_timezone(&Utc))
-                .unwrap_or_else(|_| Utc::now()),
-            last_scanned: last_scanned_str.and_then(|s| {
-                DateTime::parse_from_rfc3339(&s)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .ok()
-            }),
+            added_at: DateTime::from_timestamp_millis(added_at_millis)
+                .unwrap_or_else(|| Utc::now()),
+            last_scanned: last_scanned_millis
+                .and_then(DateTime::from_timestamp_millis),
             cache_path: row.get(8)?,
             cached_commit_sha: row.get(9)?,
             featured: row.get::<_, i32>(10)? == 1,
@@ -383,27 +379,20 @@ impl RepositoryService {
 
     fn row_to_scan_queue_entry(&self, row: &rusqlite::Row) -> rusqlite::Result<ScanQueueEntry> {
         let status_str: String = row.get(2)?;
-        let created_at_str: String = row.get(3)?;
-        let started_at_str: Option<String> = row.get(4)?;
-        let completed_at_str: Option<String> = row.get(5)?;
+        let created_at_millis: i64 = row.get(3)?;
+        let started_at_millis: Option<i64> = row.get(4)?;
+        let completed_at_millis: Option<i64> = row.get(5)?;
 
         Ok(ScanQueueEntry {
             id: row.get(0)?,
             repository_id: row.get(1)?,
             status: status_str.parse().unwrap_or(ScanStatus::Pending),
-            created_at: DateTime::parse_from_rfc3339(&created_at_str)
-                .map(|dt| dt.with_timezone(&Utc))
-                .unwrap_or_else(|_| Utc::now()),
-            started_at: started_at_str.and_then(|s| {
-                DateTime::parse_from_rfc3339(&s)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .ok()
-            }),
-            completed_at: completed_at_str.and_then(|s| {
-                DateTime::parse_from_rfc3339(&s)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .ok()
-            }),
+            created_at: DateTime::from_timestamp_millis(created_at_millis)
+                .unwrap_or_else(|| Utc::now()),
+            started_at: started_at_millis
+                .and_then(DateTime::from_timestamp_millis),
+            completed_at: completed_at_millis
+                .and_then(DateTime::from_timestamp_millis),
             error_message: row.get(6)?,
             skills_found: row.get(7)?,
         })

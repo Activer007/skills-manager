@@ -202,6 +202,7 @@ fn migrate_v3(conn: &Connection) -> Result<()> {
 /// Migration v4: Create repositories and repository_scan_queue tables for multi-source repository management
 fn migrate_v4(conn: &Connection) -> Result<()> {
     // Create repositories table to store repository metadata
+    // Note: Using INTEGER for timestamps (Unix milliseconds) for consistency with V1
     conn.execute(
         "CREATE TABLE IF NOT EXISTS repositories (
             id TEXT PRIMARY KEY,
@@ -210,8 +211,8 @@ fn migrate_v4(conn: &Connection) -> Result<()> {
             description TEXT,
             enabled INTEGER DEFAULT 1,
             scan_subdirs INTEGER DEFAULT 0,
-            added_at TEXT NOT NULL,
-            last_scanned TEXT,
+            added_at INTEGER NOT NULL,
+            last_scanned INTEGER,
             cache_path TEXT,
             cached_commit_sha TEXT,
             featured INTEGER DEFAULT 0,
@@ -226,9 +227,9 @@ fn migrate_v4(conn: &Connection) -> Result<()> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             repository_id TEXT NOT NULL,
             status TEXT DEFAULT 'pending',
-            created_at TEXT NOT NULL,
-            started_at TEXT,
-            completed_at TEXT,
+            created_at INTEGER NOT NULL,
+            started_at INTEGER,
+            completed_at INTEGER,
             error_message TEXT,
             skills_found INTEGER DEFAULT 0,
             FOREIGN KEY (repository_id) REFERENCES repositories(id) ON DELETE CASCADE

@@ -27,7 +27,9 @@
       "Bash(else echo \"File not found or empty\")",
       "Bash(npm run e2e:install:*)",
       "Bash(npx playwright test:*)",
-      "Bash(cargo check)"
+      "Bash(cargo check)",
+      "Bash(cargo test)",
+      "Bash(git push:*)"
     ]
   }
 }
