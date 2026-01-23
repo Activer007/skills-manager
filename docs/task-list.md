@@ -18,8 +18,8 @@
 | 基础安全管理 | ✅ 90% | 60+ 安全规则、三种扫描模式、白名单机制完善 |
 | 基础分享功能 | ✅ 60% | 文本分享、图片分享、QR 码已实现 |
 | 质量评分系统 | ✅ 100% | 四维度评分、批量分析完整实现 |
-| 数据库层 | ✅ 70% | 扫描历史、缓存、白名单已实现 |
-| **多来源仓库管理** | ⚠️ 30% | **严重缺失**：无专用仓库表、无精选仓库概念 |
+| 数据库层 | ✅ 80% | 扫描历史、缓存、白名单、**仓库表**已实现 |
+| **多来源仓库管理** | 🔄 70% | **后端完成**：基础设施、模型、服务、命令已就绪，等待前端对接 |
 | **Share-First 生态** | ⚠️ 40% | **需要完善**：无统一分享入口、无社区市场 |
 
 ### 关键差距
@@ -106,11 +106,11 @@ CREATE INDEX idx_scan_queue_status ON repository_scan_queue(status);
 ```
 
 **任务清单**：
-- [ ] 创建数据库迁移脚本 v4
-- [ ] 实现 `repositories` 表创建
-- [ ] 实现 `repository_scan_queue` 表创建
-- [ ] 添加必要的数据库索引
-- [ ] 编写迁移回滚脚本
+- [x] 创建数据库迁移脚本 v4
+- [x] 实现 `repositories` 表创建
+- [x] 实现 `repository_scan_queue` 表创建
+- [x] 添加必要的数据库索引
+- [x] 编写迁移回滚脚本
 
 **参考最佳实践**（来自 Tauri + Rust 搜索结果）：
 ```rust
@@ -348,17 +348,17 @@ impl RepositoryService {
 ```
 
 **任务清单**：
-- [ ] 创建 `src-tauri/src/models/repository.rs`
-- [ ] 实现 `Repository` 结构体
-- [ ] 实现 `from_github_url()` 解析函数
-- [ ] 实现 `validate_url()` 验证函数
-- [ ] 创建 `src-tauri/src/services/repository.rs`
-- [ ] 实现 `RepositoryService`
-- [ ] 实现 `add_repository()` 添加仓库
-- [ ] 实现 `delete_repository()` 删除仓库（含级联清理）
-- [ ] 实现 `get_repository()` 查询仓库
-- [ ] 实现 `list_repositories()` 列出所有仓库
-- [ ] 实现 `update_repository()` 更新仓库配置
+- [x] 创建 `src-tauri/src/models/repository.rs`
+- [x] 实现 `Repository` 结构体
+- [x] 实现 `from_github_url()` 解析函数
+- [x] 实现 `validate_url()` 验证函数
+- [x] 创建 `src-tauri/src/services/repository.rs`
+- [x] 实现 `RepositoryService`
+- [x] 实现 `add_repository()` 添加仓库
+- [x] 实现 `delete_repository()` 删除仓库（含级联清理）
+- [x] 实现 `get_repository()` 查询仓库
+- [x] 实现 `list_repositories()` 列出所有仓库
+- [x] 实现 `update_repository()` 更新仓库配置
 
 ### T1-3：精选仓库系统（Featured Repositories）
 
@@ -539,14 +539,14 @@ impl FeaturedRepositoryService {
 ```
 
 **任务清单**：
-- [ ] 创建 `featured-repositories.yaml` 配置文件
-- [ ] 添加官方仓库配置（anthropics/skills, obra/superpowers）
-- [ ] 添加社区精选配置（ComposioHQ 等）
-- [ ] 实现多语言描述支持
-- [ ] 创建 `src-tauri/src/services/featured_repository.rs`
-- [ ] 实现 `get_config()` 加载配置
-- [ ] 实现 `refresh()` 远程刷新
-- [ ] 实现本地缓存机制
+- [x] 创建 `featured-repositories.yaml` 配置文件
+- [x] 添加官方仓库配置（anthropics/skills, obra/superpowers）
+- [x] 添加社区精选配置（ComposioHQ 等）
+- [x] 实现多语言描述支持
+- [x] 创建 `src-tauri/src/services/featured_repository.rs`
+- [x] 实现 `get_config()` 加载配置
+- [x] 实现 `refresh()` 远程刷新
+- [x] 实现本地缓存机制
 
 ### T1-4：默认仓库初始化
 
@@ -604,11 +604,11 @@ fn initialize_default_repositories(repo_service: &RepositoryService) -> Result<b
 ```
 
 **任务清单**：
-- [ ] 在应用启动时初始化默认仓库
-- [ ] 添加 anthropics/skills（官方）
-- [ ] 添加 obra/superpowers（官方）
-- [ ] 避免重复初始化（检查已有仓库）
-- [ ] 记录初始化日志
+- [x] 在应用启动时初始化默认仓库
+- [x] 添加 anthropics/skills（官方）
+- [x] 添加 obra/superpowers（官方）
+- [x] 避免重复初始化（检查已有仓库）
+- [x] 记录初始化日志
 
 ### T1-5：仓库扫描命令
 
@@ -782,14 +782,14 @@ pub async fn auto_scan_unscanned_repositories(
 ```
 
 **任务清单**：
-- [ ] 实现 `add_repository` 命令
-- [ ] 实现 `delete_repository` 命令
-- [ ] 实现 `scan_repository` 命令
+- [x] 实现 `add_repository` 命令
+- [x] 实现 `delete_repository` 命令
+- [x] 实现 `scan_repository` 命令
   - GitHub API 扫描（首次）
   - 本地缓存扫描（后续）
   - 智能跳过来已扫描的技能
-- [ ] 实现 `auto_scan_unscanned_repositories` 命令
-- [ ] 注册新命令到 Tauri
+- [x] 实现 `auto_scan_unscanned_repositories` 命令
+- [x] 注册新命令到 Tauri
 
 **参考最佳实践**（进度报告）：
 ```rust

@@ -10,6 +10,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    // Limit concurrency to prevent OOM
+    fileParallelism: false,
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
