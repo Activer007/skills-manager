@@ -149,7 +149,7 @@ const resources = {
         empty: "No repositories found. Add one to discover skills.",
         deleteConfirm: "Are you sure you want to delete {{name}}?",
         added: "Added",
-        
+
         addDialog: {
           title: "Add Repository",
           url: "Repository URL",
@@ -169,6 +169,35 @@ const resources = {
           scanError: "Scan failed",
           enabled: "Repository enabled",
           disabled: "Repository disabled"
+        }
+      },
+
+      // Share - Embed Card
+      share: {
+        embedCard: {
+          title: "Embed Card Generator",
+          generationError: "Failed to generate embed card",
+          format: "Format",
+          theme: "Theme",
+          themeLight: "Light",
+          themeDark: "Dark",
+          themeAuto: "Auto",
+          size: "Size",
+          sizeCompact: "Compact",
+          sizeNormal: "Normal",
+          sizeFull: "Full Width",
+          displayOptions: "Display Options",
+          showAuthor: "Show Author",
+          showVersion: "Show Version",
+          showSecurity: "Show Security Level",
+          showRating: "Show Rating",
+          showInstallButton: "Show Install Button",
+          preview: "Preview",
+          code: "Code",
+          copy: "Copy",
+          copied: "Copied!",
+          copyCode: "Copy Code",
+          formatInfo: "Generated {{format}} embed code"
         }
       }
     }
@@ -339,6 +368,35 @@ const resources = {
           scanError: "扫描失败",
           enabled: "仓库已启用",
           disabled: "仓库已禁用"
+        }
+      },
+
+      // 分享 - 嵌入卡片
+      share: {
+        embedCard: {
+          title: "嵌入卡片生成器",
+          generationError: "生成嵌入卡片失败",
+          format: "格式",
+          theme: "主题",
+          themeLight: "浅色",
+          themeDark: "深色",
+          themeAuto: "自动",
+          size: "尺寸",
+          sizeCompact: "紧凑",
+          sizeNormal: "标准",
+          sizeFull: "全宽",
+          displayOptions: "显示选项",
+          showAuthor: "显示作者",
+          showVersion: "显示版本",
+          showSecurity: "显示安全等级",
+          showRating: "显示评分",
+          showInstallButton: "显示安装按钮",
+          preview: "预览",
+          code: "代码",
+          copy: "复制",
+          copied: "已复制！",
+          copyCode: "复制代码",
+          formatInfo: "已生成 {{format}} 格式的嵌入代码"
         }
       }
     }
