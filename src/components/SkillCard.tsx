@@ -10,7 +10,7 @@ import { CompatibilityBadge } from './CompatibilityBadge';
 import { ShareSheet } from './ShareSheet';
 import { cn } from '../utils/cn';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
-import { Star, GitBranch, Trash2, Settings, Plug, Share2, User, GitFork } from 'lucide-react';
+import { Star, GitBranch, Trash2, Settings, Plug, Share2, User, GitFork, FolderPlus } from 'lucide-react';
 
 // 常量定义
 const ICON_SIZE = {
@@ -69,6 +69,7 @@ interface SkillCardProps {
     onViewDetails?: () => void;
     onShare?: () => void;
     onFork?: () => void;
+    onAddToCollection?: () => void;
 }
 
 export const SkillCard = ({
@@ -82,7 +83,8 @@ export const SkillCard = ({
     onConfigure,
     onViewDetails,
     onShare,
-    onFork
+    onFork,
+    onAddToCollection
 }: SkillCardProps) => {
     const { i18n } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
@@ -102,6 +104,11 @@ export const SkillCard = ({
     const handleFork = (e: React.MouseEvent) => {
         e.stopPropagation();
         onFork?.();
+    };
+
+    const handleAddToCollection = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onAddToCollection?.();
     };
 
     const handleInstall = async (e: React.MouseEvent) => {
@@ -255,6 +262,9 @@ export const SkillCard = ({
                              <Button size="sm" variant="ghost" onClick={handleShare} title={isZh ? '分享' : 'Share'} data-testid="share-button">
                                 <Share2 size={16} />
                              </Button>
+                             <Button size="sm" variant="ghost" onClick={handleAddToCollection} title={isZh ? '添加到合集' : 'Add to Collection'} data-testid="add-to-collection-button">
+                                <FolderPlus size={16} />
+                             </Button>
                              <Button size="sm" variant="ghost" onClick={handleFork} title={isZh ? 'Fork/Remix' : 'Fork/Remix'} data-testid="fork-button">
                                 <GitFork size={16} />
                              </Button>
@@ -337,6 +347,16 @@ export const SkillCard = ({
                     <div className="flex items-center gap-2">
                         {isInstalled && (
                             <>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="rounded-full h-8 min-h-0 px-3 text-xs"
+                                    onClick={handleAddToCollection}
+                                    title={isZh ? '添加到合集' : 'Add to Collection'}
+                                    data-testid="add-to-collection-button"
+                                >
+                                    <FolderPlus size={14} />
+                                </Button>
                                 <Button
                                     size="sm"
                                     variant="ghost"

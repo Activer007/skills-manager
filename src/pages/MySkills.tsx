@@ -28,6 +28,7 @@ import type { SecurityReport } from '../types/security';
 import { inferSchemaFromValues } from '../utils/schemaInference';
 import ModalDialog from '../components/common/ModalDialog';
 import { ForkSkillModal } from '../components/ForkSkillModal';
+import { AddToCollectionModal } from '../components/AddToCollectionModal';
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) {
@@ -63,6 +64,7 @@ const MySkills = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'system' | 'project'>('all');
   const [selectedSkill, setSelectedSkill] = useState<InstalledSkill | null>(null);
   const [skillToFork, setSkillToFork] = useState<InstalledSkill | null>(null);
+  const [skillAddToCollection, setSkillAddToCollection] = useState<InstalledSkill | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [activeSlideTab, setActiveSlideTab] = useState<SlideTab>('overview');
   const [skillContent, setSkillContent] = useState<string>('');
@@ -533,6 +535,7 @@ const MySkills = () => {
                       await handleToggleSkill(skill);
                     }}
                     onFork={() => setSkillToFork(skill)}
+                    onAddToCollection={() => setSkillAddToCollection(skill)}
                 />
             ))
         ) : (
@@ -569,6 +572,7 @@ const MySkills = () => {
                       await handleToggleSkill(skill);
                     }}
                     onFork={() => setSkillToFork(skill)}
+                    onAddToCollection={() => setSkillAddToCollection(skill)}
                 />
             ))
         ) : (
@@ -604,6 +608,7 @@ const MySkills = () => {
                       await handleToggleSkill(skill);
                     }}
                     onFork={() => setSkillToFork(skill)}
+                    onAddToCollection={() => setSkillAddToCollection(skill)}
                 />
             ))
         ) : (
@@ -1014,6 +1019,14 @@ const MySkills = () => {
           onClose={() => setSkillToFork(null)}
           onConfirm={handleForkSkill}
           skill={skillToFork}
+        />
+      )}
+
+      {skillAddToCollection && (
+        <AddToCollectionModal
+          isOpen={!!skillAddToCollection}
+          onClose={() => setSkillAddToCollection(null)}
+          skill={skillAddToCollection}
         />
       )}
     </div>

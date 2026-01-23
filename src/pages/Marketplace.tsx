@@ -26,6 +26,7 @@ import { SortDropdown } from '../components/SortDropdown';
 import { FilterPanel } from '../components/FilterPanel';
 import { Filter as FilterIcon } from 'lucide-react';
 import { MarketplaceHero } from '../components/Marketplace/MarketplaceHero';
+import { AddToCollectionModal } from '../components/AddToCollectionModal';
 
 // Constant
 const GUTTER_SIZE = 24;
@@ -38,6 +39,7 @@ interface MarketplaceItemData {
   handleInstall: (skill: MarketplaceSkill) => void;
   handleUninstall: (skill: MarketplaceSkill) => void;
   setSelectedSkill: (skill: MarketplaceSkill | null) => void;
+  setSkillAddToCollection: (skill: MarketplaceSkill | null) => void;
   setShowDrawer: (show: boolean) => void;
   language: string;
 }
@@ -52,7 +54,7 @@ interface CellProps {
 
 // Cell defined outside to prevent re-creation on render
 const Cell = memo(({ columnIndex, rowIndex, style, data }: CellProps) => {
-    const { skills, columnCount, isInstalled, handleInstall, handleUninstall, setSelectedSkill, setShowDrawer, language } = data;
+    const { skills, columnCount, isInstalled, handleInstall, handleUninstall, setSelectedSkill, setSkillAddToCollection, setShowDrawer, language } = data;
     const index = rowIndex * columnCount + columnIndex;
 
     if (index >= skills.length) return null;
@@ -77,6 +79,7 @@ const Cell = memo(({ columnIndex, rowIndex, style, data }: CellProps) => {
                     setSelectedSkill(skill);
                     setShowDrawer(true);
                 }}
+                onAddToCollection={() => setSkillAddToCollection(skill)}
             />
         </div>
     );
@@ -112,6 +115,7 @@ const Marketplace = () => {
   const uninstallMutation = useUninstallSkill();
 
   const [selectedSkill, setSelectedSkill] = useState<MarketplaceSkill | null>(null);
+  const [skillAddToCollection, setSkillAddToCollection] = useState<MarketplaceSkill | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [pendingInstall, setPendingInstall] = useState<MarketplaceSkill | null>(null);
@@ -269,6 +273,7 @@ const Marketplace = () => {
       handleInstall,
       handleUninstall,
       setSelectedSkill,
+      setSkillAddToCollection,
       setShowDrawer,
       language: i18n.language
   }), [isMarketplaceSkillInstalled, handleInstall, handleUninstall, i18n.language]);
@@ -700,6 +705,14 @@ const Marketplace = () => {
         isDestructive
         isLoading={uninstallMutation.isPending}
       />
+
+      {skillAddToCollection && (
+        <AddToCollectionModal
+          isOpen={!!skillAddToCollection}
+          onClose={() => setSkillAddToCollection(null)}
+          skill={skillAddToCollection}
+        />
+      )}
     </div>
   );
 };
