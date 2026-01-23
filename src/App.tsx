@@ -8,6 +8,7 @@ const MySkills = lazy(() => import('./pages/MySkills'));
 const Marketplace = lazy(() => import('./pages/Marketplace'));
 const Repositories = lazy(() => import('./pages/Repositories'));
 const Settings = lazy(() => import('./pages/Settings'));
+const Collections = lazy(() => import('./pages/Collections'));
 const ScanHistory = lazy(() => import('./pages/ScanHistory'));
 const SharePreview = lazy(() => import('./pages/SharePreview'));
 
@@ -25,6 +26,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <MySkills />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'collections',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <Collections />
           </Suspense>
         ),
       },

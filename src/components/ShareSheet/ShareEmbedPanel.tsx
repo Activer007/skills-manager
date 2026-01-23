@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, Check, Code, FileCode, Layout } from 'lucide-react';
-import { InstalledSkill } from '../../types';
+import type { InstalledSkill } from '../../types';
 import { generateMarkdownBadge, generateHtmlCard, generateJsonLd } from '../../utils/embedGenerator';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';

@@ -1,4 +1,4 @@
-import { InstalledSkill } from '../types';
+import type { InstalledSkill } from '../types';
 
 /**
  * Generate Markdown Badge code (Shields.io style)

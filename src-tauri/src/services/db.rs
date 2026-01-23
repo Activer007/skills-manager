@@ -52,7 +52,7 @@ fn get_db_path() -> Result<PathBuf> {
 }
 
 /// Current database schema version
-const CURRENT_DB_VERSION: i32 = 4;
+const CURRENT_DB_VERSION: i32 = 5;
 
 /// Run database migrations to ensure schema is up to date.
 /// This function creates a schema_migrations table to track version.
@@ -110,6 +110,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             migrate_v4(conn)?;
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (4, ?)",
+                [chrono::Utc::now().timestamp_millis()],
+            )?;
+        }
+
+        // Migration v5: Create collections tables
+        if current_version < 5 {
+            migrate_v5(conn)?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (5, ?)",
                 [chrono::Utc::now().timestamp_millis()],
             )?;
         }
@@ -260,5 +269,41 @@ fn migrate_v4(conn: &Connection) -> Result<()> {
     )?;
 
     log::info!("Created repositories and repository_scan_queue tables for multi-source repository management");
+    Ok(())
+}
+
+/// Migration v5: Create collections tables
+fn migrate_v5(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS collections (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            icon TEXT,
+            color TEXT,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS collection_items (
+            collection_id TEXT NOT NULL,
+            skill_identifier TEXT NOT NULL,
+            added_at INTEGER NOT NULL,
+            note TEXT,
+            PRIMARY KEY (collection_id, skill_identifier),
+            FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_collection_items_collection_id ON collection_items(collection_id)",
+        [],
+    )?;
+
+    log::info!("Created collections and collection_items tables");
     Ok(())
 }
