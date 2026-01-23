@@ -31,7 +31,8 @@
       "Bash(cargo test)",
       "Bash(git push:*)",
       "Bash(git pull)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(npm test:*)"
     ]
   }
 }

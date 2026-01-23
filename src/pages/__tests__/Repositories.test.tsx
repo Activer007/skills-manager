@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { RepositoriesPage } from '../Repositories';
+import RepositoriesPage from '../Repositories';
 import { createWrapper } from '../../test/utils';
 import { invoke } from '@tauri-apps/api/core';
 

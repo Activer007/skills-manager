@@ -945,63 +945,64 @@ async fn import_github_skill(
     Ok(outcome.result)
 }
 
-fn update_frontmatter(
-    content: &str,
-    new_name: &str,
-    derived_from: Option<&str>,
-    fork_type: &str,
-) -> Result<String, String> {
-    let lines: Vec<&str> = content.lines().collect();
-    if lines.is_empty() || !lines[0].trim().starts_with("---") {
-        return Err("No frontmatter found".to_string());
-    }
-
-    let mut end_idx = 0;
-    for (i, line) in lines.iter().enumerate().skip(1) {
-        if line.trim().starts_with("---") || line.trim().starts_with("...") {
-            end_idx = i;
-            break;
-        }
-    }
-
-    if end_idx == 0 {
-        return Err("Frontmatter not closed".to_string());
-    }
-
-    let frontmatter_str = lines[1..end_idx].join("\n");
-    let mut yaml_val: serde_yaml::Value = serde_yaml::from_str(&frontmatter_str)
-        .map_err(|e| format!("YAML parse error: {}", e))?;
-
-    if let Some(mapping) = yaml_val.as_mapping_mut() {
-        mapping.insert(
-            serde_yaml::Value::String("name".to_string()),
-            serde_yaml::Value::String(new_name.to_string()),
-        );
-        if let Some(url) = derived_from {
-            mapping.insert(
-                serde_yaml::Value::String("derivedFrom".to_string()),
-                serde_yaml::Value::String(url.to_string()),
-            );
-        }
-        mapping.insert(
-            serde_yaml::Value::String("forkType".to_string()),
-            serde_yaml::Value::String(fork_type.to_string()),
-        );
-    }
-
-    let new_frontmatter = serde_yaml::to_string(&yaml_val)
-        .map_err(|e| format!("YAML serialization error: {}", e))?;
-
-    // Remove the initial "---" that serde_yaml might add if we are not careful,
-    // but usually it adds document separator if not present.
-    // serde_yaml::to_string includes "---" at the start usually.
-    // Let's strip it to be safe and manually add it back to ensure format.
-    let clean_yaml = new_frontmatter.trim_start_matches("---\n");
-
-    let markdown_content = lines[end_idx + 1..].join("\n");
-
-    Ok(format!("---\n{}---\n{}", clean_yaml, markdown_content))
-}
+// Unused functions commented out
+// fn update_frontmatter(
+//     content: &str,
+//     new_name: &str,
+//     derived_from: Option<&str>,
+//     fork_type: &str,
+// ) -> Result<String, String> {
+//     let lines: Vec<&str> = content.lines().collect();
+//     if lines.is_empty() || !lines[0].trim().starts_with("---") {
+//         return Err("No frontmatter found".to_string());
+//     }
+//
+//     let mut end_idx = 0;
+//     for (i, line) in lines.iter().enumerate().skip(1) {
+//         if line.trim().starts_with("---") || line.trim().starts_with("...") {
+//             end_idx = i;
+//             break;
+//         }
+//     }
+//
+//     if end_idx == 0 {
+//         return Err("Frontmatter not closed".to_string());
+//     }
+//
+//     let frontmatter_str = lines[1..end_idx].join("\n");
+//     let mut yaml_val: serde_yaml::Value = serde_yaml::from_str(&frontmatter_str)
+//         .map_err(|e| format!("YAML parse error: {}", e))?;
+//
+//     if let Some(mapping) = yaml_val.as_mapping_mut() {
+//         mapping.insert(
+//             serde_yaml::Value::String("name".to_string()),
+//             serde_yaml::Value::String(new_name.to_string()),
+//         );
+//         if let Some(url) = derived_from {
+//             mapping.insert(
+//                 serde_yaml::Value::String("derivedFrom".to_string()),
+//                 serde_yaml::Value::String(url.to_string()),
+//             );
+//         }
+//         mapping.insert(
+//             serde_yaml::Value::String("forkType".to_string()),
+//             serde_yaml::Value::String(fork_type.to_string()),
+//         );
+//     }
+//
+//     let new_frontmatter = serde_yaml::to_string(&yaml_val)
+//         .map_err(|e| format!("YAML serialization error: {}", e))?;
+//
+//     // Remove the initial "---" that serde_yaml might add if we are not careful,
+//     // but usually it adds document separator if not present.
+//     // serde_yaml::to_string includes "---" at the start usually.
+//     // Let's strip it to be safe and manually add it back to ensure format.
+//     let clean_yaml = new_frontmatter.trim_start_matches("---\n");
+//
+//     let markdown_content = lines[end_idx + 1..].join("\n");
+//
+//     Ok(format!("---\n{}---\n{}", clean_yaml, markdown_content))
+// }
 
 // #[tauri::command]
 // fn fork_skill(request: ForkSkillRequest) -> Result<ImportResult, String> { ... }
@@ -1609,86 +1610,86 @@ fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     Ok(())
 }
 
-#[tauri::command]
-fn open_url(url: String) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
-    {
-        Command::new("open")
-            .arg(&url)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    #[cfg(target_os = "windows")]
-    {
-        Command::new("cmd")
-            .args(["/c", "start", "", &url])
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    #[cfg(target_os = "linux")]
-    {
-        Command::new("xdg-open")
-            .arg(&url)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
+// #[tauri::command]
+// fn open_url(url: String) -> Result<(), String> {
+//     #[cfg(target_os = "macos")]
+//     {
+//         Command::new("open")
+//             .arg(&url)
+//             .spawn()
+//             .map_err(|e| e.to_string())?;
+//     }
+//     #[cfg(target_os = "windows")]
+//     {
+//         Command::new("cmd")
+//             .args(["/c", "start", "", &url])
+//             .spawn()
+//             .map_err(|e| e.to_string())?;
+//     }
+//     #[cfg(target_os = "linux")]
+//     {
+//         Command::new("xdg-open")
+//             .arg(&url)
+//             .spawn()
+//             .map_err(|e| e.to_string())?;
+//     }
+//     Ok(())
+// }
 
-#[tauri::command]
-fn open_path_in_file_manager(path: String) -> Result<(), String> {
-    let trimmed = path.trim();
-    if trimmed.is_empty() {
-        return Err("Path is empty".to_string());
-    }
+// #[tauri::command]
+// fn open_path_in_file_manager(path: String) -> Result<(), String> {
+//     let trimmed = path.trim();
+//     if trimmed.is_empty() {
+//         return Err("Path is empty".to_string());
+//     }
+//
+//     let mut target = PathBuf::from(trimmed);
+//     if !target.exists() {
+//         return Err(format!("Path does not exist: {}", trimmed));
+//     }
+//
+//     if target.is_file() {
+//         if let Some(parent) = target.parent() {
+//             target = parent.to_path_buf();
+//         }
+//     }
+//
+//     #[cfg(target_os = "macos")]
+//     {
+//         Command::new("open")
+//             .arg(&target)
+//             .spawn()
+//             .map_err(|e| e.to_string())?;
+//     }
+//     #[cfg(target_os = "windows")]
+//     {
+//         Command::new("explorer")
+//             .arg(&target)
+//             .spawn()
+//             .map_err(|e| e.to_string())?;
+//     }
+//     #[cfg(target_os = "linux")]
+//     {
+//         Command::new("xdg-open")
+//             .arg(&target)
+//             .spawn()
+//             .map_err(|e| e.to_string())?;
+//     }
+//
+//     Ok(())
+// }
 
-    let mut target = PathBuf::from(trimmed);
-    if !target.exists() {
-        return Err(format!("Path does not exist: {}", trimmed));
-    }
-
-    if target.is_file() {
-        if let Some(parent) = target.parent() {
-            target = parent.to_path_buf();
-        }
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        Command::new("open")
-            .arg(&target)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    #[cfg(target_os = "windows")]
-    {
-        Command::new("explorer")
-            .arg(&target)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    #[cfg(target_os = "linux")]
-    {
-        Command::new("xdg-open")
-            .arg(&target)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-
-    Ok(())
-}
-
-#[tauri::command]
-fn read_skill(skill_path: String) -> Result<String, String> {
-    let path = PathBuf::from(&skill_path);
-    let skill_md = path.join("SKILL.md");
-
-    if skill_md.exists() {
-        fs::read_to_string(&skill_md).map_err(|e| e.to_string())
-    } else {
-        Err("SKILL.md not found".to_string())
-    }
-}
+// #[tauri::command]
+// fn read_skill(skill_path: String) -> Result<String, String> {
+//     let path = PathBuf::from(&skill_path);
+//     let skill_md = path.join("SKILL.md");
+//
+//     if skill_md.exists() {
+//         fs::read_to_string(&skill_md).map_err(|e| e.to_string())
+//     } else {
+//         Err("SKILL.md not found".to_string())
+//     }
+// }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -1952,6 +1953,7 @@ mod package_tests {
     }
 
     #[test]
+    #[cfg(windows)]
     fn test_extract_package_with_windows_prefix_path() {
         // 测试拒绝 Windows 驱动器前缀路径
         let temp = tempdir().unwrap();
