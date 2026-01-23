@@ -49,5 +49,5 @@ package-lock.json
 coverage/.tmp/
 coverage/
 coverage-results.json
-test-results/
 playwright-report/
+test-results/
