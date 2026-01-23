@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Folder, MoreVertical, Edit, Trash2, Calendar, Layers } from 'lucide-react';
+import { Folder, MoreVertical, Edit, Trash2, Calendar, Layers, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Collection } from '../types/collection';
 import { cn } from '../utils/cn';
@@ -9,12 +9,14 @@ interface CollectionCardProps {
   collection: Collection;
   onEdit?: (collection: Collection) => void;
   onDelete?: (collection: Collection) => void;
+  onShare?: (collection: Collection) => void;
 }
 
 export const CollectionCard: React.FC<CollectionCardProps> = ({
   collection,
   onEdit,
   onDelete,
+  onShare,
 }) => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -83,6 +85,18 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({
             tabIndex={0}
             className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-32 border border-base-200"
           >
+            <li>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShare?.(collection);
+                }}
+                className="flex items-center gap-2"
+              >
+                <Share2 className="w-3 h-3" />
+                {isZh ? '分享' : 'Share'}
+              </button>
+            </li>
             <li>
               <button
                 onClick={(e) => {

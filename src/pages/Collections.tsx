@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Plus, FolderOpen, Loader2 } from 'lucide-react';
 import { useCollections, useCreateCollection, useUpdateCollection, useDeleteCollection } from '../hooks/useCollections';
 import { CollectionCard } from '../components/CollectionCard';
+import { ShareCollectionModal } from '../components/ShareCollectionModal';
 import { CollectionModal } from '../components/CollectionModal';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -21,6 +22,7 @@ const Collections = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCollection, setEditingCollection] = useState<Collection | undefined>(undefined);
+  const [sharingCollection, setSharingCollection] = useState<Collection | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Collection | null>(null);
 
   const handleCreate = async (data: { name: string; description?: string; color?: string; icon?: string }) => {
@@ -89,6 +91,7 @@ const Collections = () => {
               }}
               onEdit={() => openEditModal(collection)}
               onDelete={() => setDeleteConfirm(collection)}
+              onShare={() => setSharingCollection(collection)}
             />
           ))}
         </div>
@@ -111,6 +114,14 @@ const Collections = () => {
         onConfirm={editingCollection ? handleUpdate : handleCreate}
         collection={editingCollection}
       />
+
+      {sharingCollection && (
+        <ShareCollectionModal
+          isOpen={!!sharingCollection}
+          onClose={() => setSharingCollection(null)}
+          collection={sharingCollection}
+        />
+      )}
 
       <ModalDialog
         isOpen={!!deleteConfirm}

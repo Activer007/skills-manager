@@ -1,9 +1,9 @@
-use crate::db::get_connection;
+use crate::services::db::get_connection;
 use crate::models::collection::{
     AddItemRequest, Collection, CollectionItem, CreateCollectionRequest, RemoveItemRequest,
     ReorderItemsRequest, UpdateCollectionRequest,
 };
-use anyhow::{Context, Result};
+use anyhow::Result;
 use rusqlite::{params, OptionalExtension};
 use uuid::Uuid;
 

@@ -6,6 +6,7 @@ import type {
   UpdateCollectionRequest,
   AddItemRequest,
 } from '../types/collection';
+import type { ExportResult } from '../types/share';
 
 export function useCollections() {
   return useQuery({
@@ -86,6 +87,14 @@ export function useRemoveCollectionItem() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['collection', variables.collectionId] });
       queryClient.invalidateQueries({ queryKey: ['collections'] });
+    },
+  });
+}
+
+export function useExportCollection() {
+  return useMutation({
+    mutationFn: async (params: { collectionId: string; outputDir?: string }) => {
+      return await invoke<ExportResult>('export_collection_package', params);
     },
   });
 }
