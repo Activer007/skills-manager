@@ -6,7 +6,7 @@ import { PageLoader } from './components/ui/PageLoader';
 // Lazy load pages for code splitting
 const MySkills = lazy(() => import('./pages/MySkills'));
 const Marketplace = lazy(() => import('./pages/Marketplace'));
-const Repositories = lazy(() => import('./pages/Repositories').then(module => ({ default: module.RepositoriesPage })));
+const Repositories = lazy(() => import('./pages/Repositories'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ScanHistory = lazy(() => import('./pages/ScanHistory'));
 

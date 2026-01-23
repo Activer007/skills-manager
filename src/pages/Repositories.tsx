@@ -29,15 +29,16 @@ import {
 } from 'lucide-react';
 import { FeaturedRepositories } from '../components/FeaturedRepositories';
 
-export function RepositoriesPage() {
+export default function RepositoriesPage() {
   const { t, i18n } = useTranslation();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newRepoUrl, setNewRepoUrl] = useState('');
   const [newRepoName, setNewRepoName] = useState('');
   const [scanSubdirs, setScanSubdirs] = useState(false);
   const [scanningRepoId, setScanningRepoId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
-  const { data: repositories, isLoading, error } = useRepositories();
+  const { data: repositories, isLoading, error, refetch } = useRepositories();
   const addMutation = useAddRepository();
   const deleteMutation = useDeleteRepository();
   const scanMutation = useScanRepository();
@@ -88,17 +89,23 @@ export function RepositoriesPage() {
   };
 
   const handleDeleteRepository = (repoId: string, repoName: string) => {
-    if (confirm(t('repositories.deleteConfirm', { name: repoName }))) {
-      deleteMutation.mutate(repoId, {
+    setDeleteConfirm({ id: repoId, name: repoName });
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm) {
+      deleteMutation.mutate(deleteConfirm.id, {
         onSuccess: (data) => {
           if (data.success) {
             appToast.success(t('repositories.toast.deleted'));
           } else {
             appToast.error(data.message);
           }
+          setDeleteConfirm(null);
         },
         onError: (error) => {
           appToast.error(`${t('repositories.toast.deleteError')}: ${error}`);
+          setDeleteConfirm(null);
         },
       });
     }
@@ -159,7 +166,7 @@ export function RepositoriesPage() {
     return (
       <div className="p-6 text-center text-red-500">
         <p>{t('common.error')}: {error.message}</p>
-        <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+        <Button variant="outline" className="mt-4" onClick={() => refetch()}>
           {t('common.retry')}
         </Button>
       </div>
