@@ -131,6 +131,8 @@ export const SkillCard = ({
 
     const isMarketplace = 'stars' in skill;
     const isMcp = 'isMcp' in skill && skill.isMcp;
+    const isFork = 'derivedFrom' in skill && !!(skill as InstalledSkill).derivedFrom;
+    const forkType = 'forkType' in skill ? (skill as InstalledSkill).forkType : undefined;
 
     // Memoize color calculation
     const iconColor = useMemo(() => stringToColor(skill.name), [skill.name]);
@@ -198,6 +200,11 @@ export const SkillCard = ({
                         {isMcp && (
                             <Badge variant="info" size="xs" className="gap-1">
                                 <Plug size={10} /> MCP
+                            </Badge>
+                        )}
+                        {isFork && (
+                            <Badge variant="warning" size="xs" className="gap-1" title={forkType === 'remix' ? 'Remix' : 'Fork'}>
+                                <GitFork size={10} /> {forkType === 'remix' ? 'Remix' : 'Fork'}
                             </Badge>
                         )}
                         <CompatibilityBadge compatibility={skill.compatibility} size="sm" />
@@ -308,6 +315,12 @@ export const SkillCard = ({
                             <div className="flex items-center gap-1 text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full border border-blue-200 dark:border-blue-800">
                                 <Plug size={12} />
                                 MCP
+                            </div>
+                        )}
+                        {isFork && (
+                            <div className="flex items-center gap-1 text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-2 py-1 rounded-full border border-amber-200 dark:border-amber-800" title={forkType === 'remix' ? 'Remix' : 'Fork'}>
+                                <GitFork size={12} />
+                                {forkType === 'remix' ? 'Remix' : 'Fork'}
                             </div>
                         )}
                         {/* Display TrustShield - supports both Marketplace and Installed Skills */}

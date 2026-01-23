@@ -12,6 +12,9 @@ type ScanSkillEntry = {
   isMcp?: boolean;
   tags?: string[];
   configSchema?: Record<string, unknown>;
+  author?: string;
+  derivedFrom?: string;
+  forkType?: 'fork' | 'remix';
 };
 
 type ScanSkillsResult = {
@@ -68,7 +71,7 @@ export function useSkills() {
           type: skill.skillType as InstalledSkill['type'],
           installDate: Date.now(),
           version: '1.0.0',
-          author: 'Unknown',
+          author: skill.author || 'Unknown',
           stars: 0,
           enabled,
           config,
@@ -76,7 +79,9 @@ export function useSkills() {
           securityIssues: report?.issues,
           isMcp: skill.isMcp,
           tags: skill.tags,
-          configSchema: skill.configSchema
+          configSchema: skill.configSchema,
+          derivedFrom: skill.derivedFrom,
+          forkType: skill.forkType
         };
       };
 
