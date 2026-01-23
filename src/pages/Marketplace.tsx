@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useLayoutEffect, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSkills, useMarketplaceSkills, useInstallSkill, useUninstallSkill } from '../hooks/useSkills';
+import { useSkills, useInstallSkill, useUninstallSkill } from '../hooks/useSkills';
+import { useMarketplaceLogic } from '../hooks/useMarketplaceLogic';
 import type { MarketplaceSkill, InstalledSkill } from '../types';
 import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
 import { getLocalizedDescription } from '../utils/i18n';
@@ -13,48 +14,40 @@ import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Progress } from '../components/ui/Progress';
 import { cn } from '../utils/cn';
-import { Star, GitBranch, Github, Download } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Star, GitBranch, Github } from 'lucide-react';
 import { FixedSizeGrid as Grid } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 import type { CSSProperties } from 'react';
+import { motion } from 'framer-motion';
 
 import { ImportSkillModal } from '../components/ImportSkillModal';
 import ModalDialog from '../components/common/ModalDialog';
-import { SortDropdown, type SortOption } from '../components/SortDropdown';
-import { FilterPanel, type SecurityFilter, type CompatibilityFilter } from '../components/FilterPanel';
+import { SortDropdown } from '../components/SortDropdown';
+import { FilterPanel } from '../components/FilterPanel';
 import { Filter as FilterIcon } from 'lucide-react';
+import { MarketplaceHero } from '../components/Marketplace/MarketplaceHero';
 
-import { scoreToTrustLevel } from '../utils/securityHelpers';
-
-// 常量定义
-const TOP_RATED_THRESHOLD = 50; // Stars threshold for top-rated filter
+// Constant
 const GUTTER_SIZE = 24;
 const ROW_HEIGHT = 330;
-const HERO_BG_CANDIDATES = [
-  '/marketplace/hero-bg.webp',
-  '/marketplace/hero-bg.jpg',
-  '/marketplace/hero-bg.png'
-];
 
-type FilterType = 'all' | 'top-rated' | 'productivity' | 'coding' | 'security' | 'data' | 'design';
-
-const CATEGORY_KEYWORDS: Record<Exclude<FilterType, 'all' | 'top-rated'>, string[]> = {
-    coding: ['code', 'programming', 'dev', 'git', 'react', 'typescript', 'python', 'rust', 'api', 'debug', 'test'],
-    security: ['security', 'scan', 'vuln', 'auth', 'token', 'audit', 'secret', 'password'],
-    productivity: ['task', 'todo', 'manage', 'organize', 'time', 'workflow', 'automate', 'note'],
-    data: ['data', 'sql', 'db', 'database', 'analytics', 'json', 'csv', 'chart', 'visualization'],
-    design: ['design', 'ui', 'css', 'color', 'icon', 'figma', 'theme', 'style']
-};
-
-const GITHUB_URL_REGEX = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/tree\/[\w.-]+(\/.*)?)?$/;
+interface MarketplaceItemData {
+  skills: MarketplaceSkill[];
+  columnCount: number;
+  isInstalled: (skill: MarketplaceSkill) => boolean;
+  handleInstall: (skill: MarketplaceSkill) => void;
+  handleUninstall: (skill: MarketplaceSkill) => void;
+  setSelectedSkill: (skill: MarketplaceSkill | null) => void;
+  setShowDrawer: (show: boolean) => void;
+  language: string;
+}
 
 // Manual definition for react-window cell props
 interface CellProps {
   columnIndex: number;
   rowIndex: number;
   style: CSSProperties;
-  data: any;
+  data: MarketplaceItemData;
 }
 
 // Cell defined outside to prevent re-creation on render
@@ -90,23 +83,33 @@ const Cell = memo(({ columnIndex, rowIndex, style, data }: CellProps) => {
 });
 
 const Marketplace = () => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
+
+  // Use custom hook for logic
   const {
-    data: marketplaceSkills = [],
-    isLoading: isLoadingMarketplace,
-    isError: isMarketplaceError,
-    error: marketplaceError,
-    refetch: refetchMarketplace,
-  } = useMarketplaceSkills();
+    isLoadingMarketplace,
+    isMarketplaceError,
+    marketplaceError,
+    refetchMarketplace,
+    searchTerm,
+    setSearchTerm,
+    filter,
+    setFilter,
+    sortOption,
+    setSortOption,
+    securityFilter,
+    setSecurityFilter,
+    compatibilityFilter,
+    setCompatibilityFilter,
+    showFilters,
+    setShowFilters,
+    isGithubUrl,
+    filteredAndSortedSkills
+  } = useMarketplaceLogic();
+
   const { data: installedSkills = [] } = useSkills();
   const installMutation = useInstallSkill();
   const uninstallMutation = useUninstallSkill();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [sortOption, setSortOption] = useState<SortOption>('stars');
-  const [securityFilter, setSecurityFilter] = useState<SecurityFilter>('all');
-  const [compatibilityFilter, setCompatibilityFilter] = useState<CompatibilityFilter>('all');
-  const [showFilters, setShowFilters] = useState(false);
 
   const [selectedSkill, setSelectedSkill] = useState<MarketplaceSkill | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -118,7 +121,6 @@ const Marketplace = () => {
   const installTimerRef = useRef<number | null>(null);
   const [installProgress, setInstallProgress] = useState(0);
   const [isInstalling, setIsInstalling] = useState(false);
-  const [heroBackgroundUrl, setHeroBackgroundUrl] = useState<string | null>(null);
 
   const formatUpdatedAt = useCallback((value?: number) => {
     if (!value) return i18n.language === 'zh' ? '未知' : 'Unknown';
@@ -136,38 +138,6 @@ const Marketplace = () => {
       }
     };
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadHeroBackground = async () => {
-      for (const url of HERO_BG_CANDIDATES) {
-        const loaded = await new Promise<boolean>((resolve) => {
-          const img = new Image();
-          img.onload = () => resolve(true);
-          img.onerror = () => resolve(false);
-          img.src = url;
-        });
-
-        if (cancelled) return;
-        if (loaded) {
-          setHeroBackgroundUrl(url);
-          return;
-        }
-      }
-
-      setHeroBackgroundUrl(null);
-    };
-
-    loadHeroBackground();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const isGithubUrl = useMemo(() => {
-    return GITHUB_URL_REGEX.test(searchTerm);
-  }, [searchTerm]);
 
   const handleInstall = useCallback(async (skill: MarketplaceSkill) => {
     if (installMutation.isPending) return;
@@ -259,70 +229,6 @@ const Marketplace = () => {
     }
   };
 
-  const filteredAndSortedSkills = useMemo(() => {
-    const result = marketplaceSkills.filter(skill => {
-        const name = skill.name ?? '';
-        const description = skill.description ?? '';
-        const author = skill.author ?? '';
-        const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            author.toLowerCase().includes(searchTerm.toLowerCase());
-
-        if (!matchesSearch) return false;
-
-        // 1. Primary Filter (Category/Top Rated)
-        if (filter === 'top-rated') {
-            if (skill.stars <= TOP_RATED_THRESHOLD) return false;
-        } else if (filter !== 'all') {
-            const keywords = CATEGORY_KEYWORDS[filter as keyof typeof CATEGORY_KEYWORDS];
-            const textToCheck = `${name} ${description} ${skill.tags?.join(' ') || ''}`.toLowerCase();
-            if (!keywords.some(k => textToCheck.includes(k))) return false;
-        }
-
-        // 2. Security Filter
-        if (securityFilter !== 'all') {
-            const trustLevel = scoreToTrustLevel(skill.securityScore);
-            if (securityFilter === 'safe') {
-                if (trustLevel !== 'safe' && trustLevel !== 'verified') return false;
-            } else if (securityFilter === 'risk') {
-                if (trustLevel !== 'warning' && trustLevel !== 'critical') return false;
-            } else if (securityFilter === 'unknown') {
-                if (trustLevel !== 'unknown') return false;
-            }
-        }
-
-        // 3. Compatibility Filter
-        if (compatibilityFilter !== 'all') {
-            // If compatibility info is missing, assume unknown/incompatible for now, or check generic tags
-            // For now, check explicit compatibility field
-            const supported = skill.compatibility?.supportedAgents?.includes(compatibilityFilter);
-
-            // Fallback: Check tags for the agent name
-            const hasTag = skill.tags?.some(t => t.toLowerCase() === compatibilityFilter.toLowerCase());
-
-            if (!supported && !hasTag) return false;
-        }
-
-        return true;
-    });
-
-    // 4. Sorting
-    return result.sort((a, b) => {
-        switch (sortOption) {
-            case 'stars':
-                return b.stars - a.stars;
-            case 'updated':
-                return (b.updatedAt || 0) - (a.updatedAt || 0);
-            case 'name':
-                return a.name.localeCompare(b.name);
-            case 'name-desc':
-                return b.name.localeCompare(a.name);
-            default:
-                return 0;
-        }
-    });
-  }, [marketplaceSkills, searchTerm, filter, securityFilter, compatibilityFilter, sortOption]);
-
   // State for scroll indicators
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
@@ -365,7 +271,7 @@ const Marketplace = () => {
       setSelectedSkill,
       setShowDrawer,
       language: i18n.language
-  }), [isMarketplaceSkillInstalled, handleInstall, handleUninstall, i18n.language]); // handleInstall, setSelectedSkill, setShowDrawer are stable
+  }), [isMarketplaceSkillInstalled, handleInstall, handleUninstall, i18n.language]);
 
   const selectedInstalled = useMemo(() => {
     if (!selectedSkill) return null;
@@ -393,104 +299,12 @@ const Marketplace = () => {
   return (
     <div className="flex flex-col gap-6 h-full min-h-0">
       {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 dark:from-primary/5 dark:to-purple-500/5 pl-8 pr-0 pb-6 pt-6">
-          {heroBackgroundUrl && (
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 z-0 bg-cover bg-top opacity-40 rounded-r-2xl"
-              style={{ backgroundImage: `url(${heroBackgroundUrl})` }}
-            />
-          )}
-          <div className="relative z-10 max-w-2xl">
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="text-3xl md:text-4xl font-bold mb-4 text-slate-900 dark:text-slate-100"
-              >
-                  {i18n.language === 'zh' ? '发现强大的 Skills' : 'Discover Powerful Skills'}
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="text-lg text-slate-600 dark:text-slate-400 mb-8"
-              >
-                  {i18n.language === 'zh'
-                    ? '通过社区构建的能力增强您的 Claude 体验。'
-                    : 'Supercharge your Claude experience with community-built capabilities.'}
-              </motion.p>
-
-              {/* Search Bar inside Hero */}
-              <div className="flex gap-4">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                    className="relative max-w-lg flex-1 group"
-                  >
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
-                      <input
-                          type="text"
-                          placeholder={t('searchSkills')}
-                          className="w-full pl-12 pr-4 py-4 rounded-xl bg-white dark:bg-base-100 border-0 shadow-lg shadow-black/5 ring-1 ring-black/5 focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-slate-400 text-slate-900 dark:text-slate-100"
-                          value={searchTerm}
-                          onChange={(e) => {
-                              setSearchTerm(e.target.value);
-                          }}
-                          data-testid="search-input"
-                      />
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                  >
-                     <Button
-                        size="lg"
-                        variant="primary"
-                        className="h-full rounded-xl shadow-lg shadow-primary/20"
-                        onClick={() => setShowImportModal(true)}
-                        data-testid="import-button"
-                     >
-                        <Download size={20} className="mr-2" />
-                        {isGithubUrl
-                            ? (i18n.language === 'zh' ? '导入此链接' : 'Import URL')
-                            : (i18n.language === 'zh' ? '导入' : 'Import')}
-                     </Button>
-                  </motion.div>
-              </div>
-          </div>
-
-          {/* Decorative Background Elements */}
-          <motion.div
-            animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.3, 0.5, 0.3],
-                rotate: [0, 90, 0]
-            }}
-            transition={{
-                duration: 20,
-                repeat: Infinity,
-                ease: "linear"
-            }}
-            className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl pointer-events-none"
-          />
-          <motion.div
-            animate={{
-                scale: [1, 1.1, 1],
-                opacity: [0.3, 0.5, 0.3],
-                x: [0, 50, 0]
-            }}
-            transition={{
-                duration: 15,
-                repeat: Infinity,
-                ease: "easeInOut"
-            }}
-            className="absolute bottom-0 left-0 -mb-20 -ml-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl pointer-events-none"
-          />
-      </div>
+      <MarketplaceHero
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onImportClick={() => setShowImportModal(true)}
+        isGithubUrl={isGithubUrl}
+      />
 
       {/* Filter Chips with Scroll Indicators */}
       <div className="relative">
