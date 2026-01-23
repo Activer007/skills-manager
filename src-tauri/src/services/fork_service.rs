@@ -309,12 +309,12 @@ impl ForkService {
     }
 
     fn generate_skill_id(path: &Path) -> String {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use sha2::{Digest, Sha256};
 
-        let mut hasher = DefaultHasher::new();
-        path.to_string_lossy().hash(&mut hasher);
-        format!("{:x}", hasher.finish())
+        let mut hasher = Sha256::new();
+        hasher.update(path.to_string_lossy().as_bytes());
+        let result = hasher.finalize();
+        format!("{:x}", result)[..16].to_string()
     }
 
     fn record_fork_relation(

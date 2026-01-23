@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Dialog } from '@headlessui/react';
 import { GitFork, Wand2, AlertTriangle, X, FolderOpen } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
 import { Button } from './ui/Button';
 import { cn } from '../utils/cn';
 import type { InstalledSkill } from '../types';
@@ -45,10 +46,35 @@ export const ForkSkillModal = ({
     }
   }, [isOpen, skill.name]);
 
+  const handleBrowse = async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+      });
+
+      if (selected && typeof selected === 'string') {
+        setCustomPath(selected);
+      }
+    } catch (err) {
+      console.error('Failed to open directory picker:', err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) {
       setError(isZh ? '请输入新 Skill 名称' : 'Please enter a new skill name');
+      return;
+    }
+
+    const nameRegex = /^[a-z0-9-_]+$/;
+    if (!nameRegex.test(newName.trim())) {
+      setError(
+        isZh
+          ? 'Skill 名称只能包含小写字母、数字、连字符和下划线'
+          : 'Skill name can only contain lowercase letters, numbers, hyphens, and underscores'
+      );
       return;
     }
 
@@ -70,9 +96,9 @@ export const ForkSkillModal = ({
 
       // 使用新的后端 API
       const request: ForkRequest = {
-        parent_skill_id: skill.path, // 使用路径作为 ID
+        parent_skill_id: skill.localPath, // 使用路径作为 ID
         parent_skill_name: skill.name,
-        parent_skill_path: skill.path,
+        parent_skill_path: skill.localPath,
         new_skill_name: newName.trim(),
         fork_type: forkType,
         fork_reason: forkReason.trim() || undefined,
@@ -246,7 +272,11 @@ export const ForkSkillModal = ({
                       onChange={(e) => setCustomPath(e.target.value)}
                       placeholder={isZh ? '输入项目路径...' : 'Enter project path...'}
                     />
-                    <button type="button" className="btn btn-sm btn-outline">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={handleBrowse}
+                    >
                       <FolderOpen className="w-4 h-4" />
                     </button>
                   </div>
