@@ -26,7 +26,10 @@
       "Bash(then cat \"C:\\\\Users\\\\10747\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--LHA-skills-manager-client\\\\tasks\\\\be1d3d1.output\")",
       "Bash(else echo \"File not found or empty\")",
       "Bash(npm run e2e:install:*)",
-      "Bash(npx playwright test:*)"
+      "Bash(npx playwright test:*)",
+      "Bash(cargo check)",
+      "Bash(cargo test)",
+      "Bash(git push:*)"
     ]
   }
 }

@@ -38,7 +38,7 @@ zip = "2"
 # Skill Analyzer dependencies
 serde_yaml = "0.9"              # YAML frontmatter parsing
 pulldown-cmark = "0.11"         # Markdown parsing
-chrono = "0.4"                  # Date/time handling
+chrono = { version = "0.4", features = ["serde"] }  # Date/time handling
 
 # Security Scanner dependencies
 anyhow = "1"                    # Error handling
