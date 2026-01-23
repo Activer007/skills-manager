@@ -29,7 +29,8 @@
       "Bash(npx playwright test:*)",
       "Bash(cargo check)",
       "Bash(cargo test)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git pull)"
     ]
   }
 }
