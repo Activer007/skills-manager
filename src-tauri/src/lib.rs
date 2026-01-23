@@ -1586,7 +1586,17 @@ pub fn run() {
             commands::config::get_skill_config,
             commands::config::set_skill_config,
             commands::config::get_project_paths,
-            commands::config::save_project_paths
+            commands::config::save_project_paths,
+            // Repository management commands
+            commands::repository::get_repositories,
+            commands::repository::get_repository,
+            commands::repository::add_repository,
+            commands::repository::delete_repository,
+            commands::repository::toggle_repository_enabled,
+            commands::repository::get_featured_repositories,
+            commands::repository::refresh_featured_repositories,
+            commands::repository::get_unscanned_repositories,
+            commands::repository::get_repository_stats
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
