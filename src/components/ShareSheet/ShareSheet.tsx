@@ -8,6 +8,8 @@ import { cn } from '../../utils/cn';
 import { ShareTextPanel } from './ShareTextPanel';
 import { ShareImagePanel } from './ShareImagePanel';
 import { SharePackagePanel } from './SharePackagePanel';
+import { PublishWizard } from '../PublishWizard';
+import { Globe } from 'lucide-react';
 
 /**
  * 统一分享入口组件 (ShareSheet)
@@ -22,6 +24,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
   const { i18n } = useTranslation();
   const locale = i18n.language;
   const [activePanel, setActivePanel] = useState<SharePanelType>(initialPanel);
+  const [showPublishWizard, setShowPublishWizard] = useState(false);
 
   const {
     shareLink,
@@ -35,17 +38,32 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
   useEffect(() => {
     if (isOpen) {
       setActivePanel(initialPanel);
+      setShowPublishWizard(false);
     } else {
       cleanup();
     }
   }, [isOpen, initialPanel, cleanup]);
+
+  if (showPublishWizard) {
+    return (
+      <PublishWizard
+        isOpen={true}
+        onClose={() => {
+          setShowPublishWizard(false);
+          // Optional: close the entire share sheet when wizard closes
+          // onClose();
+        }}
+        skill={skill}
+      />
+    );
+  }
 
   const normalizedStatus =
     skill.status === 'unsafe' ? 'risk' : (skill.status ?? 'unknown');
 
   // 分享选项配置
   const shareOptions: {
-    type: SharePanelType;
+    type: SharePanelType | 'publish';
     icon: React.ReactNode;
     label: string;
     description: string;
@@ -74,6 +92,12 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
       label: locale === 'zh' ? '导出包' : 'Export Package',
       description: locale === 'zh' ? '打包为 .zip 文件' : 'Export as .zip file',
     },
+    {
+      type: 'publish',
+      icon: <Globe className="w-5 h-5" />,
+      label: locale === 'zh' ? '发布到市场' : 'Publish',
+      description: locale === 'zh' ? '提交到官方市场' : 'Submit to Marketplace',
+    }
   ];
 
   return (
@@ -143,8 +167,10 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
             onClick={() => {
               if (option.type === 'link') {
                 copyLink();
+              } else if (option.type === 'publish') {
+                setShowPublishWizard(true);
               } else {
-                setActivePanel(option.type);
+                setActivePanel(option.type as SharePanelType);
               }
             }}
             data-testid={`share-option-${option.type}`}
