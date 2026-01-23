@@ -4,7 +4,7 @@ import { Dialog } from '@headlessui/react';
 import { FolderPlus, X, AlertTriangle } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
-import { Collection } from '../types/collection';
+import type { Collection } from '../types/collection';
 
 interface CollectionModalProps {
   isOpen: boolean;

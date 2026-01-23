@@ -135,13 +135,20 @@ export default function RepositoriesPage() {
   };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString(i18n.language, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      // Fallback to undefined (browser default) if language is C or invalid
+      const locale = (i18n.language && i18n.language !== 'C') ? i18n.language : undefined;
+      return new Date(timestamp).toLocaleDateString(locale, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      // Fallback to simple date string if toLocaleDateString fails
+      return new Date(timestamp).toISOString().split('T')[0];
+    }
   };
 
   const getCategoryBadgeVariant = (category: RepositoryCategory) => {
