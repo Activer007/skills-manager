@@ -89,7 +89,7 @@ export default function SecurityReportCard({ report, loading }: SecurityReportCa
   };
 
   return (
-    <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
+    <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden" data-testid="security-report">
       {/* Summary Header - Always Visible */}
       <div
         className="p-4 flex items-center justify-between cursor-pointer hover:bg-base-200/50 transition-colors"
@@ -122,13 +122,13 @@ export default function SecurityReportCard({ report, loading }: SecurityReportCa
         <div className="px-4 pb-4 border-t border-base-200 animate-in slide-in-from-top-2 duration-200">
         {/* Blocked Warning */}
         {report.blocked && (
-          <div className="alert alert-error mb-4">
+          <div className="alert alert-error mb-4" data-testid="security-blocked">
             <XCircle className="w-6 h-6" />
             <div>
               <h4 className="font-bold">检测到严重安全风险，已阻止安装！</h4>
               <div className="text-sm mt-2">
                 {report.hard_trigger_issues.map((issue, idx) => (
-                  <div key={idx} className="mt-1">
+                  <div key={idx} className="mt-1" data-testid="dangerous-pattern">
                     <strong>{issue}</strong>
                   </div>
                 ))}
