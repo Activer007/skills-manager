@@ -130,3 +130,108 @@ export interface ImageImportState {
   skillInfo?: SkillImportInfo;
   previewUrl?: string;
 }
+
+// ============================================
+// ShareSheet 相关类型定义 (T3-1)
+// ============================================
+
+/**
+ * 分享方式
+ */
+export type ShareMethod = 'link' | 'text' | 'image' | 'package';
+
+/**
+ * 分享面板类型
+ */
+export type SharePanelType = ShareMethod;
+
+/**
+ * 包导出结果
+ */
+export interface ExportResult {
+  success: boolean;
+  filePath?: string;
+  fileName?: string;
+  fileSize?: number;
+  error?: string;
+}
+
+/**
+ * 包导出状态
+ */
+export type ExportStatus = 'idle' | 'exporting' | 'success' | 'error';
+
+/**
+ * useShare Hook 配置选项
+ */
+export interface UseShareOptions {
+  /** 是否在挂载时自动检测修改状态 */
+  autoCheckModified?: boolean;
+  /** 默认分享主题 */
+  defaultTheme?: ShareCardTheme;
+  /** 默认分享平台 */
+  defaultPlatform?: SharePlatform;
+}
+
+/**
+ * useShare Hook 返回值
+ */
+export interface UseShareReturn {
+  // 状态
+  shareLink: string | undefined;
+  isModified: boolean | null;
+  isCheckingModified: boolean;
+
+  // 复制链接
+  copyLink: () => Promise<boolean>;
+  linkCopied: boolean;
+
+  // 文本分享
+  generateText: (platform: SharePlatform) => string;
+  copyText: (text: string) => Promise<boolean>;
+  textCopied: boolean;
+  shareToSocial: (platform: 'twitter' | 'weibo') => void;
+
+  // 图片分享
+  generateCard: (theme: ShareCardTheme) => Promise<Blob>;
+  cardPreviewUrl: string | null;
+  isGeneratingCard: boolean;
+  downloadCard: (filename?: string) => Promise<void>;
+
+  // 包导出
+  exportPackage: (outputDir?: string) => Promise<ExportResult>;
+  exportStatus: ExportStatus;
+  exportResult: ExportResult | null;
+
+  // 工具方法
+  reset: () => void;
+  cleanup: () => void;
+}
+
+/**
+ * ShareSheet 组件 Props
+ */
+export interface ShareSheetProps {
+  /** 要分享的 Skill */
+  skill: import('./index').InstalledSkill;
+  /** 是否打开 */
+  isOpen: boolean;
+  /** 关闭回调 */
+  onClose: () => void;
+  /** 初始面板类型 */
+  initialPanel?: SharePanelType;
+}
+
+/**
+ * 分享面板通用 Props
+ */
+export interface SharePanelProps {
+  /** 要分享的 Skill */
+  skill: import('./index').InstalledSkill;
+  /** 分享链接 */
+  shareLink: string | undefined;
+  /** 是否已修改 */
+  isModified: boolean | null;
+  /** 语言 */
+  locale: string;
+}

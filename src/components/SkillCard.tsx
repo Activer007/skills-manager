@@ -1,19 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { invoke } from '@tauri-apps/api/core';
-import type { MarketplaceSkill, InstalledSkill, ExportResult } from '../types';
+import type { MarketplaceSkill, InstalledSkill } from '../types';
 import { Switch } from './ui/Switch';
 import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { TrustShield } from './TrustShield';
-import { ShareTextDialog } from './ShareTextDialog';
-import { ShareImageDialog } from './ShareImageDialog';
-import ModalDialog from './common/ModalDialog';
+import { ShareSheet } from './ShareSheet';
 import { cn } from '../utils/cn';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
-import { Star, GitBranch, Trash2, Settings, Plug, Link2, Image as ImageIcon, Package } from 'lucide-react';
-import { toast } from '../store/useToastStore';
+import { Star, GitBranch, Trash2, Settings, Plug, Share2 } from 'lucide-react';
 
 // 常量定义
 const ICON_SIZE = {
@@ -87,65 +83,16 @@ export const SkillCard = ({
 }: SkillCardProps) => {
     const { i18n } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
-    const [showShareTextDialog, setShowShareTextDialog] = useState(false);
-    const [showShareImageDialog, setShowShareImageDialog] = useState(false);
-    const [isExporting, setIsExporting] = useState(false);
-    const [exportDialogPath, setExportDialogPath] = useState<string | null>(null);
+    const [showShareSheet, setShowShareSheet] = useState(false);
     const isZh = i18n.language === 'zh';
 
-    // 处理分享按钮点击 - 默认打开文本分享
+    // 处理分享按钮点击 - 打开 ShareSheet
     const handleShare = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (onShare) {
             onShare();
         } else {
-            setShowShareTextDialog(true);
-        }
-    };
-
-    // 处理图片分享
-    const handleShareImage = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setShowShareImageDialog(true);
-    };
-
-    const handleExportPackage = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!('localPath' in skill) || isExporting) {
-            return;
-        }
-
-        setIsExporting(true);
-        try {
-            const result = await invoke<ExportResult>('export_skill_package', {
-                request: {
-                    skillPath: (skill as InstalledSkill).localPath,
-                }
-            });
-            if (result.success && result.filePath) {
-                setExportDialogPath(result.filePath);
-            } else {
-                toast.error(result.message || 'Export failed');
-            }
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            toast.error(`Export failed: ${message}`);
-        } finally {
-            setIsExporting(false);
-        }
-    };
-
-    const handleOpenExportFolder = async () => {
-        if (!exportDialogPath) {
-            return;
-        }
-        const targetPath = getExportDirectory(exportDialogPath) || exportDialogPath;
-        try {
-            await invoke('open_path_in_file_manager', { path: targetPath });
-            setExportDialogPath(null);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            toast.error(isZh ? `打开目录失败: ${message}` : `Failed to open folder: ${message}`);
+            setShowShareSheet(true);
         }
     };
 
@@ -187,17 +134,6 @@ export const SkillCard = ({
         // If brightness is high, use dark text; otherwise, use light text
         return brightness > 0.5 ? 'text-slate-900' : 'text-slate-50';
     }, [iconColor]);
-    const exportDialogTitle = isZh ? '导出完成' : 'Export complete';
-    const exportDialogMessage = exportDialogPath ? (
-        <div className="space-y-2 text-left">
-            <div className="text-sm text-slate-600 dark:text-slate-400">
-                {isZh ? '导出路径：' : 'Export location:'}
-            </div>
-            <div className="rounded-md bg-slate-50 dark:bg-base-200 px-2 py-1 text-xs font-mono break-all text-slate-700 dark:text-slate-200">
-                {exportDialogPath}
-            </div>
-        </div>
-    ) : null;
 
 
     // Icon Placeholder Generator (based on name char)
@@ -292,20 +228,8 @@ export const SkillCard = ({
                              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onConfigure?.(); }}>
                                 <Settings size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" onClick={handleShare} title="Share Text" data-testid="share-button">
-                                <Link2 size={16} />
-                             </Button>
-                             <Button size="sm" variant="ghost" onClick={handleShareImage} title="Share Image" data-testid="share-image-button">
-                                <ImageIcon size={16} />
-                             </Button>
-                             <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={handleExportPackage}
-                                title="Export Package"
-                                disabled={isExporting}
-                             >
-                                <Package size={16} />
+                             <Button size="sm" variant="ghost" onClick={handleShare} title={isZh ? '分享' : 'Share'} data-testid="share-button">
+                                <Share2 size={16} />
                              </Button>
                              <Button size="sm" variant="ghost" className="text-error border border-error hover:bg-error/10" onClick={(e) => { e.stopPropagation(); onUninstall?.(); }} data-testid="uninstall-button">
                                 <Trash2 size={16} />
@@ -318,31 +242,12 @@ export const SkillCard = ({
                     )}
                 </div>
             </div>
-            {/* Share Dialogs */}
-            {showShareTextDialog && (
-                <ShareTextDialog
-                    skill={skill as any} // Use 'as any' since we're checking properties at runtime
-                    isOpen={showShareTextDialog}
-                    onClose={() => setShowShareTextDialog(false)}
-                />
-            )}
-            {showShareImageDialog && (
-                <ShareImageDialog
-                    skill={skill as any} // Use 'as any' since we're checking properties at runtime
-                    isOpen={showShareImageDialog}
-                    onClose={() => setShowShareImageDialog(false)}
-                />
-            )}
-            {exportDialogPath && (
-                <ModalDialog
-                    isOpen={!!exportDialogPath}
-                    title={exportDialogTitle}
-                    message={exportDialogMessage ?? ''}
-                    type="info"
-                    confirmText={isZh ? '打开导出目录' : 'Open folder'}
-                    cancelText={isZh ? '关闭' : 'Close'}
-                    onConfirm={handleOpenExportFolder}
-                    onCancel={() => setExportDialogPath(null)}
+            {/* ShareSheet */}
+            {showShareSheet && (
+                <ShareSheet
+                    skill={skill as InstalledSkill}
+                    isOpen={showShareSheet}
+                    onClose={() => setShowShareSheet(false)}
                 />
             )}
         </>
@@ -391,38 +296,16 @@ export const SkillCard = ({
                     </div>
                     <div className="flex items-center gap-2">
                         {isInstalled && (
-                            <>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="rounded-full h-8 min-h-0 px-3 text-xs"
-                                    onClick={handleShare}
-                                    title="Share Text"
-                                    data-testid="share-button"
-                                >
-                                    <Link2 size={14} />
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="rounded-full h-8 min-h-0 px-3 text-xs"
-                                    onClick={handleShareImage}
-                                    title="Share Image"
-                                    data-testid="share-image-button"
-                                >
-                                    <ImageIcon size={14} />
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="rounded-full h-8 min-h-0 px-3 text-xs"
-                                    onClick={handleExportPackage}
-                                    title="Export Package"
-                                    disabled={isExporting}
-                                >
-                                    <Package size={14} />
-                                </Button>
-                            </>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="rounded-full h-8 min-h-0 px-3 text-xs"
+                                onClick={handleShare}
+                                title={isZh ? '分享' : 'Share'}
+                                data-testid="share-button"
+                            >
+                                <Share2 size={14} />
+                            </Button>
                         )}
                         {isInstalled ? (
                             onUninstall ? (
@@ -456,31 +339,12 @@ export const SkillCard = ({
                 </div>
             </CardContent>
         </Card>
-        {/* Share Dialogs */}
-        {showShareTextDialog && (
-            <ShareTextDialog
-                skill={skill as any} // Use 'as any' since we're checking properties at runtime
-                isOpen={showShareTextDialog}
-                onClose={() => setShowShareTextDialog(false)}
-            />
-        )}
-        {showShareImageDialog && (
-            <ShareImageDialog
-                skill={skill as any} // Use 'as any' since we're checking properties at runtime
-                isOpen={showShareImageDialog}
-                onClose={() => setShowShareImageDialog(false)}
-            />
-        )}
-        {exportDialogPath && (
-            <ModalDialog
-                isOpen={!!exportDialogPath}
-                title={exportDialogTitle}
-                message={exportDialogMessage ?? ''}
-                type="info"
-                confirmText={isZh ? '打开导出目录' : 'Open folder'}
-                cancelText={isZh ? '关闭' : 'Close'}
-                onConfirm={handleOpenExportFolder}
-                onCancel={() => setExportDialogPath(null)}
+        {/* ShareSheet */}
+        {showShareSheet && (
+            <ShareSheet
+                skill={skill as InstalledSkill}
+                isOpen={showShareSheet}
+                onClose={() => setShowShareSheet(false)}
             />
         )}
     </>
