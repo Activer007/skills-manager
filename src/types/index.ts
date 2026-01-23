@@ -49,6 +49,8 @@ export interface InstalledSkill extends Partial<MarketplaceSkill> {
   config?: Record<string, unknown>;
   securityScore?: number;
   securityIssues?: SecurityIssue[];
+  derivedFrom?: string;
+  forkType?: 'fork' | 'remix';
 }
 
 export interface SkillManifest {
@@ -56,6 +58,8 @@ export interface SkillManifest {
   description: string;
   descriptionZh?: string; // 中文描述（可选）
   descriptionEn?: string; // 英文描述（可选）
+  derivedFrom?: string;
+  forkType?: 'fork' | 'remix';
   [key: string]: unknown;
 }
 

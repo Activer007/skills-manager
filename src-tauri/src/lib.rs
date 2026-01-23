@@ -40,6 +40,10 @@ pub struct SkillInfo {
     pub tags: Vec<String>,
     #[serde(rename = "configSchema")]
     pub config_schema: Option<serde_json::Value>,
+    #[serde(rename = "derivedFrom")]
+    pub derived_from: Option<String>,
+    #[serde(rename = "forkType")]
+    pub fork_type: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -109,6 +113,20 @@ pub struct ImportPackageRequest {
     pub install_path: Option<String>,
     #[serde(rename = "skipSecurityCheck")]
     pub skip_security_check: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ForkSkillRequest {
+    #[serde(rename = "originalSkillPath")]
+    pub original_skill_path: String,
+    #[serde(rename = "newSkillName")]
+    pub new_skill_name: String,
+    #[serde(rename = "forkType")]
+    pub fork_type: String,
+    #[serde(rename = "derivedFromUrl")]
+    pub derived_from_url: Option<String>,
+    #[serde(rename = "installPath")]
+    pub install_path: Option<String>,
 }
 
 #[derive(Debug)]
@@ -524,6 +542,8 @@ fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
 
     let tags = doc.metadata.tags.unwrap_or_default();
     let config_schema = doc.metadata.config_schema;
+    let derived_from = doc.metadata.derived_from;
+    let fork_type = doc.metadata.fork_type;
 
     // Check if it's an MCP skill based on tags
     let is_mcp = tags.iter().any(|t| t.to_lowercase() == "mcp" || t.to_lowercase() == "mcp-server");
@@ -536,6 +556,8 @@ fn parse_skill_md(path: &PathBuf, skill_type: &str) -> Option<SkillInfo> {
         is_mcp,
         tags,
         config_schema,
+        derived_from,
+        fork_type,
     })
 }
 
@@ -910,6 +932,190 @@ async fn import_github_skill(
     }
 
     Ok(outcome.result)
+}
+
+fn update_frontmatter(
+    content: &str,
+    new_name: &str,
+    derived_from: Option<&str>,
+    fork_type: &str,
+) -> Result<String, String> {
+    let lines: Vec<&str> = content.lines().collect();
+    if lines.is_empty() || !lines[0].trim().starts_with("---") {
+        return Err("No frontmatter found".to_string());
+    }
+
+    let mut end_idx = 0;
+    for (i, line) in lines.iter().enumerate().skip(1) {
+        if line.trim().starts_with("---") || line.trim().starts_with("...") {
+            end_idx = i;
+            break;
+        }
+    }
+
+    if end_idx == 0 {
+        return Err("Frontmatter not closed".to_string());
+    }
+
+    let frontmatter_str = lines[1..end_idx].join("\n");
+    let mut yaml_val: serde_yaml::Value = serde_yaml::from_str(&frontmatter_str)
+        .map_err(|e| format!("YAML parse error: {}", e))?;
+
+    if let Some(mapping) = yaml_val.as_mapping_mut() {
+        mapping.insert(
+            serde_yaml::Value::String("name".to_string()),
+            serde_yaml::Value::String(new_name.to_string()),
+        );
+        if let Some(url) = derived_from {
+            mapping.insert(
+                serde_yaml::Value::String("derivedFrom".to_string()),
+                serde_yaml::Value::String(url.to_string()),
+            );
+        }
+        mapping.insert(
+            serde_yaml::Value::String("forkType".to_string()),
+            serde_yaml::Value::String(fork_type.to_string()),
+        );
+    }
+
+    let new_frontmatter = serde_yaml::to_string(&yaml_val)
+        .map_err(|e| format!("YAML serialization error: {}", e))?;
+
+    // Remove the initial "---" that serde_yaml might add if we are not careful,
+    // but usually it adds document separator if not present.
+    // serde_yaml::to_string includes "---" at the start usually.
+    // Let's strip it to be safe and manually add it back to ensure format.
+    let clean_yaml = new_frontmatter.trim_start_matches("---\n");
+
+    let markdown_content = lines[end_idx + 1..].join("\n");
+
+    Ok(format!("---\n{}---\n{}", clean_yaml, markdown_content))
+}
+
+#[tauri::command]
+fn fork_skill(request: ForkSkillRequest) -> Result<ImportResult, String> {
+    let source_path = PathBuf::from(&request.original_skill_path);
+    if !source_path.exists() {
+        return Ok(ImportResult {
+            success: false,
+            message: "Original skill path does not exist".to_string(),
+            blocked: false,
+        });
+    }
+
+    let install_dir = if let Some(path) = request.install_path {
+        PathBuf::from(path).join(".claude").join("skills")
+    } else {
+        get_claude_skills_dir().ok_or("Cannot determine skills directory")?
+    };
+
+    let safe_name = sanitize_filename(&request.new_skill_name);
+    let dest_dir = install_dir.join(&safe_name);
+
+    if dest_dir.exists() {
+        return Ok(ImportResult {
+            success: false,
+            message: format!("Skill with name '{}' already exists", safe_name),
+            blocked: false,
+        });
+    }
+
+    if let Err(e) = fs::create_dir_all(&dest_dir) {
+        return Ok(ImportResult {
+            success: false,
+            message: format!("Failed to create destination directory: {}", e),
+            blocked: false,
+        });
+    }
+
+    // Filter out .git directories during copy
+    let copy_options = fs_extra::dir::CopyOptions::new().content_only(true);
+    // Note: fs_extra is not in dependencies, we implemented copy_dir_all manually.
+    // Let's use our manual copy_dir_all and remove .git afterwards.
+
+    if let Err(e) = copy_dir_all(&source_path, &dest_dir) {
+        let _ = fs::remove_dir_all(&dest_dir);
+        return Ok(ImportResult {
+            success: false,
+            message: format!("Failed to copy skill files: {}", e),
+            blocked: false,
+        });
+    }
+
+    // Remove .git directory if copied
+    let git_dir = dest_dir.join(".git");
+    if git_dir.exists() {
+        let _ = fs::remove_dir_all(git_dir);
+    }
+
+    // Update SKILL.md
+    let skill_md_path = dest_dir.join("SKILL.md");
+    if skill_md_path.exists() {
+        match fs::read_to_string(&skill_md_path) {
+            Ok(content) => {
+                match update_frontmatter(
+                    &content,
+                    &request.new_skill_name,
+                    request.derived_from_url.as_deref(),
+                    &request.fork_type,
+                ) {
+                    Ok(new_content) => {
+                        if let Err(e) = fs::write(&skill_md_path, new_content) {
+                            // Cleanup on failure
+                            let _ = fs::remove_dir_all(&dest_dir);
+                            return Ok(ImportResult {
+                                success: false,
+                                message: format!("Failed to write updated SKILL.md: {}", e),
+                                blocked: false,
+                            });
+                        }
+                    },
+                    Err(e) => {
+                        // Warn but proceed? Or fail?
+                        // If we can't update metadata, it's not a proper fork.
+                        let _ = fs::remove_dir_all(&dest_dir);
+                        return Ok(ImportResult {
+                            success: false,
+                            message: format!("Failed to parse SKILL.md frontmatter: {}", e),
+                            blocked: false,
+                        });
+                    }
+                }
+            },
+            Err(e) => {
+                let _ = fs::remove_dir_all(&dest_dir);
+                return Ok(ImportResult {
+                    success: false,
+                    message: format!("Failed to read SKILL.md: {}", e),
+                    blocked: false,
+                });
+            }
+        }
+    } else {
+        // No SKILL.md - create a basic one
+        let content = format!(
+            "---\nname: {}\nderivedFrom: {}\nforkType: {}\n---\n\n# {}\n\nForked from {}",
+            request.new_skill_name,
+            request.derived_from_url.as_deref().unwrap_or(""),
+            request.fork_type,
+            request.new_skill_name,
+            request.original_skill_path
+        );
+        if let Err(e) = fs::write(&skill_md_path, content) {
+             let _ = fs::remove_dir_all(&dest_dir);
+             return Ok(ImportResult {
+                 success: false,
+                 message: format!("Failed to create SKILL.md: {}", e),
+                 blocked: false,
+             });
+        }
+    }
+
+    Ok(ImportResult {
+        success: true,
+        message: format!("Skill forked successfully to {}", dest_dir.display()),
+        blocked: false,
+    })
 }
 
 #[tauri::command]
@@ -1565,6 +1771,7 @@ pub fn run() {
             calculate_skill_checksum,
             export_skill_package,
             import_skill_package,
+            fork_skill,
             open_url,
             open_path_in_file_manager,
             read_skill,
