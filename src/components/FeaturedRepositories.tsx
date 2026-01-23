@@ -8,7 +8,7 @@ import {
 } from '../hooks/useRepositories';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { appToast } from '../components/common/Toast';
+import { toast as appToast } from '../store/useToastStore';
 import { Plus, Check, Loader2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface FeaturedRepositoriesProps {

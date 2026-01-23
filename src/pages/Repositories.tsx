@@ -5,15 +5,15 @@ import {
   useAddRepository,
   useDeleteRepository,
   useScanRepository,
-  useToggleRepository,
-  RepositoryCategory
+  useToggleRepository
 } from '../hooks/useRepositories';
+import type { RepositoryCategory } from '../types';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
-import { ModalDialog } from '../components/common/ModalDialog';
+import ModalDialog from '../components/common/ModalDialog';
 import { Card } from '../components/ui/Card';
-import { appToast } from '../components/common/Toast';
+import { toast as appToast } from '../store/useToastStore';
 import { Switch } from '../components/ui/Switch';
 import {
   Plus,
@@ -24,7 +24,6 @@ import {
   GitBranch,
   Calendar,
   CheckCircle2,
-  XCircle,
   FolderOpen
 } from 'lucide-react';
 import { FeaturedRepositories } from '../components/FeaturedRepositories';
@@ -189,7 +188,7 @@ export default function RepositoriesPage() {
         </Button>
       </div>
 
-      {/* 精选仓库部分 - 这里暂时注释掉，等 T2-3 完成组件后再启用 */}
+      {/* 精选仓库部分 */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <GitBranch className="w-5 h-5 text-primary" />
@@ -379,6 +378,23 @@ export default function RepositoriesPage() {
           </div>
         </div>
       </ModalDialog>
+
+      {/* 删除确认模态框 */}
+      <ModalDialog
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        title={t('repositories.delete')}
+        message={
+          <div className="text-sm text-muted-foreground">
+             {t('repositories.deleteConfirm', { name: deleteConfirm?.name, defaultValue: `Are you sure you want to delete ${deleteConfirm?.name}?` })}
+          </div>
+        }
+        confirmText={t('repositories.delete')}
+        cancelText={t('common.cancel')}
+        onConfirm={confirmDelete}
+        type="confirm"
+        isDestructive
+      />
     </div>
   );
 }
