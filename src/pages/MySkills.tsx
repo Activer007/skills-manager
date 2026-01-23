@@ -456,6 +456,7 @@ const MySkills = () => {
           variant="primary"
           onClick={() => setShowImportModal(true)}
           className="whitespace-nowrap"
+          data-testid="import-skill-button"
         >
             <Plus size={18} className="mr-2" />
             {t('importSkill')}
@@ -477,7 +478,7 @@ const MySkills = () => {
         </TabsList>
 
         <TabsContent value="all" className="mt-4">
-          <div className="space-y-3">
+          <div className="space-y-3" data-testid="skill-list">
         {isLoading ? (
            <div className="space-y-4">
              <SkeletonCard count={3} />
@@ -505,6 +506,7 @@ const MySkills = () => {
             icon={<FolderOpen />}
             title={i18n.language === 'zh' ? `暂无 Skills` : 'No Skills found'}
             description={i18n.language === 'zh' ? '开始添加您的第一个 Skill 吧' : 'Start adding your first skill'}
+            data-testid="empty-state"
           />
         )}
       </div>
@@ -748,11 +750,12 @@ const MySkills = () => {
         )}
       </SlideOver>
 
-      {/* Import Modal */} 
+      {/* Import Modal */}
       <Modal
         isOpen={showImportModal}
         onClose={closeImportModal}
         title={t('importSkill')}
+        data-testid="import-modal"
         footer={
           !importType ? (
             <Button variant="ghost" onClick={closeImportModal}>
@@ -785,6 +788,7 @@ const MySkills = () => {
                       : !isPackagePathValid)
                 }
                 isLoading={importGithubMutation.isPending || importLocalMutation.isPending || importPackageMutation.isPending}
+                data-testid="import-confirm-button"
               >
                 {(importGithubMutation.isPending || importLocalMutation.isPending || importPackageMutation.isPending) ? (
                   t('importing')
@@ -809,6 +813,7 @@ const MySkills = () => {
               type="button"
               className="w-full text-left card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
               onClick={() => setImportType('github')}
+              data-testid="import-from-github"
             >
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
@@ -829,6 +834,7 @@ const MySkills = () => {
               type="button"
               className="w-full text-left card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
               onClick={() => setImportType('local')}
+              data-testid="import-from-local"
             >
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
@@ -849,6 +855,7 @@ const MySkills = () => {
               type="button"
               className="w-full text-left card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
               onClick={() => setImportType('package')}
+              data-testid="import-from-package"
             >
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
@@ -892,6 +899,7 @@ const MySkills = () => {
                   ? '仓库必须包含 SKILL.md 文件'
                   : 'Repository must contain SKILL.md file'}
                 autoFocus
+                data-testid="github-url-input"
               />
             ) : importType === 'local' ? (
               <Input
@@ -903,6 +911,7 @@ const MySkills = () => {
                   ? '文件夹必须包含 SKILL.md 文件'
                   : 'Folder must contain SKILL.md file'}
                 autoFocus
+                data-testid="local-path-input"
               />
             ) : (
               <div className="flex items-end gap-2">
@@ -920,6 +929,7 @@ const MySkills = () => {
                     helperText={t('importPackageHint')}
                     error={packagePathError}
                     autoFocus
+                    data-testid="package-path-input"
                   />
                 </div>
                 <div className="pb-1">

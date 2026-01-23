@@ -335,14 +335,14 @@ const Settings = () => {
             </p>
 
             {/* 现有路径列表 */}
-            <div className="space-y-2 mb-4">
+            <div className="space-y-2 mb-4" data-testid="project-paths-list">
               {paths.length === 0 ? (
                 <div className="text-center py-8 text-base-content/40 border border-dashed border-base-300 rounded-lg">
                   {t('noData')}
                 </div>
               ) : (
                 paths.map((path, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
+                  <div key={index} className="flex items-center gap-3 p-3 bg-base-200 rounded-lg" data-testid="project-path-item">
                     <FolderOpen size={18} className="text-base-content/60 shrink-0" />
                     <span className="flex-1 font-mono text-sm break-all">{path}</span>
                     <Button
@@ -350,6 +350,7 @@ const Settings = () => {
                       size="sm"
                       className="text-error"
                       onClick={() => handleRemovePath(path)}
+                      data-testid="delete-path"
                     >
                       <X size={16} />
                     </Button>
@@ -374,12 +375,14 @@ const Settings = () => {
                     value={newPath}
                     onChange={(e) => setNewPath(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddPath()}
+                    data-testid="path-input"
                   />
                 </div>
                 <Button
                   variant="primary"
                   onClick={handleAddPath}
                   disabled={!newPath.trim()}
+                  data-testid="save-path"
                 >
                   <Plus size={20} />
                   {i18n.language === 'zh' ? '添加' : 'Add'}

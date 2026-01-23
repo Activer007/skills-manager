@@ -1,0 +1,56 @@
+# E2E Tests Directory
+
+This directory contains all end-to-end tests for the Skills Manager application.
+
+## Directory Structure
+
+```
+e2e/
+├── fixtures/          # Test data and fixtures
+│   └── test-skills/   # Sample skill packages for testing
+├── helpers/           # Test helper functions
+│   └── tauri-helpers.ts
+├── pages/             # Page Object Models (POM)
+│   ├── base.page.ts
+│   ├── my-skills.page.ts
+│   ├── marketplace.page.ts
+│   └── settings.page.ts
+└── specs/             # Test specifications
+    ├── skill-management.spec.ts
+    ├── skill-import.spec.ts
+    ├── security.spec.ts
+    ├── sharing.spec.ts
+    └── settings.spec.ts
+```
+
+## Running Tests
+
+```bash
+# Run all E2E tests
+npm run e2e
+
+# Run tests in UI mode (recommended for development)
+npm run e2e:ui
+
+# Run tests in debug mode
+npm run e2e:debug
+
+# View test report
+npm run e2e:report
+```
+
+## Writing Tests
+
+1. Add `data-testid` attributes to UI elements for stable selectors
+2. Use Page Object Models to encapsulate page interactions
+3. Write descriptive test names that follow the pattern: "should [expected outcome]"
+4. Use `test.describe()` to group related tests
+5. Use `test.beforeEach()` for common setup
+
+## Test Guidelines
+
+- Keep tests independent and isolated
+- Use explicit waits with `waitFor` instead of fixed timeouts
+- Mock external dependencies (file dialogs, network requests)
+- Clean up test data after each test
+- Add comments for complex test logic

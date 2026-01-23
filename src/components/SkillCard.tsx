@@ -225,6 +225,7 @@ export const SkillCard = ({
         return (
             <>
             <div
+                data-testid="skill-card"
                 // 统一圆角：rounded-lg (12px)
                 // 统一过渡：duration-normal (200ms)
                 className={cn(
@@ -352,6 +353,7 @@ export const SkillCard = ({
     return (
         <>
         <Card
+            data-testid="skill-card"
             className="group cursor-pointer hover:-translate-y-1 transition-transform duration-300 h-full flex flex-col"
             onClick={onViewDetails}
         >

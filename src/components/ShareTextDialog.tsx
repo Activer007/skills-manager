@@ -129,6 +129,7 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
         </div>
       }
       size="xl"
+      data-testid="share-text-dialog"
     >
       {/* Skill 预览 */}
       <div className="bg-base-200 dark:bg-base-300 p-4 rounded-lg mb-4">
@@ -187,6 +188,7 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
               : 'text-base-content/60 hover:text-base-content'
           )}
           onClick={() => setActiveTab('text')}
+          data-testid="share-text-tab"
         >
           {i18n.language === 'zh' ? '复制文本' : 'Copy Text'}
           {activeTab === 'text' && (
@@ -201,6 +203,7 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
               : 'text-base-content/60 hover:text-base-content'
           )}
           onClick={() => setActiveTab('social')}
+          data-testid="share-social-tab"
         >
           {i18n.language === 'zh' ? '社交媒体' : 'Social Media'}
           {activeTab === 'social' && (
@@ -218,7 +221,7 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
               {i18n.language === 'zh' ? '完整分享文本' : 'Full Share Text'}
             </label>
             <div className="relative">
-              <pre className="bg-base-300 dark:bg-base-700 p-4 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">
+              <pre className="bg-base-300 dark:bg-base-700 p-4 rounded-lg text-sm overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto" data-testid="share-text-content">
                 {shareText}
               </pre>
               <Button
@@ -226,6 +229,7 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
                 variant="ghost"
                 className="absolute top-2 right-2"
                 onClick={() => handleCopy(shareText)}
+                data-testid="copy-text"
               >
                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               </Button>

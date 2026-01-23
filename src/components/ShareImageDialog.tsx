@@ -170,6 +170,7 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
         </div>
       }
       size="xl"
+      data-testid="share-image-dialog"
     >
       {/* 主题选择 */}
       <div className="flex items-center gap-2 mb-4">
@@ -184,6 +185,7 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
               size="sm"
               variant={theme === t ? 'default' : 'outline'}
               onClick={() => setTheme(t)}
+              data-testid={`theme-${t}`}
             >
               {i18n.language === 'zh'
                 ? (t === 'default'
@@ -204,6 +206,7 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
           'flex items-center justify-center',
           'min-h-[400px]'
         )}
+        data-testid="image-preview-container"
       >
         {isGenerating ? (
           <div className="text-center">
@@ -219,6 +222,7 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
               alt="Share Card Preview"
               className="max-w-full h-auto rounded shadow-lg"
               style={{ maxHeight: '500px' }}
+              data-testid="image-preview"
             />
           </div>
         ) : null}
@@ -258,7 +262,7 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
         >
           {i18n.language === 'zh' ? '重新生成' : 'Regenerate'}
         </Button>
-        <Button onClick={handleDownload} disabled={!previewUrl || isGenerating}>
+        <Button onClick={handleDownload} disabled={!previewUrl || isGenerating} data-testid="download-image">
           <Download className="w-4 h-4 mr-2" />
           {i18n.language === 'zh' ? '下载图片' : 'Download'}
         </Button>
