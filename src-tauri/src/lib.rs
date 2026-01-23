@@ -1529,7 +1529,20 @@ pub fn run() {
             if let Err(e) = crate::services::db::init_db() {
                 log::error!("Failed to initialize database: {}", e);
             }
-            
+
+            // Initialize default repositories if none exist
+            log::debug!("Checking default repositories...");
+            match crate::services::initialize_default_repositories() {
+                Ok(initialized) => {
+                    if initialized {
+                        log::info!("Default repositories initialized successfully");
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to initialize default repositories: {}", e);
+                }
+            }
+
             // Initialize and manage ConfigService
             match ConfigService::new() {
                 Ok(config_service) => {
@@ -1541,7 +1554,7 @@ pub fn run() {
                     // For now, log error.
                 }
             }
-            
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

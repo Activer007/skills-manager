@@ -5,6 +5,8 @@ pub mod whitelist_service;
 pub mod config_service;
 pub mod repository_service;
 pub mod featured_repository_service;
+pub mod repository_initializer;
 
 pub use repository_service::RepositoryService;
 pub use featured_repository_service::{FeaturedRepositoryService, FeaturedRepositoriesConfig, FeaturedCategory, FeaturedRepository};
+pub use repository_initializer::{initialize_default_repositories, initialize_from_featured_config};
