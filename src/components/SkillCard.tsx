@@ -10,7 +10,7 @@ import { CompatibilityBadge } from './CompatibilityBadge';
 import { ShareSheet } from './ShareSheet';
 import { cn } from '../utils/cn';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
-import { Star, GitBranch, Trash2, Settings, Plug, Share2 } from 'lucide-react';
+import { Star, GitBranch, Trash2, Settings, Plug, Share2, User } from 'lucide-react';
 
 // 常量定义
 const ICON_SIZE = {
@@ -206,7 +206,22 @@ export const SkillCard = ({
                         {skill.description}
                     </p>
                     <div className="flex items-center gap-4 mt-1 text-xs text-slate-400">
-                        <span>{skill.author || 'Unknown Author'}</span>
+                        <div className="flex items-center gap-1.5">
+                            {(skill as MarketplaceSkill).authorAvatar ? (
+                                <img
+                                    src={(skill as MarketplaceSkill).authorAvatar}
+                                    alt={skill.author}
+                                    className="w-4 h-4 rounded-full"
+                                    onError={(e) => {
+                                        // Fallback to icon if image fails
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                    }}
+                                />
+                            ) : null}
+                            <User size={12} className={cn("text-slate-400", (skill as MarketplaceSkill).authorAvatar ? "hidden" : "")} />
+                            <span>{skill.author || 'Unknown Author'}</span>
+                        </div>
                         {isMarketplace && (
                             <>
                                 <span className="flex items-center gap-1"><Star size={12} /> {(skill as MarketplaceSkill).stars}</span>
@@ -294,7 +309,19 @@ export const SkillCard = ({
                 </p>
 
                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100 dark:border-base-200">
-                    <div className="text-xs text-slate-400 font-medium">
+                    <div className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+                        {(skill as MarketplaceSkill).authorAvatar ? (
+                            <img
+                                src={(skill as MarketplaceSkill).authorAvatar}
+                                alt={skill.author}
+                                className="w-4 h-4 rounded-full"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                            />
+                        ) : null}
+                        <User size={12} className={cn("text-slate-400", (skill as MarketplaceSkill).authorAvatar ? "hidden" : "")} />
                         {skill.author || 'Unknown'}
                     </div>
                     <div className="flex items-center gap-2">
