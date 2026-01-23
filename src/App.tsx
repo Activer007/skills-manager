@@ -12,6 +12,7 @@ const Collections = lazy(() => import('./pages/Collections'));
 const CollectionDetail = lazy(() => import('./pages/CollectionDetail'));
 const ScanHistory = lazy(() => import('./pages/ScanHistory'));
 const SharePreview = lazy(() => import('./pages/SharePreview'));
+const CreatorProfile = lazy(() => import('./pages/CreatorProfile'));
 
 const router = createBrowserRouter([
   {
@@ -75,6 +76,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <Settings />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'creator/:id',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <CreatorProfile />
           </Suspense>
         ),
       },
