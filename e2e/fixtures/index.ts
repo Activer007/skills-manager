@@ -41,6 +41,7 @@ export const test = base.extend({
             descriptionEn: 'A test skill for E2E testing',
             installDate: Date.now() - 86400000, // 1 day ago
             localPath: 'C:\\mock\\skills\\e2e-test-skill',
+            path: 'C:\\mock\\skills\\e2e-test-skill',
             status: 'safe',
             type: 'system',
             version: '1.0.0',
