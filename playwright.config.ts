@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const slowMoEnv = process.env.E2E_SLOW_MO;
+const slowMo = slowMoEnv ? Number(slowMoEnv) : undefined;
+
 /**
  * Playwright 配置文件
  *
@@ -59,6 +62,9 @@ export default defineConfig({
 
     // 导航超时时间
     navigationTimeout: 30 * 1000,
+
+    // 可选：减速执行（用于可视化调试）
+    launchOptions: slowMo ? { slowMo } : undefined,
   },
 
   // 测试项目配置

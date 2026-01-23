@@ -15,12 +15,11 @@ import { Page } from '@playwright/test';
 export async function mockFileDialog(page: Page, mockPath: string) {
   await page.addInitScript((path) => {
     // 模拟 Tauri dialog API
-    (window as any).__TAURI__ = {
-      dialog: {
-        open: async () => path,
-        save: async () => path,
-      },
-    };
+    const tauri = (window as any).__TAURI__ ?? {};
+    tauri.dialog = tauri.dialog ?? {};
+    tauri.dialog.open = async () => path;
+    tauri.dialog.save = async () => path;
+    (window as any).__TAURI__ = tauri;
   }, mockPath);
 }
 
@@ -32,11 +31,10 @@ export async function mockFileDialog(page: Page, mockPath: string) {
  */
 export async function mockMultipleFilesDialog(page: Page, mockPaths: string[]) {
   await page.addInitScript((paths) => {
-    (window as any).__TAURI__ = {
-      dialog: {
-        open: async () => paths,
-      },
-    };
+    const tauri = (window as any).__TAURI__ ?? {};
+    tauri.dialog = tauri.dialog ?? {};
+    tauri.dialog.open = async () => paths;
+    (window as any).__TAURI__ = tauri;
   }, mockPaths);
 }
 
@@ -48,18 +46,17 @@ export async function mockMultipleFilesDialog(page: Page, mockPaths: string[]) {
  * @param returnValue 模拟返回值
  */
 export async function mockTauriInvoke(page: Page, command: string, returnValue: any) {
-  await page.addInitScript(({ cmd, retVal }) => {
-    (window as any).__TAURI__ = {
-      core: {
-        invoke: async (cmd: string, args?: any) => {
-          if (cmd === cmd) {
-            return retVal;
-          }
-          throw new Error(`Unknown command: ${cmd}`);
-        },
-      },
+  await page.addInitScript(({ commandName, retVal }) => {
+    const tauri = (window as any).__TAURI__ ?? {};
+    tauri.core = tauri.core ?? {};
+    tauri.core.invoke = async (cmd: string) => {
+      if (cmd === commandName) {
+        return retVal;
+      }
+      throw new Error(`Unknown command: ${cmd}`);
     };
-  }, { cmd: command, retVal: returnValue });
+    (window as any).__TAURI__ = tauri;
+  }, { commandName: command, retVal: returnValue });
 }
 
 /**
@@ -82,12 +79,11 @@ export async function waitForTauriCommand(page: Page, timeout = 5000) {
  */
 export async function mockClipboard(page: Page, text: string) {
   await page.addInitScript((clipText) => {
-    (window as any).__TAURI__ = {
-      clipboard: {
-        writeText: async () => {},
-        readText: async () => clipText,
-      },
-    };
+    const tauri = (window as any).__TAURI__ ?? {};
+    tauri.clipboard = tauri.clipboard ?? {};
+    tauri.clipboard.writeText = async () => {};
+    tauri.clipboard.readText = async () => clipText;
+    (window as any).__TAURI__ = tauri;
   }, text);
 }
 
@@ -98,14 +94,13 @@ export async function mockClipboard(page: Page, text: string) {
  */
 export async function mockShellOpen(page: Page) {
   await page.addInitScript(() => {
-    (window as any).__TAURI__ = {
-      shell: {
-        open: async (url: string) => {
-          console.log(`Opening URL: ${url}`);
-          return true;
-        },
-      },
+    const tauri = (window as any).__TAURI__ ?? {};
+    tauri.shell = tauri.shell ?? {};
+    tauri.shell.open = async (url: string) => {
+      console.log(`Opening URL: ${url}`);
+      return true;
     };
+    (window as any).__TAURI__ = tauri;
   });
 }
 
@@ -139,6 +134,7 @@ export function createTestGithubUrl(repo = 'test/skill-repo'): string {
  * @param page Playwright Page 对象
  */
 export async function waitForAppReady(page: Page) {
+  console.log('[e2e] waitForAppReady: start');
   // 等待 body 可见
   await page.waitForSelector('body', { state: 'attached' });
 
@@ -147,13 +143,17 @@ export async function waitForAppReady(page: Page) {
   if (await loading.count() > 0) {
     await loading.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {
       // 如果加载器一直存在，继续执行
+      console.log('[e2e] waitForAppReady: loading still visible after timeout');
     });
   }
 
   // 等待网络空闲
   await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
     // 网络可能一直有活动，继续执行
+    console.log('[e2e] waitForAppReady: network idle timeout');
   });
+
+  console.log('[e2e] waitForAppReady: done');
 }
 
 /**

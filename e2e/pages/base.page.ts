@@ -18,6 +18,7 @@ export class BasePage {
   async goto(path: string, options?: { timeout?: number }) {
     // 默认使用 60s 超时时间（Tauri 应用需要更长的启动时间）
     const timeout = options?.timeout || 60000;
+    console.log(`[e2e] goto ${path} (timeout ${timeout}ms)`);
     await this.page.goto(path, { timeout, waitUntil: 'domcontentloaded' });
   }
 
@@ -25,6 +26,7 @@ export class BasePage {
    * 等待元素可见
    */
   async waitForVisible(locator: Locator, timeout?: number) {
+    console.log(`[e2e] waitForVisible ${locator.toString()}`);
     await locator.waitFor({ state: 'visible', timeout });
   }
 
@@ -32,6 +34,7 @@ export class BasePage {
    * 等待元素隐藏
    */
   async waitForHidden(locator: Locator, timeout?: number) {
+    console.log(`[e2e] waitForHidden ${locator.toString()}`);
     await locator.waitFor({ state: 'hidden', timeout });
   }
 
@@ -39,6 +42,7 @@ export class BasePage {
    * 点击元素并等待导航
    */
   async clickAndWaitForNavigation(locator: Locator) {
+    console.log('[e2e] clickAndWaitForNavigation');
     await Promise.all([
       this.page.waitForLoadState('networkidle'),
       locator.click(),
@@ -49,6 +53,7 @@ export class BasePage {
    * 填写输入框
    */
   async fillInput(locator: Locator, value: string) {
+    console.log(`[e2e] fillInput value length=${value.length}`);
     await locator.fill(value);
   }
 
@@ -71,6 +76,7 @@ export class BasePage {
    */
   async waitForToast(message?: string, timeout = 5000) {
     const toast = this.page.locator('.toast, [role="alert"], .notification');
+    console.log(`[e2e] waitForToast ${message ? `"${message}"` : ''} (timeout ${timeout}ms)`);
     await this.waitForVisible(toast, timeout);
 
     if (message) {
@@ -86,6 +92,7 @@ export class BasePage {
   async waitForLoading() {
     const loading = this.page.locator('.loading, [data-testid="loading"]');
     if (await this.isPresent(loading)) {
+      console.log('[e2e] waitForLoading: loading present, waiting to hide');
       await this.waitForHidden(loading);
     }
   }
@@ -94,6 +101,7 @@ export class BasePage {
    * 截图
    */
   async screenshot(name: string) {
+    console.log(`[e2e] screenshot ${name}`);
     await this.page.screenshot({ path: `test-results/${name}.png` });
   }
 }

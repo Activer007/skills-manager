@@ -49,6 +49,7 @@ test.describe('Skill Import', () => {
       await expect(page.locator('[data-testid="github-url-input"]')).toBeVisible();
       await expect(page.locator('[data-testid="import-confirm-button"]')).toBeVisible();
     });
+  });
 
   test.describe('Local Folder Import', () => {
     test('should open folder selection dialog', async ({ page, marketplacePage }) => {

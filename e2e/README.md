@@ -50,6 +50,18 @@ npm run e2e:ui
 npm run e2e:debug
 ```
 
+### 环境变量（可选）
+
+在本地调试时可使用以下环境变量：
+
+```powershell
+# 断点调试（启动 Playwright Inspector）
+$env:PWDEBUG="1"
+
+# 放慢执行速度（单位 ms）
+$env:E2E_SLOW_MO="200"
+```
+
 ### 运行特定测试文件
 
 ```bash
@@ -248,6 +260,10 @@ test('my test', async ({ page }) => {
 3. **文件系统操作**
    - 使用 Tauri Mock API 模拟文件对话框
    - 不要依赖真实文件系统
+
+4. **Web 环境 Mock**
+   - E2E 运行在浏览器环境时会注入 `__TAURI__` / `__TAURI_INTERNALS__` mock
+   - 目的是避免因 Tauri API 缺失导致的报错与卡顿
 
 ### 跨平台兼容性
 

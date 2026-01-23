@@ -3,7 +3,8 @@
 **项目**: Skills Manager (Tauri v2 + React 19)
 **测试框架**: Playwright
 **日期**: 2026-01-22
-**状态**: ✅ 基础框架验证通过
+**最后更新**: 2026-01-23
+**状态**: ⚠️ 部分用例失败（已补充 2026-01-23 执行记录）
 
 ---
 
@@ -352,7 +353,71 @@ dd119df feat: add E2E testing framework with Playwright
 
 ---
 
-## 十三、结论
+## 十三、2026-01-23 执行与改进记录
+
+### 13.1 执行方式
+
+- **命令**: `npm run e2e`
+- **环境**: Windows + Chromium + Playwright v1.57.0
+- **调试手段**:
+  - `PWDEBUG=1`（断点调试）
+  - `E2E_SLOW_MO=200`（慢速执行，便于观察）
+
+### 13.2 关键改进
+
+1. **全局 Mock `__TAURI__`**：
+   - 在 `e2e/fixtures/index.ts` 注入 `__TAURI__` 与 `__TAURI_INTERNALS__`，避免 Web 环境因 Tauri API 缺失导致卡顿与报错。
+   - 覆盖 `core.invoke` 常用命令，保证测试可持续执行。
+2. **日志增强**：
+   - 页面级 console/pageerror/requestfailed/导航日志。
+   - 关键动作（goto/wait/fill/click/screenshot）输出日志。
+3. **运行可视化控制**：
+   - 在 `playwright.config.ts` 增加 `E2E_SLOW_MO`。
+4. **语法修复**：
+   - 修复 `skill-import.spec.ts` 缺失括号导致的语法错误。
+
+### 13.3 最新执行结果
+
+**总计**：100 tests  
+**结果**：32 passed / 45 skipped / 23 failed  
+**耗时**：约 12.5 分钟
+
+### 13.4 失败集中原因
+
+1. **Security 用例（10 个失败）**
+   - `github-url-input` 找不到：导入对话框未真正打开或路径不同。
+   - `security-mode-select` 不存在：UI 未实现或 test-id 变化。
+   - `scan-button` 不存在：当前页面无显式扫描按钮。
+2. **Settings 用例（7 个失败）**
+   - `security-mode-*` 相关 test-id 缺失。
+   - `system install path` 对应 UI 不存在。
+   - “设置持久化/无效路径处理”与现实现状不一致。
+3. **Sharing 用例（2 个失败）**
+   - 没有已安装 Skill 时无法打开分享对话框。
+4. **Skill Import 用例（4 个失败）**
+   - 测试仍在 Marketplace 路径查找 GitHub 导入按钮，但实际入口位于 MySkills。
+
+### 13.5 后续改进任务（已纳入路线）
+
+1. **统一使用 fixtures**  
+   - 将 `security.spec.ts` 改为 `import { test } from '../fixtures'`，保证全局 mock 与日志一致生效。
+2. **对齐实际 UI 流程**
+   - 先打开导入 Modal，再选择 GitHub 导入，最后填 URL。
+   - 统一 `import-confirm` / `import-confirm-button` 的 test-id。
+3. **补齐 / 调整缺失的 test-id**
+   - `security-mode-select`、`system-install-path` 等。
+4. **Mock 数据预置**
+   - 在全局 mock 中预置 1 个 Skill，保证分享 / 详情用例可运行。
+5. **多 Skill 仓库模拟**
+   - 为“多 Skill 仓库识别”增加 mock 返回结构或使用 `test.skip()`。
+6. **测试分层**
+   - Smoke：example + settings 子集
+   - Full：全部套件
+   - 预留真实 Tauri 测试（可选关闭 mock）
+
+---
+
+## 十四、结论
 
 Skills Manager 的 E2E 测试体系已成功搭建并验证。基础框架运行良好，示例测试全部通过，为后续的测试开发和维护奠定了坚实基础。
 
@@ -373,6 +438,6 @@ Skills Manager 的 E2E 测试体系已成功搭建并验证。基础框架运行
 
 ---
 
-**报告生成时间**: 2026-01-22
-**报告版本**: 1.0
+**报告生成时间**: 2026-01-23
+**报告版本**: 1.1
 **生成工具**: Claude Code
