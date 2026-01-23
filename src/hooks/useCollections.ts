@@ -5,7 +5,6 @@ import type {
   CreateCollectionRequest,
   UpdateCollectionRequest,
   AddItemRequest,
-  CollectionItem
 } from '../types/collection';
 
 export function useCollections() {

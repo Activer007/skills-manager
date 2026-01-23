@@ -11,7 +11,7 @@ import { toast } from '../store/useToastStore';
 import ModalDialog from '../components/common/ModalDialog';
 
 const Collections = () => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isZh = i18n.language === 'zh';
 
   const { data: collections = [], isLoading } = useCollections();
