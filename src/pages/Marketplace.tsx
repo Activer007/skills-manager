@@ -21,6 +21,11 @@ import type { CSSProperties } from 'react';
 
 import { ImportSkillModal } from '../components/ImportSkillModal';
 import ModalDialog from '../components/common/ModalDialog';
+import { SortDropdown, type SortOption } from '../components/SortDropdown';
+import { FilterPanel, type SecurityFilter, type CompatibilityFilter } from '../components/FilterPanel';
+import { Filter as FilterIcon } from 'lucide-react';
+
+import { scoreToTrustLevel } from '../utils/securityHelpers';
 
 // 常量定义
 const TOP_RATED_THRESHOLD = 50; // Stars threshold for top-rated filter
@@ -98,6 +103,11 @@ const Marketplace = () => {
   const uninstallMutation = useUninstallSkill();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
+  const [sortOption, setSortOption] = useState<SortOption>('stars');
+  const [securityFilter, setSecurityFilter] = useState<SecurityFilter>('all');
+  const [compatibilityFilter, setCompatibilityFilter] = useState<CompatibilityFilter>('all');
+  const [showFilters, setShowFilters] = useState(false);
+
   const [selectedSkill, setSelectedSkill] = useState<MarketplaceSkill | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -249,8 +259,8 @@ const Marketplace = () => {
     }
   };
 
-  const filteredSkills = useMemo(() => {
-    return marketplaceSkills.filter(skill => {
+  const filteredAndSortedSkills = useMemo(() => {
+    const result = marketplaceSkills.filter(skill => {
         const name = skill.name ?? '';
         const description = skill.description ?? '';
         const author = skill.author ?? '';
@@ -260,17 +270,58 @@ const Marketplace = () => {
 
         if (!matchesSearch) return false;
 
-        if (filter === 'top-rated') return skill.stars > TOP_RATED_THRESHOLD;
-
-        if (filter !== 'all') {
+        // 1. Primary Filter (Category/Top Rated)
+        if (filter === 'top-rated') {
+            if (skill.stars <= TOP_RATED_THRESHOLD) return false;
+        } else if (filter !== 'all') {
             const keywords = CATEGORY_KEYWORDS[filter as keyof typeof CATEGORY_KEYWORDS];
             const textToCheck = `${name} ${description} ${skill.tags?.join(' ') || ''}`.toLowerCase();
-            return keywords.some(k => textToCheck.includes(k));
+            if (!keywords.some(k => textToCheck.includes(k))) return false;
+        }
+
+        // 2. Security Filter
+        if (securityFilter !== 'all') {
+            const trustLevel = scoreToTrustLevel(skill.securityScore);
+            if (securityFilter === 'safe') {
+                if (trustLevel !== 'safe' && trustLevel !== 'verified') return false;
+            } else if (securityFilter === 'risk') {
+                if (trustLevel !== 'warning' && trustLevel !== 'critical') return false;
+            } else if (securityFilter === 'unknown') {
+                if (trustLevel !== 'unknown') return false;
+            }
+        }
+
+        // 3. Compatibility Filter
+        if (compatibilityFilter !== 'all') {
+            // If compatibility info is missing, assume unknown/incompatible for now, or check generic tags
+            // For now, check explicit compatibility field
+            const supported = skill.compatibility?.supportedAgents?.includes(compatibilityFilter);
+
+            // Fallback: Check tags for the agent name
+            const hasTag = skill.tags?.some(t => t.toLowerCase() === compatibilityFilter.toLowerCase());
+
+            if (!supported && !hasTag) return false;
         }
 
         return true;
     });
-  }, [marketplaceSkills, searchTerm, filter]);
+
+    // 4. Sorting
+    return result.sort((a, b) => {
+        switch (sortOption) {
+            case 'stars':
+                return b.stars - a.stars;
+            case 'updated':
+                return (b.updatedAt || 0) - (a.updatedAt || 0);
+            case 'name':
+                return a.name.localeCompare(b.name);
+            case 'name-desc':
+                return b.name.localeCompare(a.name);
+            default:
+                return 0;
+        }
+    });
+  }, [marketplaceSkills, searchTerm, filter, securityFilter, compatibilityFilter, sortOption]);
 
   // State for scroll indicators
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -453,6 +504,22 @@ const Marketplace = () => {
               className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide px-2"
               onScroll={handleScroll}
           >
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                    "flex-shrink-0 rounded-full h-9",
+                    (securityFilter !== 'all' || compatibilityFilter !== 'all' || showFilters) && "border-primary text-primary bg-primary/5"
+                )}
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <FilterIcon size={16} className="mr-1" />
+                {i18n.language === 'zh' ? '筛选' : 'Filters'}
+                {(securityFilter !== 'all' || compatibilityFilter !== 'all') && (
+                    <span className="ml-1 w-2 h-2 rounded-full bg-primary" />
+                )}
+              </Button>
+              <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1 flex-shrink-0" />
               {[
                   { id: 'all' as const, label: i18n.language === 'zh' ? '全部' : 'All Skills' },
                   { id: 'top-rated' as const, label: i18n.language === 'zh' ? '高评分' : 'Top Rated' },
@@ -479,9 +546,8 @@ const Marketplace = () => {
                   </button>
               ))}
               <div className="flex-1" />
-              <div className="text-sm text-slate-500 whitespace-nowrap hidden sm:block">
-                 {filteredSkills.length} skills
-              </div>
+
+              <SortDropdown value={sortOption} onChange={setSortOption} />
           </div>
           {showRightArrow && (
               <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-gradient-to-r from-white dark:from-base-100 to-transparent w-16 h-full flex items-center justify-end pointer-events-none pr-2">
@@ -489,6 +555,26 @@ const Marketplace = () => {
               </div>
           )}
       </div>
+
+      {showFilters && (
+        <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-2"
+        >
+            <FilterPanel
+                securityFilter={securityFilter}
+                setSecurityFilter={setSecurityFilter}
+                compatibilityFilter={compatibilityFilter}
+                setCompatibilityFilter={setCompatibilityFilter}
+                onReset={() => {
+                    setSecurityFilter('all');
+                    setCompatibilityFilter('all');
+                }}
+            />
+        </motion.div>
+      )}
 
 
       <div className="flex-1 min-h-0">
@@ -512,7 +598,7 @@ const Marketplace = () => {
               </Button>
             </div>
           </div>
-        ) : filteredSkills.length === 0 ? (
+        ) : filteredAndSortedSkills.length === 0 ? (
           // Empty State Component - Using new EmptyState
           <div className="flex h-full items-center justify-center">
             <EmptyState
@@ -541,7 +627,7 @@ const Marketplace = () => {
 
                   const columnCount = Math.floor(resolvedWidth / (280 + GUTTER_SIZE)) || 1;
                   const columnWidth = resolvedWidth / columnCount;
-                  const rowCount = Math.ceil(filteredSkills.length / columnCount);
+                  const rowCount = Math.ceil(filteredAndSortedSkills.length / columnCount);
 
                   return (
                       <Grid
@@ -553,7 +639,7 @@ const Marketplace = () => {
                           width={resolvedWidth}
                           itemData={{
                               ...baseItemData,
-                              skills: filteredSkills,
+                              skills: filteredAndSortedSkills,
                               columnCount
                           }}
                       >

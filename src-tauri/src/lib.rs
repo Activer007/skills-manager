@@ -1587,6 +1587,9 @@ pub fn run() {
             commands::config::set_skill_config,
             commands::config::get_project_paths,
             commands::config::save_project_paths,
+            // Publish commands
+            commands::publish::run_publish_preflight,
+            commands::publish::publish_skill,
             // Repository management commands
             commands::repository::get_repositories,
             commands::repository::get_repository,
