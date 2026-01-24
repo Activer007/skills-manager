@@ -313,7 +313,7 @@ export const PublishWizard: React.FC<PublishWizardProps> = ({
       onClose={currentStep === 'publishing' ? () => {} : onClose}
       title={getModalTitle()}
       footer={getFooter()}
-      maxWidth="lg"
+      size="xl"
     >
       <div className="min-h-[300px]">
         {/* Progress Steps Indicator */}
