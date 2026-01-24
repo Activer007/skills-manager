@@ -11,3 +11,4 @@ pub mod task;
 pub mod skill_cmds;
 pub mod import_cmds;
 pub mod package_cmds;
+pub mod share;

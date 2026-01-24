@@ -53,7 +53,7 @@ fn get_db_path() -> Result<PathBuf> {
 }
 
 /// Current database schema version
-const CURRENT_DB_VERSION: i32 = 6;
+const CURRENT_DB_VERSION: i32 = 7;
 
 /// Run database migrations to ensure schema is up to date.
 /// This function creates a schema_migrations table to track version.
@@ -129,6 +129,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             migrate_v6(conn)?;
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (6, ?)",
+                [chrono::Utc::now().timestamp_millis()],
+            )?;
+        }
+
+        // Migration v7: Create shares table
+        if current_version < 7 {
+            migrate_v7(conn)?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (7, ?)",
                 [chrono::Utc::now().timestamp_millis()],
             )?;
         }
@@ -467,5 +476,34 @@ fn migrate_v6(conn: &Connection) -> Result<()> {
     )?;
 
     log::info!("Created creator system tables");
+    Ok(())
+}
+/// Migration v7: Create shares table
+fn migrate_v7(conn: &Connection) -> Result<()> {
+    // Create shares table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS shares (
+            share_id TEXT PRIMARY KEY,
+            target_type TEXT NOT NULL,
+            target_id TEXT NOT NULL,
+            visibility TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT,
+            metadata TEXT NOT NULL
+        )",
+        [],
+    )?;
+
+    // Create indexes
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_shares_target ON shares(target_id, target_type)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_shares_created ON shares(created_at DESC)",
+        [],
+    )?;
+
+    log::info!("Created shares table");
     Ok(())
 }

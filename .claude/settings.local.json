@@ -25,7 +25,12 @@
       "Bash(git push:*)",
       "Bash(git pull)",
       "Bash(git merge:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(cargo add:*)",
+      "Search(pattern:*)",
+      "Bash(read_file:*)",
+      "Bash(src-tauri/src/models/skill.rs:*)",
+      "Bash(cargo test:*)"
     ]
   }
 }
