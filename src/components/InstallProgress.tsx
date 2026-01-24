@@ -23,7 +23,7 @@ export const InstallProgress = ({
   onDone,
   skillName,
 }: InstallProgressProps) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
 
   const getStageLabel = (stage: InstallStage) => {
     switch (stage) {

@@ -53,8 +53,6 @@ export const CompatibilityBadge = ({
   size = 'sm',
   showLabel = false,
 }: CompatibilityBadgeProps) => {
-  const { t } = useTranslation();
-
   if (!compatibility || !compatibility.supportedAgents || compatibility.supportedAgents.length === 0) {
     return null;
   }

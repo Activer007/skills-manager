@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog } from '@headlessui/react';
-import { Package, X, Download, Loader2, CheckCircle, AlertCircle, FolderOpen } from 'lucide-react';
+import { Package, X, Download, CheckCircle, AlertCircle, FolderOpen } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useExportCollection } from '../hooks/useCollections';
 import type { Collection } from '../types/collection';
@@ -14,18 +14,12 @@ interface ShareCollectionModalProps {
   collection: Collection;
 }
 
-const formatFileSize = (bytes: number): string => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-};
-
 export const ShareCollectionModal = ({
   isOpen,
   onClose,
   collection,
 }: ShareCollectionModalProps) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isZh = i18n.language === 'zh';
   const exportMutation = useExportCollection();
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);

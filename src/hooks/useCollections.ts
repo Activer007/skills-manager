@@ -72,7 +72,7 @@ export function useAddCollectionItem() {
       return await invoke('add_collection_item', { request });
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['collection', variables.collectionId] });
+      queryClient.invalidateQueries({ queryKey: ['collection', variables.collection_id] });
       queryClient.invalidateQueries({ queryKey: ['collections'] }); // To update items count
     },
   });

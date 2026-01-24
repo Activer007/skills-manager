@@ -1,5 +1,4 @@
 import type { InstalledSkill } from '../types';
-import type { ParsedShareLink } from '../types/share';
 
 const getConfigString = (
   config: Record<string, unknown> | undefined,

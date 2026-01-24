@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog } from '@headlessui/react';
-import { FolderPlus, X, Check, Search, Plus, Folder } from 'lucide-react';
+import { FolderPlus, X, Check, Search, Plus } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { useCollections, useAddCollectionItem, useCreateCollection } from '../hooks/useCollections';
@@ -24,7 +24,7 @@ export const AddToCollectionModal = ({
   onClose,
   skill,
 }: AddToCollectionModalProps) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isZh = i18n.language === 'zh';
 
   const { data: collections = [], isLoading } = useCollections();

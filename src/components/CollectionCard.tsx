@@ -18,7 +18,7 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({
   onDelete,
   onShare,
 }) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const navigate = useNavigate();
   const isZh = i18n.language === 'zh';
 

@@ -65,7 +65,7 @@ vi.mock('recharts', () => ({
       {children}
     </div>
   ),
-  AreaChart: ({ children, data, margin }: any) => (
+  AreaChart: ({ children, data }: any) => (
     <div data-testid="area-chart" data-length={data?.length}>
       {children}
     </div>

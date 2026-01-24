@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
-import { Download, Eye, Palette, ImageIcon, Loader2 } from 'lucide-react';
+import { Download, Eye, Palette, Loader2 } from 'lucide-react';
 import type { InstalledSkill } from '../types';
 import type { ShareCardTheme } from '../types/share';
 import { generateShareCard } from '../utils/shareCardGenerator';

@@ -6,9 +6,8 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
-import { Progress } from './ui/Progress';
 import type { InstalledSkill } from '../types';
-import type { PreflightResult, PreflightCheck, CheckStatusType, PublishResult } from '../types/publish';
+import type { PreflightResult, PreflightCheck, PublishResult } from '../types/publish';
 import { toast } from '../store/useToastStore';
 
 interface PublishWizardProps {
