@@ -125,7 +125,11 @@ pub fn run() {
             commands::task::get_tasks,
             commands::task::get_task,
             commands::task::cancel_task,
-            commands::task::cleanup_tasks
+            commands::task::cleanup_tasks,
+
+            // Share commands
+            commands::share::generate_share_link,
+            commands::share::resolve_share_link
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

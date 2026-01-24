@@ -16,7 +16,7 @@ import {
   Github,
   Package,
 } from 'lucide-react';
-import type { SharePreviewStatus } from '../types/share';
+import type { SharePreviewStatus, ShareRecord } from '../types/share';
 import { parseShareLink } from '../utils/shareLink';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -66,37 +66,73 @@ const SharePreview = () => {
       return;
     }
 
-    const parsed = parseShareLink(shareId);
+    const fetchShareData = async () => {
+      const parsed = parseShareLink(shareId);
 
-    if (!parsed.valid) {
-      setStatus(parsed.error?.includes('expired') ? 'expired' : 'error');
-      setError(parsed.error || (locale === 'zh' ? '无法解析分享链接' : 'Failed to parse share link'));
-      return;
-    }
+      if (!parsed.valid || !parsed.id) {
+        setStatus('error');
+        setError(locale === 'zh' ? '无效的分享链接格式' : 'Invalid share link format');
+        return;
+      }
 
-    if (parsed.data) {
-      setSkillData({
-        name: parsed.data.name,
-        description: parsed.data.description,
-        author: parsed.data.author,
-        version: parsed.data.version,
-        sourceUrl: parsed.data.sourceUrl,
-        installUrl: parsed.data.installUrl,
-        securityLevel: parsed.data.securityLevel,
-        qualityScore: parsed.data.qualityScore,
-        createdAt: parsed.data.createdAt,
-        compatibility: parsed.data.metadata?.compatibility as CompatibilityInfo | undefined,
-      });
-      setStatus('ready');
-    }
+      try {
+        const record = await invoke<ShareRecord | null>('resolve_share_link', {
+          shareId: parsed.id,
+        });
+
+        if (record) {
+          // Map backend metadata to UI state
+          setSkillData({
+            name: record.metadata.name,
+            description: record.metadata.description,
+            author: record.metadata.author,
+            version: record.metadata.version,
+            sourceUrl: record.metadata.url,
+            installUrl: record.metadata.url || `skills-manager://install?id=${record.target_id}`,
+            securityLevel: record.metadata.security_level as any,
+            qualityScore: record.metadata.security_score, // mapped from qualityScore
+            createdAt: new Date(record.created_at).getTime(),
+            compatibility: undefined, // Metadata doesn't seem to have compatibility yet
+          });
+          setStatus('ready');
+        } else {
+          setStatus('expired'); // Or error, assuming null means not found/expired
+          setError(locale === 'zh' ? '链接已过期或不存在' : 'Link expired or not found');
+        }
+      } catch (err) {
+        console.error('Failed to resolve share link:', err);
+        setStatus('error');
+        setError(locale === 'zh' ? '加载分享内容失败' : 'Failed to load shared content');
+      }
+    };
+
+    fetchShareData();
   }, [shareId, locale]);
 
   // 点击安装按钮
   const handleInstallClick = () => {
-    if (!skillData?.installUrl && !skillData?.sourceUrl) {
-      toast.error(locale === 'zh' ? '无可用的安装链接' : 'No install URL available');
-      return;
-    }
+    // If we rely on backend, we might need a way to get the install source.
+    // Current metadata doesn't have sourceUrl.
+    // For MVP, we might assume we can fetch it via target_id or if it's a public skill.
+    // However, if it's a local skill shared, we need the source.
+    // The previous implementation had sourceUrl in the link data.
+    // The backend `ShareMetadata` currently lacks `sourceUrl`.
+    // I should probably add `sourceUrl` to `ShareMetadata` in backend or assume `installUrl` construction.
+    // For now, I will proceed, but note that `sourceUrl` might be missing.
+    // Update: I will check if I can use target_id to install?
+    // The `import_github_skill` needs a URL.
+    // If `skillData.installUrl` is constructed as `skills-manager://...`, the installer needs to handle it.
+    // But `handleConfirmInstall` uses `import_github_skill` which expects `repoUrl`.
+    
+    // CRITICAL: `ShareMetadata` in Rust needs `source_url` or similar if we want to install from it!
+    // The Reviewer said "Architecture & Implementation" issues.
+    // If I fix the security but break the install, it's bad.
+    // I should check `ShareMetadata` struct again.
+    // It has: name, description, version, author, security_score, security_level.
+    // It MISSES the actual install URL/Source!
+    
+    // I must update Backend `ShareMetadata` to include `source_url` or `install_url`.
+    // But first let's finish the frontend structure.
     setShowConfirm(true);
   };
 

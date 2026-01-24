@@ -12,6 +12,7 @@ pub mod creator_service;
 pub mod skill_service;
 pub mod import_service;
 pub mod package_service;
+pub mod share_service;
 pub mod utils;
 
 pub use repository_initializer::initialize_default_repositories;

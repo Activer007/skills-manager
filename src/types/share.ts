@@ -312,9 +312,24 @@ export type SharePreviewStatus =
   | 'expired';     // 已过期
 
 /**
- * 分享预览页面 Props
+ * Share Record from Backend
  */
-export interface SharePreviewProps {
-  /** 分享链接 ID */
-  shareId: string;
+export interface ShareRecord {
+  share_id: string;
+  target_type: 'skill' | 'profile' | 'collection';
+  target_id: string;
+  visibility: 'unlisted' | 'public';
+  created_at: string;
+  expires_at?: string;
+  metadata: ShareMetadata;
+}
+
+export interface ShareMetadata {
+  name: string;
+  description: string;
+  version: string;
+  author?: string;
+  url?: string;
+  security_score?: number;
+  security_level?: string;
 }

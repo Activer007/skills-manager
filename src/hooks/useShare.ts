@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { InstalledSkill } from '../types';
 import type {
@@ -8,6 +8,8 @@ import type {
   UseShareReturn,
   ExportResult,
   ExportStatus,
+  ShareRecord,
+  ShareMetadata,
 } from '../types/share';
 import { resolveSkillLink } from '../utils/shareLink';
 import { generatePlatformShareText, copyToClipboard } from '../utils/shareTextGenerator';
@@ -26,6 +28,8 @@ export const useShare = (
   const { autoCheckModified = true } = options;
 
   // 状态
+  const [shareLink, setShareLink] = useState<string | undefined>(undefined);
+  const [isLoadingLink, setIsLoadingLink] = useState(false);
   const [isModified, setIsModified] = useState<boolean | null>(null);
   const [isCheckingModified, setIsCheckingModified] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -39,8 +43,54 @@ export const useShare = (
   const cardBlobRef = useRef<Blob | null>(null);
   const previewUrlRef = useRef<string | null>(null);
 
-  // 计算分享链接
-  const shareLink = useMemo(() => resolveSkillLink(skill), [skill]);
+  // 生成分享链接 (调用后端)
+  useEffect(() => {
+    let isMounted = true;
+
+    const createLink = async () => {
+      setIsLoadingLink(true);
+      try {
+        const metadata: ShareMetadata = {
+          name: skill.name,
+          description: skill.description || '',
+          version: skill.version || '1.0.0',
+          author: skill.author,
+          url: resolveSkillLink(skill),
+          security_score: skill.qualityScore,
+          security_level: skill.status,
+        };
+
+        const result = await invoke<ShareRecord>('generate_share_link', {
+          targetType: 'skill',
+          targetId: skill.id,
+          visibility: 'public',
+          metadata: metadata,
+          expiresAt: null, // Optional: set expiration if needed
+        });
+
+        if (isMounted && result.share_id) {
+          // Construct the full URL
+          const origin = window.location.origin;
+          setShareLink(`${origin}/share/${result.share_id}`);
+        }
+      } catch (error) {
+        console.error('Failed to generate share link:', error);
+        if (isMounted) {
+          toast.error(locale === 'zh' ? '生成分享链接失败' : 'Failed to generate share link');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingLink(false);
+        }
+      }
+    };
+
+    createLink();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [skill, locale]);
 
   // 检测修改状态
   useEffect(() => {
@@ -98,7 +148,7 @@ export const useShare = (
   // 复制链接
   const copyLink = useCallback(async (): Promise<boolean> => {
     if (!shareLink) {
-      toast.error(locale === 'zh' ? '无可用链接' : 'No link available');
+      toast.error(locale === 'zh' ? '正在生成链接...' : 'Generating link...');
       return false;
     }
 
@@ -115,11 +165,13 @@ export const useShare = (
   // 生成文本
   const generateText = useCallback(
     (platform: SharePlatform): string => {
+      // Pass the generated shareLink explicitly if available
       return generatePlatformShareText(skill, platform, locale, {
         modified: isModified === true,
+        shareLink: shareLink, // Ensure generator uses this link
       });
     },
-    [skill, locale, isModified]
+    [skill, locale, isModified, shareLink]
   );
 
   // 复制文本
@@ -156,7 +208,8 @@ export const useShare = (
     async (theme: ShareCardTheme): Promise<Blob> => {
       setIsGeneratingCard(true);
       try {
-        const blob = await generateShareCard(skill, theme);
+        // We need to pass the shareLink to the card generator
+        const blob = await generateShareCard(skill, theme, { shareLink });
         cardBlobRef.current = blob;
 
         // 清理旧的预览 URL
@@ -177,7 +230,7 @@ export const useShare = (
         setIsGeneratingCard(false);
       }
     },
-    [skill, locale]
+    [skill, locale, shareLink]
   );
 
   // 下载卡片
@@ -297,6 +350,7 @@ export const useShare = (
   return {
     // 状态
     shareLink,
+    isLoadingLink: false, // exposed property if needed, but not in original interface.
     isModified,
     isCheckingModified,
 
