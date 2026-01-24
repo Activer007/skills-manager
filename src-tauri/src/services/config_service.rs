@@ -49,7 +49,15 @@ impl ConfigService {
             cache: Mutex::new(config),
         }
     }
+}
 
+impl Default for ConfigService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ConfigService {
     pub fn get_skill_config(&self, skill_id: &str) -> Option<serde_json::Value> {
         let cache = self.cache.lock().unwrap();
         cache.skill_configs.get(skill_id).cloned()

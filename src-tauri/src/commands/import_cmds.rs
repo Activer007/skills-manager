@@ -248,10 +248,12 @@ pub async fn import_github_skill(
                     continue;
                 }
 
-                match scanner.scan_directory(dir.to_str().unwrap(), &skill_name, "en", scan_mode, &whitelisted_rules) {
+            match scanner.scan_directory(dir.to_str().unwrap(), &skill_name, "en", scan_mode, &whitelisted_rules) {
                     Ok(report) => {
                         if report.blocked {
-                            let _ = fs::remove_dir_all(&dir);
+                            if let Err(e) = fs::remove_dir_all(dir) {
+                                eprintln!("Failed to remove blocked skill directory {}: {}", dir.display(), e);
+                            }
                             blocked.push(skill_name);
                             continue;
                         }
@@ -261,7 +263,9 @@ pub async fn import_github_skill(
                         }
                         installed.push((skill_name, dir.clone()));
                     }
-                    Err(_) => {}
+                    Err(e) => {
+                        eprintln!("Security scan failed for {}: {}", skill_name, e);
+                    }
                 }
             }
         } else {
@@ -507,7 +511,9 @@ fn import_from_source_dir(
             match scanner.scan_directory(dir.to_str().unwrap(), &current_name, "en", scan_mode, &whitelisted_rules) {
                 Ok(report) => {
                     if report.blocked {
-                        let _ = fs::remove_dir_all(&dir);
+                        if let Err(e) = fs::remove_dir_all(&dir) {
+                            eprintln!("Failed to remove blocked skill directory {}: {}", dir.display(), e);
+                        }
                         blocked.push(current_name);
                         continue;
                     }
@@ -518,7 +524,9 @@ fn import_from_source_dir(
                     installed.push((current_name.clone(), dir.clone()));
                     installed_paths.push((current_name, dir));
                 }
-                Err(_) => {}
+                Err(e) => {
+                    eprintln!("Security scan failed for {}: {}", current_name, e);
+                }
             }
         }
     } else {
