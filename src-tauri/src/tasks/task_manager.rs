@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
 use tauri::{AppHandle, Manager, Emitter};
 use once_cell::sync::Lazy;
-use chrono::Utc;
+use chrono::{Utc, DateTime};
 
 use super::task::{BackgroundTask, TaskStatus, TaskType};
 use super::progress::ProgressEvent;

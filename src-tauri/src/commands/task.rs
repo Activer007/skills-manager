@@ -1,6 +1,7 @@
 use tauri::{AppHandle, command, State};
-use super::task_manager::TASK_MANAGER;
-use super::task::BackgroundTask;
+use crate::tasks::TASK_MANAGER;
+use crate::tasks::BackgroundTask;
+use crate::tasks::TaskStatus;
 
 #[command]
 pub async fn get_tasks() -> Result<Vec<BackgroundTask>, String> {

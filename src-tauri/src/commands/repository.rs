@@ -12,7 +12,8 @@ use crate::services::featured_repository_service::{
     FeaturedRepositoryService, FeaturedRepositoriesConfig,
 };
 
-use tauri::{AppHandle, Manager, Channel};
+use tauri::{AppHandle, Manager, Emitter};
+use tauri::ipc::Channel;
 use std::process::Command;
 use std::path::PathBuf;
 use std::fs;
@@ -297,7 +298,9 @@ pub async fn scan_repository_with_progress(
         let task_id_for_blocking = task_id.clone();
         let repo_url_for_blocking = repo_url.clone();
 
+        let channel_clone = channel.clone();
         let result = tokio::task::spawn_blocking(move || {
+            let channel = channel_clone;
             let check_cancelled = || {
                 if let Some(token) = TASK_MANAGER.get_cancellation_token(&task_id_for_blocking) {
                     if token.is_cancelled() {
