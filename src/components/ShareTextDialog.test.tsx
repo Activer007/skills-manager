@@ -259,7 +259,7 @@ describe('ShareTextDialog', () => {
     });
 
     it('should display blocked status', () => {
-      const blockedSkill = { ...mockSkill, status: 'blocked' as any };
+      const blockedSkill = { ...mockSkill, status: 'unsafe' as any, securityLevel: 'blocked' as any };
       render(<ShareTextDialog skill={blockedSkill} isOpen={true} onClose={mockOnClose} />);
 
       expect(screen.getByText('Blocked')).toBeInTheDocument();

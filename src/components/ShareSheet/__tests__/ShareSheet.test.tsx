@@ -196,7 +196,7 @@ describe('ShareSheet', () => {
   });
 
   it('handles skill with risk status', () => {
-    const riskSkill = { ...mockSkill, status: 'risk' as const };
+    const riskSkill = { ...mockSkill, status: 'unsafe' as const };
     render(
       <ShareSheet
         skill={riskSkill}
