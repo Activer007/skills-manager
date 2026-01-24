@@ -44,6 +44,12 @@ export interface InstalledSkill extends Partial<MarketplaceSkill> {
   localPath: string;
   author?: string;
   status: 'safe' | 'unsafe' | 'unknown';
+
+  // Additional optional properties for enhanced type safety
+  securityLevel?: 'safe' | 'risk' | 'blocked' | 'unknown';
+  qualityScore?: number;
+  sourceUrl?: string;
+
   type: 'system' | 'project';
   version?: string;
   enabled?: boolean;
