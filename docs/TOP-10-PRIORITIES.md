@@ -746,19 +746,26 @@ test('share and install workflow', async ({ page }) => {
 
 ---
 
-### **任务 #9: 性能优化 Phase 5 - 缓存与 API**
+### **任务 #9: 性能优化 Phase 5 - 缓存与 API & DB**
 
 **优先级**: 🟢 **P2 - 中** | **工作量**: 6-10 PD | **类型**: 性能优化
 
 #### 📋 背景说明
 **性能优化尚未开始（Phase 5: 0% 完成）**。
+特别注意：`marketplace.json` 已超过 70MB，前端直接加载会导致内存飙升和卡顿。
 
 #### 🎯 任务目标
-实现 LRU 缓存、API 速率限制和性能监控。
+实现 LRU 缓存、API 速率限制，并将 Marketplace 数据托管到 SQLite。
 
 #### 📝 详细任务清单
 
-##### 9.1 LRU 缓存实现（3 PD）
+##### 9.1 Marketplace 数据 DB 托管（3 PD）
+- [ ] 创建 `marketplace_skills` 表
+- [ ] 实现 Rust 后台流式导入（JSON Stream -> DB Upsert）
+- [ ] 实现 Tauri Command `get_skills` 支持分页和搜索
+- [ ] 前端移除全量 JSON 加载，改为按需请求
+
+##### 9.2 LRU 缓存实现（2 PD）
 - [ ] 实现 LRU 缓存策略（替换简单缓存）
 - [ ] 添加缓存大小限制（最大 500MB）
 - [ ] 实现缓存手动清理按钮
@@ -791,7 +798,7 @@ impl SkillCache {
 }
 ```
 
-##### 9.2 GitHub API 优化（2 PD）
+##### 9.3 GitHub API 优化（2 PD）
 - [ ] 实现速率限制处理（5000 次/小时）
 - [ ] 添加指数退避重试机制
 - [ ] 实现请求队列管理
@@ -826,21 +833,16 @@ pub async fn fetch_with_retry(url: &str) -> Result<Response> {
 }
 ```
 
-##### 9.3 数据库优化（2 PD）
+##### 9.4 数据库优化与统计（2 PD）
 - [ ] 添加必要索引（`repository_url`, `installed_commit_sha`）
-- [ ] 实现批量操作（`batch_save_skills`）
 - [ ] 启用 WAL 模式（提升并发性能）
-- [ ] 实现数据库压缩（VACUUM）
-
-##### 9.4 缓存统计 UI（1 PD）
-- [ ] 创建缓存统计页面
-- [ ] 显示缓存命中率、大小、条目数
-- [ ] 提供清理按钮
+- [ ] 创建缓存统计页面（命中率、大小）
 
 #### 📊 验收标准
+- [x] 前端启动不再加载 70MB JSON
 - [x] 缓存命中率 > 80%
 - [x] GitHub API 速率限制正常处理
-- [x] 数据库查询性能提升 30%+
+- [x] 列表滚动和搜索响应 < 100ms
 
 #### 🔗 依赖关系
 - ✅ 独立任务，可并行开发

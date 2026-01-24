@@ -53,6 +53,10 @@
 **说明**：Playwright 覆盖“分享→安装→成功运行”主流程；并建立基础性能指标（首屏/列表滚动/图片加载）。  
 **并行建议**：与 #1-#9 并行推进，至少覆盖 Share Link 与安装流程。
 
+### 11) Marketplace Data DB Hosting (性能优化)
+**说明**：解决 70MB+ `marketplace.json` 加载慢问题；后端启动时导入 SQLite，前端按需分页查询。  
+**并行建议**：纯后端任务，可随时独立并行。
+
 ---
 
 ## 三、分阶段梳理（建议）
@@ -72,12 +76,13 @@
 ### Phase C（闭环与质量）
 - #9 轻反馈系统  
 - #10 E2E/性能基线  
+- #11 Marketplace DB Hosting
 
 ---
 
 ## 四、并行协作建议（人员分工）
 - **前端 UI 轨**：#2、#4、#5、#8、#9  
-- **后端/协议 轨**：#1、#3、#6、#7  
+- **后端/协议 轨**：#1、#3、#6、#7、#11  
 - **测试/质量 轨**：#10  
 
 ---
@@ -144,6 +149,12 @@
 - 子任务：E2E 脚手架；关键流程脚本；CI 接入；基础性能指标记录
 - 估时：6–12 PD
 - 负责人建议：测试/质量 1
+
+### T11 Marketplace Data DB Hosting (Rust 优化)
+- 里程碑：M1 数据库 Schema 迁移；M2 启动流式导入；M3 前端分页 API 对接
+- 子任务：`marketplace_skills` 建表；Rust JSON Stream Parser；Upsert 逻辑；Tauri Command `get_skills`
+- 估时：3–5 PD
+- 负责人建议：后端 1
 
 ---
 
@@ -233,4 +244,13 @@
   - 性能基线记录：首屏、列表滚动、图片加载。
 - 接口/命令（建议）：
   - `npm run test:e2e`（或新增 `test:e2e`）
+
+### T11 Marketplace Data DB Hosting
+- 验收标准：
+  - 前端不再加载 70MB+ JSON 文件。
+  - 应用启动后后台自动同步/导入数据。
+  - 市场列表滚动流畅，搜索响应 < 100ms。
+- 接口/命令（建议）：
+  - `get_marketplace_skills` (page, page_size, query)
+
 
