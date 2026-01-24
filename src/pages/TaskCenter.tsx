@@ -4,26 +4,111 @@ import { TaskItem } from '../components/tasks/TaskItem';
 import { invoke } from '@tauri-apps/api/core';
 import { Trash2, Activity, History } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Task, TaskStatus } from '../types/task';
 
-export default function TaskCenter() {
-  const { getActiveTasks, getHistoryTasks } = useTaskStore();
-  const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
+// Component for Active Tasks List
+const ActiveTasksList = () => {
   const { t } = useTranslation();
+  // Using selector to only subscribe to active tasks
+  const activeTasks = useTaskStore(state =>
+    state.tasks.filter(t =>
+      t.status === TaskStatus.Pending ||
+      t.status === TaskStatus.Running
+    )
+  );
 
-  const activeTasks = getActiveTasks();
-  const historyTasks = getHistoryTasks();
+  if (activeTasks.length === 0) {
+    return (
+      <div className="text-center py-12 text-base-content/50 bg-base-200/50 rounded-lg">
+        <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
+        <p>{t('tasks.noActiveTasks', 'No active tasks running')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {activeTasks.map((task) => (
+        <TaskItem key={task.id} task={task} />
+      ))}
+    </div>
+  );
+};
+
+// Component for History Tasks List
+const HistoryTasksList = () => {
+  const { t } = useTranslation();
+  // Using selector to only subscribe to history tasks
+  const historyTasks = useTaskStore(state =>
+    state.tasks.filter(t =>
+      t.status === TaskStatus.Completed ||
+      t.status === TaskStatus.Failed ||
+      t.status === TaskStatus.Cancelled
+    )
+  );
 
   const handleClearHistory = async () => {
     try {
       await invoke('cleanup_tasks', { keepCount: 0 });
-      // The store will be updated via the listener or we can manually refresh if needed
-      // But usually cleanup sends updates or we might need to refetch
-      const tasks = await invoke('get_tasks');
-      useTaskStore.getState().setTasks(tasks as any);
+      // Refetch tasks to update the UI
+      const tasks = await invoke<Task[]>('get_tasks');
+      useTaskStore.getState().setTasks(tasks);
     } catch (error) {
       console.error('Failed to clear history:', error);
     }
   };
+
+  if (historyTasks.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-end mb-2">
+          <button
+            className="btn btn-sm btn-ghost text-error hover:bg-error/10"
+            disabled
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            {t('tasks.clearHistory', 'Clear History')}
+          </button>
+        </div>
+        <div className="text-center py-12 text-base-content/50 bg-base-200/50 rounded-lg">
+          <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p>{t('tasks.noHistory', 'No task history available')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={handleClearHistory}
+          className="btn btn-sm btn-ghost text-error hover:bg-error/10"
+        >
+          <Trash2 className="w-4 h-4 mr-2" />
+          {t('tasks.clearHistory', 'Clear History')}
+        </button>
+      </div>
+
+      {historyTasks.map((task) => (
+        <TaskItem key={task.id} task={task} />
+      ))}
+    </div>
+  );
+};
+
+export default function TaskCenter() {
+  const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
+  const { t } = useTranslation();
+
+  // These are lightweight selectors just for counts, could be optimized further if needed
+  const activeCount = useTaskStore(state =>
+    state.tasks.filter(t => t.status === TaskStatus.Pending || t.status === TaskStatus.Running).length
+  );
+
+  const historyCount = useTaskStore(state =>
+    state.tasks.filter(t => t.status !== TaskStatus.Pending && t.status !== TaskStatus.Running).length
+  );
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -42,8 +127,8 @@ export default function TaskCenter() {
         >
           <Activity className="w-4 h-4 mr-2" />
           {t('tasks.active', 'Active')}
-          {activeTasks.length > 0 && (
-            <span className="ml-2 badge badge-sm badge-primary">{activeTasks.length}</span>
+          {activeCount > 0 && (
+            <span className="ml-2 badge badge-sm badge-primary">{activeCount}</span>
           )}
         </a>
         <a
@@ -53,53 +138,15 @@ export default function TaskCenter() {
         >
           <History className="w-4 h-4 mr-2" />
           {t('tasks.history', 'History')}
-          {historyTasks.length > 0 && (
-            <span className="ml-2 badge badge-sm badge-ghost">{historyTasks.length}</span>
+          {historyCount > 0 && (
+            <span className="ml-2 badge badge-sm badge-ghost">{historyCount}</span>
           )}
         </a>
       </div>
 
       <div className="min-h-[400px]">
-        {activeTab === 'active' && (
-          <div className="space-y-4">
-            {activeTasks.length === 0 ? (
-              <div className="text-center py-12 text-base-content/50 bg-base-200/50 rounded-lg">
-                <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>{t('tasks.noActiveTasks', 'No active tasks running')}</p>
-              </div>
-            ) : (
-              activeTasks.map((task) => (
-                <TaskItem key={task.id} task={task} />
-              ))
-            )}
-          </div>
-        )}
-
-        {activeTab === 'history' && (
-          <div className="space-y-4">
-            <div className="flex justify-end mb-2">
-              <button
-                onClick={handleClearHistory}
-                className="btn btn-sm btn-ghost text-error hover:bg-error/10"
-                disabled={historyTasks.length === 0}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {t('tasks.clearHistory', 'Clear History')}
-              </button>
-            </div>
-
-            {historyTasks.length === 0 ? (
-              <div className="text-center py-12 text-base-content/50 bg-base-200/50 rounded-lg">
-                <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>{t('tasks.noHistory', 'No task history available')}</p>
-              </div>
-            ) : (
-              historyTasks.map((task) => (
-                <TaskItem key={task.id} task={task} />
-              ))
-            )}
-          </div>
-        )}
+        {activeTab === 'active' && <ActiveTasksList />}
+        {activeTab === 'history' && <HistoryTasksList />}
       </div>
     </div>
   );

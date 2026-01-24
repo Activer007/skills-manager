@@ -1,27 +1,41 @@
-import React from 'react';
+import React, { useState, memo } from 'react';
 import { Task, TaskStatus } from '../../types/task';
 import { invoke } from '@tauri-apps/api/core';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { XCircle, CheckCircle, AlertCircle, Clock, Loader2, Ban } from 'lucide-react';
 
 interface TaskItemProps {
   task: Task;
 }
 
-export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
+export const TaskItem: React.FC<TaskItemProps> = memo(({ task }) => {
+  const [isCancelling, setIsCancelling] = useState(false);
   const isRunning = task.status === TaskStatus.Running;
   const isPending = task.status === TaskStatus.Pending;
   const isCancellable = isRunning || isPending;
 
   const handleCancel = async () => {
+    if (isCancelling) return;
+    setIsCancelling(true);
     try {
       await invoke('cancel_task', { taskId: task.id });
+      // Note: We don't reset isCancelling here because we expect the task status
+      // to change to Cancelled/Failed via the event listener shortly.
     } catch (error) {
       console.error('Failed to cancel task:', error);
+      setIsCancelling(false);
     }
   };
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return isValid(date) ? format(date, 'HH:mm:ss') : '-';
+  };
+
   const getStatusIcon = () => {
+    if (isCancelling) return <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />;
+
     switch (task.status) {
       case TaskStatus.Running:
         return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
@@ -63,14 +77,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
               {task.title}
             </h3>
             <span className="text-xs px-2 py-0.5 rounded-full bg-base-200 text-base-content/70">
-              {task.status}
+              {isCancelling ? 'Cancelling...' : task.status}
             </span>
           </div>
 
           <div className="text-sm text-base-content/60 flex items-center gap-3 mb-2">
-            <span>Started: {task.started_at ? format(new Date(task.started_at), 'HH:mm:ss') : '-'}</span>
+            <span>Started: {formatDate(task.started_at)}</span>
             {task.completed_at && (
-              <span>Ended: {format(new Date(task.completed_at), 'HH:mm:ss')}</span>
+              <span>Ended: {formatDate(task.completed_at)}</span>
             )}
           </div>
 
@@ -80,7 +94,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
             </div>
           )}
 
-          {isRunning && task.progress && (
+          {isRunning && task.progress && !isCancelling && (
             <div className="mt-2">
               <div className="flex justify-between text-xs text-base-content/70 mb-1">
                 <span>{task.progress.message}</span>
@@ -98,13 +112,16 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
         {isCancellable && (
           <button
             onClick={handleCancel}
-            className="btn btn-ghost btn-sm btn-square text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+            disabled={isCancelling}
+            className="btn btn-ghost btn-sm btn-square text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:bg-transparent disabled:text-gray-400"
             title="Cancel Task"
           >
-            <XCircle className="w-5 h-5" />
+            {isCancelling ? <Loader2 className="w-5 h-5 animate-spin" /> : <XCircle className="w-5 h-5" />}
           </button>
         )}
       </div>
     </div>
   );
-};
+});
+
+TaskItem.displayName = 'TaskItem';
