@@ -30,3 +30,13 @@ vi.mock('react-i18next', () => ({
     init: vi.fn(),
   },
 }));
+
+// Mock HTMLDialogElement for ShareSheet and Modal tests
+if (typeof window !== 'undefined') {
+  window.HTMLDialogElement.prototype.showModal = function() {
+    this.setAttribute('open', '');
+  };
+  window.HTMLDialogElement.prototype.close = function() {
+    this.removeAttribute('open');
+  };
+}

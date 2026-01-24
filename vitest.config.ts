@@ -26,6 +26,7 @@ export default defineConfig({
         '**/types/',
         '**/vitest.config.ts',
         '**/vite.config.ts',
+        'e2e/',
       ],
       thresholds: {
         statements: 60,

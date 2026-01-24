@@ -10,8 +10,6 @@ pub mod collection_service;
 pub mod fork_service;
 pub mod creator_service;
 
-pub use repository_service::RepositoryService;
-pub use featured_repository_service::{FeaturedRepositoryService, FeaturedRepositoriesConfig, FeaturedCategory, FeaturedRepository};
-pub use repository_initializer::{initialize_default_repositories, initialize_from_featured_config};
-pub use fork_service::ForkService;
-pub use creator_service::CreatorService;
+pub use repository_initializer::initialize_default_repositories;
+
+
