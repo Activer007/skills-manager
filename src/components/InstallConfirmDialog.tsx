@@ -46,6 +46,7 @@ export const InstallConfirmDialog = ({
   const [projects, setProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   // Load projects and reset state when opening
   useEffect(() => {
@@ -57,6 +58,7 @@ export const InstallConfirmDialog = ({
 
   const loadProjects = async () => {
     setIsLoadingProjects(true);
+    setLoadError(false);
     try {
       const paths = await invoke<string[]>('get_project_paths');
       setProjects(paths);
@@ -65,6 +67,7 @@ export const InstallConfirmDialog = ({
       }
     } catch (error) {
       console.error('Failed to load projects:', error);
+      setLoadError(true);
     } finally {
       setIsLoadingProjects(false);
     }
@@ -227,10 +230,13 @@ export const InstallConfirmDialog = ({
                   {t('install.target.project.title', i18n.language === 'zh' ? '项目级安装' : 'Project Installation')}
                   {isLoadingProjects && <Loader2 className="w-3 h-3 animate-spin" />}
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  {projects.length === 0 && !isLoadingProjects
-                    ? t('install.target.project.no_projects', i18n.language === 'zh' ? '未配置项目路径' : 'No projects configured')
-                    : t('install.target.project.desc', i18n.language === 'zh' ? '仅针对特定项目安装' : 'Install for a specific project')}
+                <div className={cn("text-xs mt-0.5", loadError ? "text-error" : "text-slate-500 dark:text-slate-400")}>
+                  {loadError
+                    ? (i18n.language === 'zh' ? '加载项目失败' : 'Failed to load projects')
+                    : projects.length === 0 && !isLoadingProjects
+                      ? t('install.target.project.no_projects', i18n.language === 'zh' ? '未配置项目路径' : 'No projects configured')
+                      : t('install.target.project.desc', i18n.language === 'zh' ? '仅针对特定项目安装' : 'Install for a specific project')
+                  }
                 </div>
               </div>
               <div className={cn(

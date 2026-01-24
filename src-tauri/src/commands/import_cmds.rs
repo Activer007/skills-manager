@@ -248,17 +248,24 @@ pub async fn import_github_skill(
                     continue;
                 }
 
-                if let Ok(report) = scanner.scan_directory(dir.to_str().unwrap(), &skill_name, "en", scan_mode, &whitelisted_rules) {
-                    if report.blocked {
-                        let _ = fs::remove_dir_all(dir);
-                        blocked.push(skill_name);
-                        continue;
-                    }
+            match scanner.scan_directory(dir.to_str().unwrap(), &skill_name, "en", scan_mode, &whitelisted_rules) {
+                    Ok(report) => {
+                        if report.blocked {
+                            if let Err(e) = fs::remove_dir_all(dir) {
+                                eprintln!("Failed to remove blocked skill directory {}: {}", dir.display(), e);
+                            }
+                            blocked.push(skill_name);
+                            continue;
+                        }
 
-                    if report.score < 70 {
-                        warnings.push(format!("{} ({})", skill_name, report.score));
+                        if report.score < 70 {
+                            warnings.push(format!("{} ({})", skill_name, report.score));
+                        }
+                        installed.push((skill_name, dir.clone()));
                     }
-                    installed.push((skill_name, dir.clone()));
+                    Err(e) => {
+                        eprintln!("Security scan failed for {}: {}", skill_name, e);
+                    }
                 }
             }
         } else {
@@ -501,18 +508,25 @@ fn import_from_source_dir(
                 continue;
             }
 
-            if let Ok(report) = scanner.scan_directory(dir.to_str().unwrap(), &current_name, "en", scan_mode, &whitelisted_rules) {
-                if report.blocked {
-                    let _ = fs::remove_dir_all(&dir);
-                    blocked.push(current_name);
-                    continue;
-                }
+            match scanner.scan_directory(dir.to_str().unwrap(), &current_name, "en", scan_mode, &whitelisted_rules) {
+                Ok(report) => {
+                    if report.blocked {
+                        if let Err(e) = fs::remove_dir_all(&dir) {
+                            eprintln!("Failed to remove blocked skill directory {}: {}", dir.display(), e);
+                        }
+                        blocked.push(current_name);
+                        continue;
+                    }
 
-                if report.score < 70 {
-                    warnings.push(format!("{} ({})", current_name, report.score));
+                    if report.score < 70 {
+                        warnings.push(format!("{} ({})", current_name, report.score));
+                    }
+                    installed.push((current_name.clone(), dir.clone()));
+                    installed_paths.push((current_name, dir));
                 }
-                installed.push((current_name.clone(), dir.clone()));
-                installed_paths.push((current_name, dir));
+                Err(e) => {
+                    eprintln!("Security scan failed for {}: {}", current_name, e);
+                }
             }
         }
     } else {
