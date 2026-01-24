@@ -7,7 +7,9 @@ use sha2::{Sha256, Digest};
 use anyhow::Result;
 
 use crate::models::security::SecurityReport;
+use crate::models::config::CacheConfig;
 use crate::security::{SecurityScanner, ScanMode};
+use crate::services::db;
 
 /// 缓存的 Skill 数据（内部使用，不需要序列化）
 #[derive(Debug, Clone)]
@@ -35,14 +37,16 @@ pub struct CacheStats {
     pub current_size: usize,
     /// 缓存容量
     pub capacity: usize,
+    /// 数据库缓存项数量
+    pub db_count: usize,
 }
 
 /// Skill 缓存管理器
 pub struct SkillCache {
     /// LRU 缓存
     cache: LruCache<String, CachedSkill>,
-    /// TTL（Time To Live）
-    ttl: Duration,
+    /// 缓存配置
+    config: CacheConfig,
     /// 统计数据
     stats: CacheStatsInternal,
 }
@@ -56,41 +60,40 @@ struct CacheStatsInternal {
 
 impl SkillCache {
     /// 创建新的缓存实例
-    ///
-    /// # 参数
-    /// - `capacity`: 缓存容量（最大缓存项数）
-    /// - `ttl`: 缓存过期时间
-    pub fn new(capacity: usize, ttl: Duration) -> Self {
+    pub fn new(config: CacheConfig) -> Self {
         use std::num::NonZeroUsize;
-        let cap = NonZeroUsize::new(capacity).unwrap_or_else(|| NonZeroUsize::new(100).unwrap());
+        let cap = NonZeroUsize::new(config.max_capacity).unwrap_or_else(|| NonZeroUsize::new(100).unwrap());
 
         Self {
             cache: LruCache::new(cap),
-            ttl,
+            config,
             stats: CacheStatsInternal::default(),
         }
     }
 
     /// 使用默认配置创建缓存
-    /// - 容量: 100 个 skills
-    /// - TTL: 5 分钟
     pub fn with_default_config() -> Self {
-        Self::new(100, Duration::from_secs(300))
+        Self::new(CacheConfig::default())
+    }
+
+    /// 更新缓存配置
+    pub fn update_config(&mut self, config: CacheConfig) {
+        use std::num::NonZeroUsize;
+        if config.max_capacity != self.config.max_capacity {
+            let cap = NonZeroUsize::new(config.max_capacity).unwrap_or_else(|| NonZeroUsize::new(100).unwrap());
+            self.cache.resize(cap);
+        }
+        self.config = config;
     }
 
     /// 获取缓存的安全扫描报告
-    ///
-    /// # 参数
-    /// - `skill_path`: Skill 目录路径
-    ///
-    /// # 返回
-    /// - `Some(SecurityReport)`: 缓存命中且未过期
-    /// - `None`: 缓存未命中或已过期
     pub fn get(&mut self, skill_path: &str) -> Option<SecurityReport> {
-        // 先检查是否缓存命中
+        let ttl = Duration::from_secs(self.config.ttl_seconds);
+
+        // 1. 检查内存缓存
         if let Some(cached) = self.cache.get(skill_path) {
             // 检查是否过期
-            if cached.cached_at.elapsed() < self.ttl {
+            if cached.cached_at.elapsed() < ttl {
                 // 尝试验证文件是否被修改（通过 checksum）
                 match Self::calculate_directory_checksum(skill_path) {
                     Ok(current_checksum) if current_checksum == cached.checksum => {
@@ -99,16 +102,50 @@ impl SkillCache {
                         return Some(cached.report.clone());
                     }
                     Ok(_) => {
-                        // 校验和不匹配，文件已修改，缓存失效
-                        self.stats.misses += 1;
-                        return None;
+                        // 校验和不匹配，文件已修改，内存缓存失效
+                        // 继续尝试数据库或返回 None
                     }
                     Err(_) => {
-                        // 无法计算校验和（路径不存在或无权限），但仍在 TTL 内
-                        // 在此情况下仍然返回缓存（用于测试或离线场景）
+                        // 无法计算校验和，但在 TTL 内，返回缓存
                         self.stats.hits += 1;
                         return Some(cached.report.clone());
                     }
+                }
+            }
+        }
+
+        // 2. 检查数据库缓存（如果启用）
+        if self.config.enable_db_sync {
+            match db::get_cached_report_by_path(skill_path) {
+                Ok(Some((report, checksum, cached_at_ts))) => {
+                    // 检查数据库记录是否过期
+                    let now = chrono::Utc::now().timestamp();
+                    if (now - cached_at_ts) < self.config.ttl_seconds as i64 {
+                        // 验证校验和
+                        match Self::calculate_directory_checksum(skill_path) {
+                            Ok(current) if current == checksum => {
+                                // 命中数据库缓存，提升到内存
+                                self.stats.hits += 1;
+
+                                let cached = CachedSkill {
+                                    report: report.clone(),
+                                    checksum: checksum.clone(),
+                                    cached_at: Instant::now(),
+                                    skill_path: skill_path.to_string(),
+                                };
+                                self.cache.put(skill_path.to_string(), cached);
+
+                                return Some(report);
+                            }
+                            _ => {
+                                // 校验和不匹配或无法计算
+                            }
+                        }
+                    }
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    log::warn!("Database cache lookup failed: {}", e);
                 }
             }
         }
@@ -119,31 +156,37 @@ impl SkillCache {
     }
 
     /// 插入或更新缓存
-    ///
-    /// # 参数
-    /// - `skill_path`: Skill 目录路径
-    /// - `report`: 安全扫描报告
-    /// - `checksum`: 目录校验和
     pub fn put(&mut self, skill_path: String, report: SecurityReport, checksum: String) {
         let cached = CachedSkill {
-            report,
-            checksum,
+            report: report.clone(),
+            checksum: checksum.clone(),
             cached_at: Instant::now(),
             skill_path: skill_path.clone(),
         };
 
-        self.cache.put(skill_path, cached);
+        self.cache.put(skill_path.clone(), cached);
+
+        // 同步到数据库
+        if self.config.enable_db_sync {
+            let skill_id = report.skill_id.clone();
+            if let Err(e) = db::save_cached_report(&skill_id, &skill_path, &report, &checksum) {
+                log::warn!("Failed to save cache to database: {}", e);
+            }
+        }
+    }
+
+    /// 清理过期缓存
+    pub fn prune(&mut self) {
+        // 内存缓存由 LRU 自动管理容量
+        // 我们只负责清理数据库过期记录
+        if self.config.enable_db_sync {
+            if let Err(e) = db::prune_expired_reports(self.config.ttl_seconds) {
+                log::warn!("Failed to prune expired database cache: {}", e);
+            }
+        }
     }
 
     /// 扫描 Skill 并缓存结果（带缓存优化）
-    ///
-    /// # 参数
-    /// - `skill_path`: Skill 目录路径
-    /// - `locale`: 语言区域
-    ///
-    /// # 返回
-    /// - `Ok(SecurityReport)`: 扫描报告
-    /// - `Err(String)`: 错误信息
     pub fn scan_with_cache(&mut self, skill_path: &str, locale: &str) -> Result<SecurityReport, String> {
         // 尝试从缓存获取
         if let Some(report) = self.get(skill_path) {
@@ -175,6 +218,12 @@ impl SkillCache {
         self.cache.clear();
         self.stats.hits = 0;
         self.stats.misses = 0;
+
+        if self.config.enable_db_sync {
+            if let Err(e) = db::clear_all_cached_reports() {
+                log::warn!("Failed to clear database cache: {}", e);
+            }
+        }
     }
 
     /// 获取缓存统计信息
@@ -186,18 +235,31 @@ impl SkillCache {
             0.0
         };
 
+        let db_count = if self.config.enable_db_sync {
+            db::get_cache_stats_db().unwrap_or(0)
+        } else {
+            0
+        };
+
         CacheStats {
             hit_rate,
             hits: self.stats.hits,
             misses: self.stats.misses,
             current_size: self.cache.len(),
             capacity: self.cache.cap().get(),
+            db_count,
         }
     }
 
     /// 使指定路径的缓存失效
     pub fn invalidate(&mut self, skill_path: &str) {
         self.cache.pop(skill_path);
+
+        if self.config.enable_db_sync {
+            if let Err(e) = db::delete_cached_report(skill_path) {
+                log::warn!("Failed to invalidate database cache for {}: {}", skill_path, e);
+            }
+        }
     }
 
     /// 计算目录的校验和（基于文件路径和修改时间）

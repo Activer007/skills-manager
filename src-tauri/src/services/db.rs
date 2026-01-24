@@ -1,9 +1,10 @@
-use rusqlite::Connection;
+use rusqlite::{Connection, params};
 use r2d2_sqlite::SqliteConnectionManager;
 use r2d2::Pool;
 use std::path::PathBuf;
 use anyhow::Result;
 use once_cell::sync::OnceCell;
+use crate::models::security::SecurityReport;
 
 pub type DbPool = Pool<SqliteConnectionManager>;
 
@@ -134,6 +135,73 @@ fn migrate(conn: &Connection) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Save cached scan report to database
+pub fn save_cached_report(skill_id: &str, skill_path: &str, report: &SecurityReport, checksum: &str) -> Result<()> {
+    let conn = get_connection()?;
+    let report_json = serde_json::to_string(report)?;
+    let now = chrono::Utc::now().timestamp();
+
+    conn.execute(
+        "INSERT OR REPLACE INTO cached_reports (skill_id, skill_path, report_json, checksum, cached_at)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![skill_id, skill_path, report_json, checksum, now],
+    )?;
+    Ok(())
+}
+
+/// Get cached scan report from database by skill path
+pub fn get_cached_report_by_path(skill_path: &str) -> Result<Option<(SecurityReport, String, i64)>> {
+    let conn = get_connection()?;
+    let mut stmt = conn.prepare("SELECT report_json, checksum, cached_at FROM cached_reports WHERE skill_path = ?1")?;
+    let mut rows = stmt.query(params![skill_path])?;
+
+    if let Some(row) = rows.next()? {
+        let report_json: String = row.get(0)?;
+        let checksum: String = row.get(1)?;
+        let cached_at: i64 = row.get(2)?;
+        // Handle JSON parsing errors gracefully - if we can't parse it, treat as cache miss
+        match serde_json::from_str(&report_json) {
+            Ok(report) => Ok(Some((report, checksum, cached_at))),
+            Err(e) => {
+                log::warn!("Failed to parse cached report for {}: {}", skill_path, e);
+                Ok(None)
+            }
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+/// Delete cached report
+pub fn delete_cached_report(skill_path: &str) -> Result<()> {
+    let conn = get_connection()?;
+    conn.execute("DELETE FROM cached_reports WHERE skill_path = ?1", params![skill_path])?;
+    Ok(())
+}
+
+/// Clear all cached reports
+pub fn clear_all_cached_reports() -> Result<()> {
+    let conn = get_connection()?;
+    conn.execute("DELETE FROM cached_reports", [])?;
+    Ok(())
+}
+
+/// Prune expired reports
+pub fn prune_expired_reports(ttl_seconds: u64) -> Result<usize> {
+    let conn = get_connection()?;
+    let now = chrono::Utc::now().timestamp();
+    let threshold = now - (ttl_seconds as i64);
+    let count = conn.execute("DELETE FROM cached_reports WHERE cached_at < ?1", params![threshold])?;
+    Ok(count)
+}
+
+/// Get database cache stats (count)
+pub fn get_cache_stats_db() -> Result<usize> {
+     let conn = get_connection()?;
+     let count: usize = conn.query_row("SELECT COUNT(*) FROM cached_reports", [], |row| row.get(0))?;
+     Ok(count)
 }
 
 /// Migration v1: Create initial schema for scan history
