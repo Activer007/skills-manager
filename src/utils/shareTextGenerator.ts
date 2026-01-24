@@ -1,6 +1,7 @@
 import type { InstalledSkill } from '../types';
 import type { PlatformConfig, SharePlatform } from '../types/share';
 import { resolveSkillLink } from './shareLink';
+import { getQualityScore } from './skillNormalizers';
 
 /**
  * 平台配置
@@ -114,7 +115,7 @@ export const generateShareText = (
 ): string => {
   const sourceUrl = resolveSkillLink(skill) || '本地创建';
   const status = normalizeShareStatus(skill.status);
-  const qualityScore = skill.qualityScore || (skill as typeof skill & { qualityScore?: number }).qualityScore;
+  const qualityScore = getQualityScore(skill);
 
   const securityEmoji = SECURITY_EMOJIS[status] || '❓';
   const securityLabel = getSecurityLabel(status, locale);
@@ -152,7 +153,7 @@ const generateCompactText = (
 ): string => {
   const sourceUrl = resolveSkillLink(skill) || '本地创建';
   const status = normalizeShareStatus(skill.status);
-  const qualityScore = skill.qualityScore || (skill as typeof skill & { qualityScore?: number }).qualityScore;
+  const qualityScore = getQualityScore(skill);
 
   const securityEmoji = SECURITY_EMOJIS[status] || '❓';
   const securityLabel = getSecurityLabel(status, locale);
@@ -177,7 +178,7 @@ const generateMarkdownText = (
 ): string => {
   const sourceUrl = resolveSkillLink(skill) || '本地创建';
   const status = normalizeShareStatus(skill.status);
-  const qualityScore = skill.qualityScore || (skill as typeof skill & { qualityScore?: number }).qualityScore;
+  const qualityScore = getQualityScore(skill);
 
   const securityLabel = getSecurityLabel(status, locale);
   const qualityText = qualityScore

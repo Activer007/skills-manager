@@ -4,7 +4,7 @@
  * 用于生成和预览 Skill 的嵌入卡片代码
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { InstalledSkill } from '../types';
 import type {
@@ -15,6 +15,7 @@ import type {
   EmbedSize,
 } from '../types/embed';
 import { generateEmbedCard } from '../utils/embedCardGenerator';
+import { normalizeSecurityLevel, getQualityScore } from '../utils/skillNormalizers';
 
 interface EmbedCardGeneratorProps {
   skill: InstalledSkill;
@@ -42,17 +43,20 @@ export function EmbedCardGenerator({ skill, onClose }: EmbedCardGeneratorProps) 
 
   // 准备嵌入卡片数据
   const embedData: EmbedCardData = useMemo(
-    () => ({
-      name: skill.name,
-      description: skill.description || '',
-      author: skill.author,
-      version: skill.version,
-      securityLevel: skill.securityLevel,
-      rating: skill.qualityScore,
-      tags: skill.tags || [],
-      installUrl: skill.githubUrl,
-      repoUrl: skill.githubUrl,
-    }),
+    () => {
+      const normalizedLevel = normalizeSecurityLevel(skill);
+      return {
+        name: skill.name,
+        description: skill.description || '',
+        author: skill.author,
+        version: skill.version,
+        securityLevel: normalizedLevel,
+        rating: getQualityScore(skill),
+        tags: skill.tags || [],
+        installUrl: skill.githubUrl,
+        repoUrl: skill.githubUrl,
+      };
+    },
     [skill]
   );
 

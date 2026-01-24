@@ -14,6 +14,7 @@ import type {
 import { resolveSkillLink } from '../utils/shareLink';
 import { generatePlatformShareText, copyToClipboard } from '../utils/shareTextGenerator';
 import { generateShareCard } from '../utils/shareCardGenerator';
+import { getQualityScore } from '../utils/skillNormalizers';
 import { toast } from '../store/useToastStore';
 
 /**
@@ -56,7 +57,7 @@ export const useShare = (
           version: skill.version || '1.0.0',
           author: skill.author,
           url: resolveSkillLink(skill),
-          security_score: skill.qualityScore,
+          security_score: getQualityScore(skill),
           security_level: skill.status,
         };
 
