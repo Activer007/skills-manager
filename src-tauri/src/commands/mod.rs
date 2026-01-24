@@ -8,3 +8,6 @@ pub mod collection;
 pub mod fork;
 pub mod creator;
 pub mod task;
+pub mod skill_cmds;
+pub mod import_cmds;
+pub mod package_cmds;

@@ -1,0 +1,2 @@
+pub const SKILL_SCAN_DEPTH: usize = 6;
+pub const MAX_PACKAGE_UNCOMPRESSED_SIZE: u64 = 100 * 1024 * 1024;
