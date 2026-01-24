@@ -79,13 +79,12 @@ const SharePreview = () => {
       setInstallProgress(task.progress.percentage);
 
       // Map task stage to UI stage
-      // Backend stages: "Downloading", "Scanning", "Installing"
-      const message = task.progress.message?.toLowerCase() || '';
-      if (message.includes('download')) {
+      const stage = task.progress.stage;
+      if (['Downloading', 'Preparing', 'Queued'].includes(stage)) {
         setInstallStage('downloading');
-      } else if (message.includes('scan') || message.includes('security')) {
+      } else if (['Scanning', 'Analyzing'].includes(stage)) {
         setInstallStage('scanning');
-      } else if (message.includes('install')) {
+      } else if (['Installing', 'Finalizing'].includes(stage)) {
         setInstallStage('installing');
       }
     }
@@ -171,14 +170,14 @@ const SharePreview = () => {
     // The `import_github_skill` needs a URL.
     // If `skillData.installUrl` is constructed as `skills-manager://...`, the installer needs to handle it.
     // But `handleConfirmInstall` uses `import_github_skill` which expects `repoUrl`.
-    
+
     // CRITICAL: `ShareMetadata` in Rust needs `source_url` or similar if we want to install from it!
     // The Reviewer said "Architecture & Implementation" issues.
     // If I fix the security but break the install, it's bad.
     // I should check `ShareMetadata` struct again.
     // It has: name, description, version, author, security_score, security_level.
     // It MISSES the actual install URL/Source!
-    
+
     // I must update Backend `ShareMetadata` to include `source_url` or `install_url`.
     // But first let's finish the frontend structure.
     setShowConfirm(true);
