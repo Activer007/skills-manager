@@ -159,6 +159,7 @@ impl Repository {
     ///
     /// # Examples
     /// ```
+    /// use skill_manager_lib::models::repository::Repository;
     /// let (owner, repo) = Repository::parse_github_url("https://github.com/anthropics/skills").unwrap();
     /// assert_eq!(owner, "anthropics");
     /// assert_eq!(repo, "skills");

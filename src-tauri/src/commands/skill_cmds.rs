@@ -1,10 +1,10 @@
-use tauri::{AppHandle, Manager, State, Emitter};
+use tauri::{AppHandle, State, Emitter};
 use tauri::ipc::Channel;
 use crate::services::config_service::ConfigService;
 use crate::services::skill_service::SkillService;
 use crate::models::skill::ScanResult;
 use crate::models::import::{UninstallRequest, ImportResult};
-use crate::tasks::{BackgroundTask, TaskManager, TaskType, TaskStatus, ProgressEvent, ProgressStage, TASK_MANAGER};
+use crate::tasks::{BackgroundTask, TaskType, TaskStatus, ProgressEvent, ProgressStage, TASK_MANAGER};
 use crate::constants::SKILL_SCAN_DEPTH;
 use walkdir::WalkDir;
 use std::path::PathBuf;

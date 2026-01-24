@@ -12,12 +12,10 @@ use crate::services::featured_repository_service::{
     FeaturedRepositoryService, FeaturedRepositoriesConfig,
 };
 
-use tauri::{AppHandle, Manager, Emitter};
+use tauri::{AppHandle, Emitter};
 use tauri::ipc::Channel;
 use std::process::Command;
-use std::path::PathBuf;
 use std::fs;
-use walkdir::WalkDir;
 use crate::tasks::{BackgroundTask, TaskType, TaskStatus, ProgressEvent, ProgressStage, TASK_MANAGER};
 
 /// Request to add a new repository
@@ -294,7 +292,7 @@ pub async fn scan_repository_with_progress(
 
         let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Downloading, "Preparing repository cache...", 10));
 
-        let app_handle_for_blocking = app_handle.clone();
+        let _app_handle_for_blocking = app_handle.clone();
         let task_id_for_blocking = task_id.clone();
         let repo_url_for_blocking = repo_url.clone();
 
@@ -363,15 +361,6 @@ pub async fn scan_repository_with_progress(
             if check_cancelled() { return Ok(()); }
 
             let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Scanning, "Scanning for skills...", 50));
-
-            // Scan for SKILL.md
-            let mut skill_count = 0;
-            // Simple scan depth of 6
-            for entry in WalkDir::new(&repo_dir).max_depth(6).into_iter().flatten() {
-                if entry.file_name().to_string_lossy() == "SKILL.md" {
-                    skill_count += 1;
-                }
-            }
 
             let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Finalizing, "Updating database...", 90));
 

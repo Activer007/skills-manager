@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Manager, State, Emitter};
+use tauri::{AppHandle, State};
 use tauri::ipc::Channel;
 use std::fs;
 use std::path::PathBuf;
@@ -11,7 +11,7 @@ use crate::services::skill_service::SkillService;
 use crate::services::package_service::PackageService;
 use crate::services::utils::{now_millis, sanitize_filename, copy_dir_all};
 use crate::models::import::{ImportGithubRequest, ImportLocalRequest, ImportResult, OriginRecord};
-use crate::tasks::{BackgroundTask, TaskManager, TaskType, TaskStatus, ProgressEvent, ProgressStage, TASK_MANAGER};
+use crate::tasks::{BackgroundTask, TaskType, TaskStatus, ProgressEvent, ProgressStage, TASK_MANAGER};
 
 // Helper struct for internal use - REMOVED since we use models::import::OriginRecord now
 
@@ -94,7 +94,7 @@ pub async fn import_github_skill(
 
         let target_dir_name = sanitize_filename(&target_dir_name);
         let target_dir = install_dir.join(&target_dir_name);
-        let mut detected_branch: Option<String> = None;
+        let detected_branch: Option<String>;
 
         if repo_url.contains("/tree/") {
             let repo_base = format!("https://github.com/{}/{}", parts[3], parts[4]);
@@ -395,7 +395,7 @@ pub async fn import_github_skill_with_progress(
     tokio::spawn(async move {
         let task_id = task_id_clone;
         let channel = channel_clone;
-        let req = request_clone;
+        let _req = request_clone;
 
         TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Running).await;
         let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Preparing, "Waiting for slot...", 5));
