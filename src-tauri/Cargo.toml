@@ -51,6 +51,7 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.24"
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
+tokio-util = { version = "0.7.18", features = ["full"] }
 
 [dev-dependencies]
 tempfile = "3"                  # Temporary files for testing
