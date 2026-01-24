@@ -86,31 +86,15 @@ impl SkillCache {
         self.config = config;
     }
 
-    /// 获取缓存的安全扫描报告
-    pub fn get(&mut self, skill_path: &str) -> Option<SecurityReport> {
+    /// 获取缓存条目（仅内存查找，不验证校验和）
+    pub fn get_entry(&mut self, skill_path: &str) -> Option<CachedSkill> {
         let ttl = Duration::from_secs(self.config.ttl_seconds);
 
         // 1. 检查内存缓存
         if let Some(cached) = self.cache.get(skill_path) {
-            // 检查是否过期
             if cached.cached_at.elapsed() < ttl {
-                // 尝试验证文件是否被修改（通过 checksum）
-                match Self::calculate_directory_checksum(skill_path) {
-                    Ok(current_checksum) if current_checksum == cached.checksum => {
-                        // 校验和匹配，缓存有效
-                        self.stats.hits += 1;
-                        return Some(cached.report.clone());
-                    }
-                    Ok(_) => {
-                        // 校验和不匹配，文件已修改，内存缓存失效
-                        // 继续尝试数据库或返回 None
-                    }
-                    Err(_) => {
-                        // 无法计算校验和，但在 TTL 内，返回缓存
-                        self.stats.hits += 1;
-                        return Some(cached.report.clone());
-                    }
-                }
+                self.stats.hits += 1;
+                return Some(cached.clone());
             }
         }
 
@@ -118,29 +102,20 @@ impl SkillCache {
         if self.config.enable_db_sync {
             match db::get_cached_report_by_path(skill_path) {
                 Ok(Some((report, checksum, cached_at_ts))) => {
-                    // 检查数据库记录是否过期
                     let now = chrono::Utc::now().timestamp();
                     if (now - cached_at_ts) < self.config.ttl_seconds as i64 {
-                        // 验证校验和
-                        match Self::calculate_directory_checksum(skill_path) {
-                            Ok(current) if current == checksum => {
-                                // 命中数据库缓存，提升到内存
-                                self.stats.hits += 1;
+                        // 命中数据库缓存，提升到内存
+                        self.stats.hits += 1;
 
-                                let cached = CachedSkill {
-                                    report: report.clone(),
-                                    checksum: checksum.clone(),
-                                    cached_at: Instant::now(),
-                                    skill_path: skill_path.to_string(),
-                                };
-                                self.cache.put(skill_path.to_string(), cached);
+                        let cached = CachedSkill {
+                            report: report.clone(),
+                            checksum: checksum.clone(),
+                            cached_at: Instant::now(),
+                            skill_path: skill_path.to_string(),
+                        };
+                        self.cache.put(skill_path.to_string(), cached.clone());
 
-                                return Some(report);
-                            }
-                            _ => {
-                                // 校验和不匹配或无法计算
-                            }
-                        }
+                        return Some(cached);
                     }
                 }
                 Ok(None) => {}
@@ -150,7 +125,6 @@ impl SkillCache {
             }
         }
 
-        // 缓存未命中
         self.stats.misses += 1;
         None
     }
@@ -184,33 +158,6 @@ impl SkillCache {
                 log::warn!("Failed to prune expired database cache: {}", e);
             }
         }
-    }
-
-    /// 扫描 Skill 并缓存结果（带缓存优化）
-    pub fn scan_with_cache(&mut self, skill_path: &str, locale: &str) -> Result<SecurityReport, String> {
-        // 尝试从缓存获取
-        if let Some(report) = self.get(skill_path) {
-            return Ok(report);
-        }
-
-        // 缓存未命中，执行扫描
-        let scanner = SecurityScanner::new();
-        let skill_id = Path::new(skill_path)
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown");
-
-        let report = scanner
-            .scan_directory(skill_path, skill_id, locale, ScanMode::Standard, &[])
-            .map_err(|e| e.to_string())?;
-
-        // 计算校验和并缓存
-        let checksum = Self::calculate_directory_checksum(skill_path)
-            .unwrap_or_else(|_| String::from("error"));
-
-        self.put(skill_path.to_string(), report.clone(), checksum);
-
-        Ok(report)
     }
 
     /// 清空缓存
@@ -263,7 +210,7 @@ impl SkillCache {
     }
 
     /// 计算目录的校验和（基于文件路径和修改时间）
-    fn calculate_directory_checksum(dir_path: &str) -> Result<String> {
+    pub fn calculate_directory_checksum(dir_path: &str) -> Result<String> {
         use walkdir::WalkDir;
 
         let path = Path::new(dir_path);
@@ -272,9 +219,11 @@ impl SkillCache {
         }
 
         let mut hasher = Sha256::new();
+        // 获取规范化的绝对路径
+        let root_path = path.canonicalize()?;
 
-        // 遍历目录
-        for entry in WalkDir::new(dir_path)
+        // 遍历目录（使用规范化路径）
+        for entry in WalkDir::new(&root_path)
             .follow_links(false)
             .max_depth(10)
             .into_iter()
@@ -287,15 +236,19 @@ impl SkillCache {
             // 获取文件元数据
             let metadata = entry.metadata().ok();
             if let Some(meta) = metadata {
-                // 使用文件路径、大小和修改时间计算校验和
-                let path_str = entry.path().to_string_lossy();
+                // 使用相对路径计算校验和，避免受绝对路径影响
+                // 既然我们在遍历 root_path，entry.path() 也是基于 root_path 的
+                let relative_path = entry.path().strip_prefix(&root_path)
+                    .unwrap_or(entry.path())
+                    .to_string_lossy();
+                
                 let modified = meta.modified()
                     .ok()
                     .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
                     .map(|d| d.as_secs())
                     .unwrap_or(0);
 
-                hasher.update(path_str.as_bytes());
+                hasher.update(relative_path.as_bytes());
                 hasher.update(meta.len().to_be_bytes());
                 hasher.update(modified.to_be_bytes());
             }
@@ -303,6 +256,60 @@ impl SkillCache {
 
         Ok(format!("{:x}", hasher.finalize()))
     }
+}
+
+/// 扫描 Skill 并缓存结果（线程安全，最小化锁占用）
+pub fn scan_skill_with_caching(
+    skill_path: &str, 
+    locale: &str,
+    mode: ScanMode,
+    whitelisted_rules: &[String]
+) -> Result<SecurityReport, String> {
+    // 1. 无锁操作：计算当前文件的 Checksum
+    let file_checksum = SkillCache::calculate_directory_checksum(skill_path)
+        .map_err(|e| format!("Failed to calculate checksum: {}", e))?;
+
+    // 计算包含配置的综合 Checksum，防止不同配置间的缓存混用
+    let current_checksum = {
+        let mut h = Sha256::new();
+        h.update(file_checksum.as_bytes());
+        h.update(format!("{:?}", mode).as_bytes());
+        for rule in whitelisted_rules {
+            h.update(rule.as_bytes());
+        }
+        format!("{:x}", h.finalize())
+    };
+
+    // 2. 短锁操作：检查缓存
+    {
+        let mut cache = GLOBAL_CACHE.lock().map_err(|e| e.to_string())?;
+        if let Some(cached) = cache.get_entry(skill_path) {
+            // 验证 Checksum (现在包含了 Config Hash)
+            if cached.checksum == current_checksum {
+                return Ok(cached.report);
+            }
+            // Checksum 不匹配，缓存失效，继续执行扫描
+        }
+    }
+
+    // 3. 无锁操作：执行耗时的扫描
+    let scanner = SecurityScanner::new();
+    let skill_id = Path::new(skill_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown");
+
+    let report = scanner
+        .scan_directory(skill_path, skill_id, locale, mode, whitelisted_rules)
+        .map_err(|e| e.to_string())?;
+
+    // 4. 短锁操作：更新缓存
+    {
+        let mut cache = GLOBAL_CACHE.lock().map_err(|e| e.to_string())?;
+        cache.put(skill_path.to_string(), report.clone(), current_checksum);
+    }
+
+    Ok(report)
 }
 
 impl Default for SkillCache {
@@ -369,9 +376,9 @@ mod tests {
         cache.put(dir_path.clone(), report.clone(), checksum);
 
         // 获取缓存（路径存在且校验和匹配）
-        let result = cache.get(&dir_path);
+        let result = cache.get_entry(&dir_path);
         assert!(result.is_some(), "Should return cached report for valid directory");
-        assert_eq!(result.unwrap().skill_id, "test");
+        assert_eq!(result.unwrap().report.skill_id, "test");
         assert_eq!(cache.stats().hits, 1);
     }
 
@@ -379,7 +386,7 @@ mod tests {
     fn test_cache_miss() {
         let mut cache = SkillCache::with_default_config();
 
-        let result = cache.get("non_existent_path");
+        let result = cache.get_entry("non_existent_path");
         assert!(result.is_none());
         assert_eq!(cache.stats().misses, 1);
     }
@@ -445,31 +452,34 @@ mod tests {
             scanned_files: vec![],
         };
 
-        cache.put(dir_path.clone(), report, checksum_v1);
+        cache.put(dir_path.clone(), report, checksum_v1.clone());
 
         // 2. 第一次获取：命中
-        assert!(cache.get(&dir_path).is_some());
+        assert!(cache.get_entry(&dir_path).is_some());
 
         // 3. 修改文件
-        thread::sleep(std::time::Duration::from_millis(1100)); // 确保修改时间变化（某些文件系统精度为1s）
+        thread::sleep(std::time::Duration::from_millis(1100)); // 确保修改时间变化
         {
             let mut f = File::create(&file_path).unwrap();
             write!(f, "v2").unwrap();
         }
 
-        // 4. 第二次获取：未命中（因为文件已修改，校验和不匹配）
-        assert!(cache.get(&dir_path).is_none());
+        // 4. 第二次获取：仍然命中（get_entry 不检查 checksum）
+        let entry = cache.get_entry(&dir_path);
+        assert!(entry.is_some());
+        
+        // 验证 Checksum 确实变了
+        let checksum_v2 = SkillCache::calculate_directory_checksum(&dir_path).unwrap();
+        assert_ne!(checksum_v1, checksum_v2);
+        assert_ne!(entry.unwrap().checksum, checksum_v2);
 
         // 5. 第三次获取：未命中（路径不存在）
-        assert!(cache.get("non_existent").is_none());
+        assert!(cache.get_entry("non_existent").is_none());
 
         let stats = cache.stats();
-        // 1 hit, 2 misses
-        assert_eq!(stats.hits, 1);
-        assert_eq!(stats.misses, 2);
-        
-        // hit_rate = 1 / 3 = 0.333...
-        assert!((stats.hit_rate - 0.3333).abs() < 0.001);
+        // 2 hits, 1 miss
+        assert_eq!(stats.hits, 2);
+        assert_eq!(stats.misses, 1);
     }
 
     #[test]
