@@ -179,6 +179,7 @@ export interface UseShareOptions {
 export interface UseShareReturn {
   // 状态
   shareLink: string | undefined;
+  isLoadingLink: boolean;
   isModified: boolean | null;
   isCheckingModified: boolean;
 

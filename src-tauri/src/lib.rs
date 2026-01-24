@@ -133,7 +133,8 @@ pub fn run() {
 
             // Share commands
             commands::share::generate_share_link,
-            commands::share::resolve_share_link
+            commands::share::resolve_share_link,
+            commands::share::get_git_remote_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
