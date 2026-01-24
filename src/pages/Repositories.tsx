@@ -225,7 +225,7 @@ export default function RepositoriesPage() {
                       {repo.category}
                     </Badge>
                     {!repo.enabled && (
-                      <Badge variant="destructive" size="sm">{t('common.disabled')}</Badge>
+                      <Badge variant="error" size="sm">{t('common.disabled')}</Badge>
                     )}
                   </div>
 
@@ -268,7 +268,7 @@ export default function RepositoriesPage() {
                   <div className="flex items-center mr-2">
                     <Switch
                       checked={repo.enabled}
-                      onCheckedChange={() => handleToggleEnabled(repo.id, repo.enabled)}
+                      onChange={() => handleToggleEnabled(repo.id, repo.enabled)}
                       size="sm"
                     />
                   </div>
@@ -355,9 +355,8 @@ export default function RepositoriesPage() {
 
           <div className="flex items-center space-x-2 pt-2">
             <Switch
-              id="scan-subdirs"
               checked={scanSubdirs}
-              onCheckedChange={setScanSubdirs}
+              onChange={setScanSubdirs}
             />
             <label
               htmlFor="scan-subdirs"
@@ -389,7 +388,7 @@ export default function RepositoriesPage() {
       {/* 删除确认模态框 */}
       <ModalDialog
         isOpen={!!deleteConfirm}
-        onClose={() => setDeleteConfirm(null)}
+        onCancel={() => setDeleteConfirm(null)}
         title={t('repositories.delete')}
         message={
           <div className="text-sm text-muted-foreground">
