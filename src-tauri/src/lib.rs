@@ -14,21 +14,24 @@ use sha2::{Digest, Sha256};
 use zip::{ZipArchive, ZipWriter};
 use zip::write::FileOptions;
 use zip::CompressionMethod;
-use tauri::{State, Manager};
+use tauri::{State, Manager, AppHandle, Emitter};
+use tauri::ipc::Channel;
 use crate::services::config_service::ConfigService;
+use crate::tasks::{BackgroundTask, TaskManager, TaskType, TaskStatus, ProgressEvent, ProgressStage, TASK_MANAGER};
 
 // Import modules
-mod analyzer;
-mod commands;
-mod i18n;
-mod models;
-mod security;
-mod services;
+pub mod analyzer;
+pub mod commands;
+pub mod i18n;
+pub mod models;
+pub mod security;
+pub mod services;
+pub mod tasks;
 
 const SKILL_SCAN_DEPTH: usize = 6;
 const MAX_PACKAGE_UNCOMPRESSED_SIZE: u64 = 100 * 1024 * 1024;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SkillInfo {
     pub name: String,
     pub description: String,
@@ -47,7 +50,7 @@ pub struct SkillInfo {
     pub fork_type: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ScanResult {
     #[serde(rename = "systemSkills")]
     pub system_skills: Vec<SkillInfo>,
@@ -55,7 +58,7 @@ pub struct ScanResult {
     pub project_skills: Vec<SkillInfo>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ImportGithubRequest {
     #[serde(rename = "repoUrl")]
     pub repo_url: String,
@@ -65,7 +68,7 @@ pub struct ImportGithubRequest {
     pub skip_security_check: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ImportResult {
     pub success: bool,
     pub message: String,
@@ -357,7 +360,7 @@ fn ensure_export_dir(output_dir: Option<String>) -> Result<PathBuf, String> {
     } else {
         dirs::home_dir()
             .map(|h| h.join(".claude").join("skill-exports"))
-            .ok_or("Cannot determine export directory")?
+            .ok_or("Cannot determine export directory")? 
     };
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
@@ -475,8 +478,8 @@ fn extract_skill_package_with_limit(
         let Some(enclosed) = file.enclosed_name() else {
             return Err("Package contains invalid paths".to_string());
         };
-        if enclosed.is_absolute()
-            || enclosed.has_root()
+        if enclosed.is_absolute() 
+            || enclosed.has_root() 
             || enclosed.components().any(|component| matches!(component, Component::Prefix(_)))
         {
             return Err("Package contains absolute paths".to_string());
@@ -611,6 +614,358 @@ fn scan_skills(state: State<'_, ConfigService>) -> Result<ScanResult, String> {
     })
 }
 
+#[tauri::command]
+async fn scan_skills_with_progress(
+    app: AppHandle,
+    state: State<'_, ConfigService>,
+    progress_channel: Channel<ProgressEvent>
+) -> Result<String, String> {
+    let task = BackgroundTask::new(TaskType::ScanSkill, "Scanning skills".to_string());
+    let task_id = TASK_MANAGER.add_task(task.clone()).await;
+
+    // Notify start
+    let _ = progress_channel.send(ProgressEvent::new(&task_id, ProgressStage::Queued, "Task queued...", 0));
+
+    let app_handle = app.clone();
+    // ConfigService needs to be cloneable or we need to extract data
+    let task_id_clone = task_id.clone();
+    let channel_clone = progress_channel.clone();
+
+    // ConfigService isn't cloneable easily as it has a Mutex, but we just need project paths.
+    // Let's get project paths before spawning.
+    let project_paths = state.get_project_paths();
+
+    tokio::spawn(async move {
+        let task_id = task_id_clone;
+        let channel = channel_clone;
+
+        TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Running).await;
+        let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Preparing, "Waiting for slot...", 5));
+
+        // Acquire permit
+        let (_permit, _) = TASK_MANAGER.acquire_permit(&TaskType::ScanSkill).await;
+
+        // Check cancellation
+        if let Some(token) = TASK_MANAGER.get_cancellation_token(&task_id) {
+            if token.is_cancelled() {
+                TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Cancelled).await;
+                let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Cancelled, "Cancelled", 0));
+                return;
+            }
+        }
+
+        let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Scanning, "Scanning system skills...", 10));
+
+        // Use blocking task for filesystem operations
+        let paths = project_paths;
+        let result = tokio::task::spawn_blocking(move || {
+            let mut system_skills = Vec::new();
+            let mut project_skills = Vec::new();
+
+            // Scan system skills
+            if let Some(skills_dir) = get_claude_skills_dir() {
+                if skills_dir.exists() {
+                    for entry in WalkDir::new(&skills_dir).max_depth(SKILL_SCAN_DEPTH).into_iter().flatten() {
+                        let path = entry.path();
+                        if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
+                            if let Some(skill) = parse_skill_md(&path.to_path_buf(), "system") {
+                                system_skills.push(skill);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Scan project skills
+            let total_projects = paths.len();
+            for (idx, project_path) in paths.iter().enumerate() {
+                let skills_dir = PathBuf::from(project_path).join(".claude").join("skills");
+                if skills_dir.exists() {
+                    for entry in WalkDir::new(&skills_dir).max_depth(SKILL_SCAN_DEPTH).into_iter().flatten() {
+                        let path = entry.path();
+                        if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
+                            if let Some(skill) = parse_skill_md(&path.to_path_buf(), "project") {
+                                project_skills.push(skill);
+                            }
+                        }
+                    }
+                }
+
+                // Estimate progress for projects (10% to 90%)
+                if total_projects > 0 {
+                    let _progress = 10 + ((idx + 1) as f64 / total_projects as f64 * 80.0) as u8;
+                    // Note: We can't easily send progress from inside spawn_blocking unless we pass a channel or callback
+                }
+            }
+
+            ScanResult {
+                system_skills,
+                project_skills,
+            }
+        }).await;
+
+        match result {
+            Ok(scan_result) => {
+                let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Completed, "Scan completed", 100));
+                TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Completed).await;
+                // We could also emit the result if needed, or rely on the frontend to refetch
+                let _ = app_handle.emit("scan-result", scan_result);
+            }
+            Err(e) => {
+                let err_msg = e.to_string();
+                let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Failed, &err_msg, 0));
+                TASK_MANAGER.update_error(&app_handle, &task_id, err_msg).await;
+            }
+        }
+    });
+
+    Ok(task_id)
+}
+
+#[tauri::command]
+async fn import_github_skill_with_progress(
+    app: AppHandle,
+    _state: State<'_, ConfigService>,
+    request: ImportGithubRequest,
+    progress_channel: Channel<ProgressEvent>
+) -> Result<String, String> {
+    let repo_url = request.repo_url.clone();
+    let task = BackgroundTask::new(TaskType::ImportSkill, format!("Importing {}", repo_url));
+    let task_id = TASK_MANAGER.add_task(task.clone()).await;
+
+    let _ = progress_channel.send(ProgressEvent::new(&task_id, ProgressStage::Queued, "Task queued...", 0));
+
+    let app_handle = app.clone();
+    let task_id_clone = task_id.clone();
+    let channel_clone = progress_channel.clone();
+    let request_clone = request.clone();
+
+    tokio::spawn(async move {
+        let task_id = task_id_clone;
+        let channel = channel_clone;
+        let req = request_clone;
+
+        TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Running).await;
+        let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Preparing, "Waiting for slot...", 5));
+
+        let (_permit, _dl_permit) = TASK_MANAGER.acquire_permit(&TaskType::ImportSkill).await;
+
+        if let Some(token) = TASK_MANAGER.get_cancellation_token(&task_id) {
+            if token.is_cancelled() {
+                TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Cancelled).await;
+                let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Cancelled, "Cancelled", 0));
+                return;
+            }
+        }
+
+        let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Downloading, "Preparing to clone...", 10));
+
+        let repo_url = req.repo_url.clone();
+        let github_info = parse_github_import_url(&repo_url);
+        let task_id_for_blocking = task_id.clone();
+
+        let channel_for_blocking = channel.clone();
+        let result = tokio::task::spawn_blocking(move || -> Result<ImportOutcome, String> {
+            let channel = channel_for_blocking;
+            let check_cancelled = || {
+                if let Some(token) = TASK_MANAGER.get_cancellation_token(&task_id_for_blocking) {
+                    if token.is_cancelled() {
+                        return true;
+                    }
+                }
+                false
+            };
+
+            if check_cancelled() {
+                return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: "Cancelled".to_string(), blocked: false } });
+            }
+
+            let parts: Vec<&str> = repo_url.trim_end_matches('/').split('/').collect();
+
+            if parts.len() < 5 {
+                return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: "Invalid GitHub URL".to_string(), blocked: false } });
+            }
+
+            let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Downloading, "Determining install path...", 15));
+
+            let install_dir = if let Some(path) = &req.install_path {
+                PathBuf::from(path).join(".claude").join("skills")
+            } else {
+                match get_claude_skills_dir() {
+                    Some(dir) => dir,
+                    None => return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: "Cannot determine skills directory".to_string(), blocked: false } }),
+                }
+            };
+
+            if let Err(e) = fs::create_dir_all(&install_dir) {
+                return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: format!("Failed to create directory: {}", e), blocked: false } });
+            }
+
+            let target_dir_name = if repo_url.contains("/tree/") {
+                parts.last().unwrap_or(&"skill").to_string()
+            } else {
+                parts.get(4).unwrap_or(&"skill").to_string()
+            };
+            let target_dir_name = sanitize_filename(&target_dir_name);
+            let target_dir = install_dir.join(&target_dir_name);
+            let mut detected_branch: Option<String> = None;
+
+            let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Downloading, "Cloning repository...", 20));
+
+            if repo_url.contains("/tree/") {
+                let repo_base = format!("https://github.com/{}/{}", parts[3], parts[4]);
+                let branch = parts.get(6).unwrap_or(&"main");
+                let subpath = parts[7..].join("/");
+                let temp_dir = install_dir.join(".temp_clone");
+                let _ = fs::remove_dir_all(&temp_dir);
+
+                if check_cancelled() { return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: "Cancelled".to_string(), blocked: false } }); }
+
+                let output = Command::new("git")
+                    .args(["clone", "--depth", "1", "--filter=blob:none", "--sparse", &repo_base, temp_dir.to_str().unwrap()])
+                    .output();
+
+                match output {
+                    Err(e) => return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: format!("Git command failed: {}", e), blocked: false } }),
+                    Ok(o) if !o.status.success() => return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: format!("Git clone failed: {}", String::from_utf8_lossy(&o.stderr)), blocked: false } }),
+                    _ => {}
+                }
+
+                let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Downloading, "Checking out files...", 40));
+                let _ = Command::new("git").current_dir(&temp_dir).args(["sparse-checkout", "set", &subpath]).output();
+                let _ = Command::new("git").current_dir(&temp_dir).args(["checkout", branch]).output();
+                detected_branch = Some(branch.to_string());
+
+                let source = temp_dir.join(&subpath);
+                if source.exists() {
+                    let _ = fs::remove_dir_all(&target_dir);
+                    if let Err(e) = fs::rename(&source, &target_dir) {
+                        let _ = fs::remove_dir_all(&temp_dir);
+                        return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: format!("Failed to move skill: {}", e), blocked: false } });
+                    }
+                }
+                let _ = fs::remove_dir_all(&temp_dir);
+            } else {
+                let _ = fs::remove_dir_all(&target_dir);
+                if check_cancelled() { return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: "Cancelled".to_string(), blocked: false } }); }
+
+                let output = Command::new("git").args(["clone", "--depth", "1", &repo_url, target_dir.to_str().unwrap()]).output();
+                match output {
+                    Err(e) => return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: format!("Git command failed: {}", e), blocked: false } }),
+                    Ok(o) if !o.status.success() => return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: format!("Git clone failed: {}", String::from_utf8_lossy(&o.stderr)), blocked: false } }),
+                    _ => {}
+                }
+                detected_branch = detect_git_branch(&target_dir);
+            }
+
+            let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Installing, "Extracting skills...", 60));
+            let skill_subpaths = build_skill_subpath_map(&target_dir, &github_info.base_subpath);
+            let installed_dirs = match extract_skill_dirs(&target_dir, &install_dir) {
+                Ok(dirs) => dirs,
+                Err(e) => return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: e, blocked: false } }),
+            };
+
+            let mut installed = Vec::new();
+            let mut blocked = Vec::new();
+            let mut warnings = Vec::new();
+
+            if check_cancelled() { return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message: "Cancelled".to_string(), blocked: false } }); }
+
+            if !req.skip_security_check {
+                let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Scanning, "Running security scan...", 70));
+                use crate::security::{SecurityScanner, ScanMode};
+                use crate::services::whitelist_service::WhitelistService;
+                let whitelist_service = WhitelistService::new().ok();
+                let whitelisted_rules = whitelist_service.as_ref().and_then(|service| service.get_whitelisted_rules().ok()).unwrap_or_default();
+                let scanner = SecurityScanner::new();
+                let scan_mode = ScanMode::Standard;
+
+                for (idx, dir) in installed_dirs.iter().enumerate() {
+                    let skill_name = dir.file_name().and_then(|n| n.to_str()).unwrap_or("skill").to_string();
+                    let progress = 70 + ((idx as f64 / installed_dirs.len() as f64) * 20.0) as u8;
+                    let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Scanning, &format!("Scanning {}...", skill_name), progress));
+
+                    if whitelist_service.as_ref().and_then(|s| s.is_skill_whitelisted(&skill_name).ok()).unwrap_or(false) {
+                        installed.push((skill_name, dir.clone()));
+                        continue;
+                    }
+
+                    match scanner.scan_directory(dir.to_str().unwrap(), &skill_name, "en", scan_mode, &whitelisted_rules) {
+                        Ok(report) => {
+                            if report.blocked {
+                                let _ = fs::remove_dir_all(&dir);
+                                blocked.push(skill_name);
+                                continue;
+                            }
+                            if report.score < 70 { warnings.push(format!("{} ({})", skill_name, report.score)); }
+                            installed.push((skill_name, dir.clone()));
+                        }
+                        Err(_) => {}
+                    }
+                }
+            } else {
+                for dir in installed_dirs.iter() {
+                    let skill_name = dir.file_name().and_then(|n| n.to_str()).unwrap_or("skill").to_string();
+                    installed.push((skill_name, dir.clone()));
+                }
+            }
+
+            let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Finalizing, "Finalizing installation...", 90));
+
+            if installed.is_empty() {
+                let message = if blocked.is_empty() { "No SKILL.md found in the imported repository".to_string() } else { format!("Security check blocked installation. Blocked skills: {}", blocked.join(", ")) };
+                return Ok(ImportOutcome { origins: Vec::new(), result: ImportResult { success: false, message, blocked: !blocked.is_empty() } });
+            }
+
+            let mut message = if installed.len() == 1 { format!("Successfully installed {} to {}", installed[0].0, installed[0].1.display()) } else { format!("Successfully installed {} skills to {}", installed.len(), install_dir.display()) };
+            if !blocked.is_empty() { message = format!("{}; blocked: {}", message, blocked.join(", ")); }
+            if !warnings.is_empty() { message = format!("{}; warnings: low security score for {}", message, warnings.join(", ")); }
+
+            let branch = if github_info.is_tree { github_info.branch_from_url.clone().or(detected_branch) } else { detected_branch };
+            let installed_at = now_millis();
+            let base_repo_url = github_info.base_repo_url.clone();
+            let request_url = github_info.request_url.clone();
+            let base_subpath = github_info.base_subpath.clone();
+
+            let mut origins = Vec::new();
+            for dir in installed_dirs {
+                 let skill_name = dir.file_name().and_then(|n| n.to_str()).unwrap_or("skill").to_string();
+                 let subpath = skill_subpaths.get(&skill_name).cloned().unwrap_or_else(|| base_subpath.clone());
+                 let install_url = build_github_install_url(&base_repo_url, branch.as_deref(), &subpath);
+                 let origin_url = install_url.clone();
+                 let checksum = calculate_skill_checksum_for_path(&dir).ok();
+                 let origin = json!({ "sourceType": "github", "repoUrl": base_repo_url.as_str(), "installUrl": install_url, "originUrl": origin_url, "subpath": subpath, "branch": branch.clone(), "requestUrl": request_url.as_str(), "installedAt": installed_at, "checksum": checksum });
+                origins.push(OriginRecord { skill_path: dir.to_string_lossy().to_string(), origin });
+            }
+
+            Ok(ImportOutcome { result: ImportResult { success: true, message, blocked: !blocked.is_empty() }, origins })
+        }).await;
+
+        match result {
+            Ok(Ok(outcome)) => {
+                 let config_service = app_handle.state::<ConfigService>();
+                 for record in outcome.origins {
+                    let _ = upsert_origin_config(config_service.inner(), &record.skill_path, record.origin);
+                }
+                let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Completed, "Import completed", 100));
+                TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Completed).await;
+                let _ = app_handle.emit(&format!("task-result-{}", task_id), outcome.result);
+            },
+            Ok(Err(e)) => {
+                 let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Failed, &e, 0));
+                 TASK_MANAGER.update_error(&app_handle, &task_id, e).await;
+            },
+            Err(e) => {
+                let err_msg = e.to_string();
+                let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Failed, &err_msg, 0));
+                TASK_MANAGER.update_error(&app_handle, &task_id, err_msg).await;
+            }
+        }
+    });
+
+    Ok(task_id)
+}
+
 #[tauri::command(async)]
 async fn import_github_skill(
     state: State<'_, ConfigService>,
@@ -668,6 +1023,9 @@ async fn import_github_skill(
         } else {
             parts.get(4).unwrap_or(&"skill").to_string()
         };
+
+        // Fix: Sanitize target directory name to prevent traversal
+        let target_dir_name = sanitize_filename(&target_dir_name);
 
         let target_dir = install_dir.join(&target_dir_name);
         let mut detected_branch: Option<String> = None;
@@ -944,68 +1302,6 @@ async fn import_github_skill(
 
     Ok(outcome.result)
 }
-
-// Unused functions commented out
-// fn update_frontmatter(
-//     content: &str,
-//     new_name: &str,
-//     derived_from: Option<&str>,
-//     fork_type: &str,
-// ) -> Result<String, String> {
-//     let lines: Vec<&str> = content.lines().collect();
-//     if lines.is_empty() || !lines[0].trim().starts_with("---") {
-//         return Err("No frontmatter found".to_string());
-//     }
-//
-//     let mut end_idx = 0;
-//     for (i, line) in lines.iter().enumerate().skip(1) {
-//         if line.trim().starts_with("---") || line.trim().starts_with("...") {
-//             end_idx = i;
-//             break;
-//         }
-//     }
-//
-//     if end_idx == 0 {
-//         return Err("Frontmatter not closed".to_string());
-//     }
-//
-//     let frontmatter_str = lines[1..end_idx].join("\n");
-//     let mut yaml_val: serde_yaml::Value = serde_yaml::from_str(&frontmatter_str)
-//         .map_err(|e| format!("YAML parse error: {}", e))?;
-//
-//     if let Some(mapping) = yaml_val.as_mapping_mut() {
-//         mapping.insert(
-//             serde_yaml::Value::String("name".to_string()),
-//             serde_yaml::Value::String(new_name.to_string()),
-//         );
-//         if let Some(url) = derived_from {
-//             mapping.insert(
-//                 serde_yaml::Value::String("derivedFrom".to_string()),
-//                 serde_yaml::Value::String(url.to_string()),
-//             );
-//         }
-//         mapping.insert(
-//             serde_yaml::Value::String("forkType".to_string()),
-//             serde_yaml::Value::String(fork_type.to_string()),
-//         );
-//     }
-//
-//     let new_frontmatter = serde_yaml::to_string(&yaml_val)
-//         .map_err(|e| format!("YAML serialization error: {}", e))?;
-//
-//     // Remove the initial "---" that serde_yaml might add if we are not careful,
-//     // but usually it adds document separator if not present.
-//     // serde_yaml::to_string includes "---" at the start usually.
-//     // Let's strip it to be safe and manually add it back to ensure format.
-//     let clean_yaml = new_frontmatter.trim_start_matches("---\n");
-//
-//     let markdown_content = lines[end_idx + 1..].join("\n");
-//
-//     Ok(format!("---\n{}---\n{}", clean_yaml, markdown_content))
-// }
-
-// #[tauri::command]
-// fn fork_skill(request: ForkSkillRequest) -> Result<ImportResult, String> { ... }
 
 #[tauri::command]
 fn uninstall_skill(request: UninstallRequest) -> Result<ImportResult, String> {
@@ -1610,87 +1906,6 @@ fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     Ok(())
 }
 
-// #[tauri::command]
-// fn open_url(url: String) -> Result<(), String> {
-//     #[cfg(target_os = "macos")]
-//     {
-//         Command::new("open")
-//             .arg(&url)
-//             .spawn()
-//             .map_err(|e| e.to_string())?;
-//     }
-//     #[cfg(target_os = "windows")]
-//     {
-//         Command::new("cmd")
-//             .args(["/c", "start", "", &url])
-//             .spawn()
-//             .map_err(|e| e.to_string())?;
-//     }
-//     #[cfg(target_os = "linux")]
-//     {
-//         Command::new("xdg-open")
-//             .arg(&url)
-//             .spawn()
-//             .map_err(|e| e.to_string())?;
-//     }
-//     Ok(())
-// }
-
-// #[tauri::command]
-// fn open_path_in_file_manager(path: String) -> Result<(), String> {
-//     let trimmed = path.trim();
-//     if trimmed.is_empty() {
-//         return Err("Path is empty".to_string());
-//     }
-//
-//     let mut target = PathBuf::from(trimmed);
-//     if !target.exists() {
-//         return Err(format!("Path does not exist: {}", trimmed));
-//     }
-//
-//     if target.is_file() {
-//         if let Some(parent) = target.parent() {
-//             target = parent.to_path_buf();
-//         }
-//     }
-//
-//     #[cfg(target_os = "macos")]
-//     {
-//         Command::new("open")
-//             .arg(&target)
-//             .spawn()
-//             .map_err(|e| e.to_string())?;
-//     }
-//     #[cfg(target_os = "windows")]
-//     {
-//         Command::new("explorer")
-//             .arg(&target)
-//             .spawn()
-//             .map_err(|e| e.to_string())?;
-//     }
-//     #[cfg(target_os = "linux")]
-//     {
-//         Command::new("xdg-open")
-//             .arg(&target)
-//             .spawn()
-//             .map_err(|e| e.to_string())?;
-//     }
-//
-//     Ok(())
-// }
-
-// #[tauri::command]
-// fn read_skill(skill_path: String) -> Result<String, String> {
-//     let path = PathBuf::from(&skill_path);
-//     let skill_md = path.join("SKILL.md");
-//
-//     if skill_md.exists() {
-//         fs::read_to_string(&skill_md).map_err(|e| e.to_string())
-//     } else {
-//         Err("SKILL.md not found".to_string())
-//     }
-// }
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize logging
@@ -1727,7 +1942,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             scan_skills,
+            scan_skills_with_progress,
             import_github_skill,
+            import_github_skill_with_progress,
             uninstall_skill,
             import_local_skill,
             calculate_skill_checksum,
@@ -1781,7 +1998,12 @@ pub fn run() {
             commands::analyzer::batch_analyze_skills_detailed,
             // Cache commands
             commands::cache::get_cache_stats,
-            commands::cache::clear_cache
+            commands::cache::clear_cache,
+            // Task commands
+            commands::task::get_tasks,
+            commands::task::get_task,
+            commands::task::cancel_task,
+            commands::task::cleanup_tasks
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

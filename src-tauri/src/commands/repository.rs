@@ -12,6 +12,14 @@ use crate::services::featured_repository_service::{
     FeaturedRepositoryService, FeaturedRepositoriesConfig,
 };
 
+use tauri::{AppHandle, Manager, Emitter};
+use tauri::ipc::Channel;
+use std::process::Command;
+use std::path::PathBuf;
+use std::fs;
+use walkdir::WalkDir;
+use crate::tasks::{BackgroundTask, TaskType, TaskStatus, ProgressEvent, ProgressStage, TASK_MANAGER};
+
 /// Request to add a new repository
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -244,4 +252,173 @@ pub struct RepositoryStats {
     pub official: usize,
     pub community: usize,
     pub custom: usize,
+}
+
+/// Scan a repository with progress tracking
+#[tauri::command]
+pub async fn scan_repository_with_progress(
+    app: AppHandle,
+    repo_id: String,
+    progress_channel: Channel<ProgressEvent>
+) -> Result<String, String> {
+    let service = RepositoryService::new();
+    let repo = service.get_repository(&repo_id).map_err(|e| e.to_string())?
+        .ok_or_else(|| "Repository not found".to_string())?;
+
+    let task = BackgroundTask::new(TaskType::ScanRepository, format!("Scanning {}", repo.name));
+    let task_id = TASK_MANAGER.add_task(task.clone()).await;
+
+    let _ = progress_channel.send(ProgressEvent::new(&task_id, ProgressStage::Queued, "Task queued...", 0));
+
+    let app_handle = app.clone();
+    let task_id_clone = task_id.clone();
+    let channel_clone = progress_channel.clone();
+    let repo_url = repo.url.clone();
+    let repo_id_clone = repo.id.clone();
+
+    tokio::spawn(async move {
+        let task_id = task_id_clone;
+        let channel = channel_clone;
+
+        TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Running).await;
+        let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Preparing, "Waiting for slot...", 5));
+
+        let (_permit, _dl_permit) = TASK_MANAGER.acquire_permit(&TaskType::ScanRepository).await;
+
+        if let Some(token) = TASK_MANAGER.get_cancellation_token(&task_id) {
+            if token.is_cancelled() {
+                TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Cancelled).await;
+                return;
+            }
+        }
+
+        let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Downloading, "Preparing repository cache...", 10));
+
+        let app_handle_for_blocking = app_handle.clone();
+        let task_id_for_blocking = task_id.clone();
+        let repo_url_for_blocking = repo_url.clone();
+
+        let channel_clone = channel.clone();
+        let result = tokio::task::spawn_blocking(move || {
+            let channel = channel_clone;
+            let check_cancelled = || {
+                if let Some(token) = TASK_MANAGER.get_cancellation_token(&task_id_for_blocking) {
+                    if token.is_cancelled() {
+                        return true;
+                    }
+                }
+                false
+            };
+
+            if check_cancelled() { return Ok(()); }
+
+            let cache_dir = dirs::home_dir()
+                .map(|h| h.join(".claude").join("repo-cache"))
+                .ok_or_else(|| "Cannot determine cache directory".to_string())?;
+
+            if let Err(e) = fs::create_dir_all(&cache_dir) {
+                return Err(format!("Failed to create cache directory: {}", e));
+            }
+
+            let safe_name = repo_url_for_blocking.split('/').last().unwrap_or("repo");
+            let repo_dir = cache_dir.join(format!("{}-{}", safe_name, repo_id_clone));
+
+            let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Downloading, "Updating repository...", 20));
+
+            // Clone or Pull
+            if repo_dir.exists() {
+                // Check if valid git repo
+                if repo_dir.join(".git").exists() {
+                     let _ = Command::new("git")
+                        .current_dir(&repo_dir)
+                        .args(["fetch", "--all"])
+                        .output();
+
+                     let _ = Command::new("git")
+                        .current_dir(&repo_dir)
+                        .args(["reset", "--hard", "origin/HEAD"]) // Assuming HEAD
+                        .output();
+                } else {
+                    let _ = fs::remove_dir_all(&repo_dir);
+                    let output = Command::new("git")
+                        .args(["clone", "--depth", "1", &repo_url_for_blocking, repo_dir.to_str().unwrap()])
+                        .output()
+                        .map_err(|e| format!("Git clone failed: {}", e))?;
+
+                    if !output.status.success() {
+                        return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&output.stderr)));
+                    }
+                }
+            } else {
+                let output = Command::new("git")
+                    .args(["clone", "--depth", "1", &repo_url_for_blocking, repo_dir.to_str().unwrap()])
+                    .output()
+                    .map_err(|e| format!("Git clone failed: {}", e))?;
+
+                if !output.status.success() {
+                     return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&output.stderr)));
+                }
+            }
+
+            if check_cancelled() { return Ok(()); }
+
+            let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Scanning, "Scanning for skills...", 50));
+
+            // Scan for SKILL.md
+            let mut skill_count = 0;
+            // Simple scan depth of 6
+            for entry in WalkDir::new(&repo_dir).max_depth(6).into_iter().flatten() {
+                if entry.file_name().to_string_lossy() == "SKILL.md" {
+                    skill_count += 1;
+                }
+            }
+
+            let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Finalizing, "Updating database...", 90));
+
+            // Update DB
+            let service = RepositoryService::new();
+            // Get HEAD commit
+            let output = Command::new("git")
+                .current_dir(&repo_dir)
+                .args(["rev-parse", "HEAD"])
+                .output()
+                .ok();
+
+            let commit_sha = output.and_then(|o| String::from_utf8(o.stdout).ok()).map(|s| s.trim().to_string());
+
+            if let Err(e) = service.update_repository_cache(
+                &repo_id_clone,
+                repo_dir.to_str().unwrap_or(""),
+                chrono::Utc::now(),
+                commit_sha.as_deref()
+            ) {
+                return Err(format!("Failed to update database: {}", e));
+            }
+
+            // Also update the scan queue if there was a pending task there?
+            // For now, we just update the repository table.
+
+            Ok(())
+        }).await;
+
+        match result {
+            Ok(Ok(_)) => {
+                let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Completed, "Repository scan completed", 100));
+                TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Completed).await;
+                // Emit event to refresh UI lists if needed
+                let _ = app_handle.emit("repository-updated", ());
+            },
+            Ok(Err(e)) => {
+                let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Failed, &e, 0));
+                TASK_MANAGER.update_error(&app_handle, &task_id, e).await;
+            },
+            Err(e) => {
+                let err_msg = e.to_string();
+                let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Failed, &err_msg, 0));
+                TASK_MANAGER.update_error(&app_handle, &task_id, err_msg).await;
+            }
+        }
+    });
+
+    Ok(task_id)
 }
