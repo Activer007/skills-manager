@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
 /// Repository category classification
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum RepositoryCategory {
     /// Official repositories from Anthropic or verified partners
@@ -15,13 +15,8 @@ pub enum RepositoryCategory {
     /// Community-curated repositories with quality endorsement
     Community,
     /// User-added custom repositories
+    #[default]
     Custom,
-}
-
-impl Default for RepositoryCategory {
-    fn default() -> Self {
-        Self::Custom
-    }
 }
 
 impl std::fmt::Display for RepositoryCategory {
@@ -48,19 +43,14 @@ impl std::str::FromStr for RepositoryCategory {
 }
 
 /// Scan queue task status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ScanStatus {
+    #[default]
     Pending,
     Running,
     Completed,
     Failed,
-}
-
-impl Default for ScanStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 impl std::fmt::Display for ScanStatus {

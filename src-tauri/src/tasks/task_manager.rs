@@ -10,7 +10,7 @@ use super::progress::ProgressEvent;
 use super::cancellation::TaskCancellationToken;
 
 // Global singleton instance
-pub static TASK_MANAGER: Lazy<TaskManager> = Lazy::new(|| TaskManager::new());
+pub static TASK_MANAGER: Lazy<TaskManager> = Lazy::new(TaskManager::new);
 
 pub struct TaskManager {
     tasks: Arc<RwLock<HashMap<String, BackgroundTask>>>,
@@ -31,7 +31,15 @@ impl TaskManager {
             download_semaphore: Arc::new(tokio::sync::Semaphore::new(2)),
         }
     }
+}
 
+impl Default for TaskManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TaskManager {
     pub async fn add_task(&self, task: BackgroundTask) -> String {
         let id = task.id.clone();
 
@@ -132,8 +140,8 @@ impl TaskManager {
         // Remove oldest if we have more than keep_count
         if completed_tasks.len() > keep_count {
             let remove_count = completed_tasks.len() - keep_count;
-            for i in 0..remove_count {
-                tasks.remove(&completed_tasks[i].0);
+            for (task_id, _) in completed_tasks.iter().take(remove_count) {
+                tasks.remove(task_id);
             }
         }
     }

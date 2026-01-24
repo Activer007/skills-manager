@@ -67,7 +67,7 @@ impl ImportService {
         }
     }
 
-    pub fn detect_git_branch(repo_dir: &PathBuf) -> Option<String> {
+    pub fn detect_git_branch(repo_dir: &std::path::Path) -> Option<String> {
         let head_path = repo_dir.join(".git").join("HEAD");
         let head_content = fs::read_to_string(head_path).ok()?;
         let head = head_content.trim();
@@ -80,7 +80,7 @@ impl ImportService {
     }
 
     pub fn build_skill_subpath_map(
-        target_dir: &PathBuf,
+        target_dir: &std::path::Path,
         base_subpath: &str
     ) -> std::collections::HashMap<String, String> {
         let mut map = std::collections::HashMap::new();
@@ -127,10 +127,10 @@ impl ImportService {
         base
     }
 
-    pub fn collect_skill_dirs(root: &PathBuf) -> Vec<PathBuf> {
+    pub fn collect_skill_dirs(root: &std::path::Path) -> Vec<PathBuf> {
         let root_skill = root.join("SKILL.md");
         if root_skill.exists() {
-            return vec![root.clone()];
+            return vec![root.to_path_buf()];
         }
 
         let mut skill_dirs = Vec::new();
@@ -167,11 +167,11 @@ impl ImportService {
         skill_dirs
     }
 
-    pub fn extract_skill_dirs(target_dir: &PathBuf, install_dir: &PathBuf) -> Result<Vec<PathBuf>, String> {
+    pub fn extract_skill_dirs(target_dir: &std::path::Path, install_dir: &std::path::Path) -> Result<Vec<PathBuf>, String> {
         let skill_dirs = Self::collect_skill_dirs(target_dir);
 
         if skill_dirs.is_empty() || (skill_dirs.len() == 1 && skill_dirs[0] == *target_dir) {
-            return Ok(vec![target_dir.clone()]);
+            return Ok(vec![target_dir.to_path_buf()]);
         }
 
         let mut installed = Vec::new();
@@ -208,7 +208,7 @@ impl ImportService {
             }
         }
 
-        let _ = fs::remove_dir_all(&target_dir);
+        let _ = fs::remove_dir_all(target_dir);
 
         for (temp_dest, final_dest) in deferred_moves {
             let _ = fs::remove_dir_all(&final_dest);

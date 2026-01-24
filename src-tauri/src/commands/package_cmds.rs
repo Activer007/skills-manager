@@ -97,21 +97,18 @@ fn import_from_source_dir(
                 continue;
             }
 
-            match scanner.scan_directory(dir.to_str().unwrap(), &current_name, "en", scan_mode, &whitelisted_rules) {
-                Ok(report) => {
-                    if report.blocked {
-                        let _ = fs::remove_dir_all(&dir);
-                        blocked.push(current_name);
-                        continue;
-                    }
-
-                    if report.score < 70 {
-                        warnings.push(format!("{} ({})", current_name, report.score));
-                    }
-                    installed.push((current_name.clone(), dir.clone()));
-                    installed_paths.push((current_name, dir));
+            if let Ok(report) = scanner.scan_directory(dir.to_str().unwrap(), &current_name, "en", scan_mode, &whitelisted_rules) {
+                if report.blocked {
+                    let _ = fs::remove_dir_all(&dir);
+                    blocked.push(current_name);
+                    continue;
                 }
-                Err(_) => {}
+
+                if report.score < 70 {
+                    warnings.push(format!("{} ({})", current_name, report.score));
+                }
+                installed.push((current_name.clone(), dir.clone()));
+                installed_paths.push((current_name, dir));
             }
         }
     } else {

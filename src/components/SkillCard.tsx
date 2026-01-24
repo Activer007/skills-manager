@@ -179,16 +179,24 @@ export const SkillCard = ({
             <>
             <div
                 data-testid="skill-card"
+                role="button"
+                tabIndex={0}
                 // 统一圆角：rounded-lg (12px)
                 // 统一过渡：duration-normal (200ms)
                 className={cn(
-                    "group relative flex items-center gap-4 p-4 rounded-lg border transition-all duration-normal cursor-pointer",
+                    "group relative flex items-center gap-4 p-4 rounded-lg border transition-all duration-normal cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50",
                     // 激活状态：正常样式
                     isActive && "bg-white dark:bg-base-100 border-gray-100 dark:border-base-200 hover:shadow-md hover:border-gray-200 dark:hover:border-base-300",
                     // 禁用状态：灰色样式，降低透明度
                     !isActive && "bg-gray-50 dark:bg-base-200/50 border-gray-200 dark:border-base-300 opacity-50 hover:opacity-70"
                 )}
                 onClick={onViewDetails}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onViewDetails?.();
+                    }
+                }}
             >
                 {/* Icon */}
                 {renderIcon()}

@@ -42,7 +42,7 @@ pub struct ExportResult {
 pub struct PackageService;
 
 impl PackageService {
-    pub fn calculate_skill_checksum_for_path(skill_dir: &PathBuf) -> Result<String, String> {
+    pub fn calculate_skill_checksum_for_path(skill_dir: &Path) -> Result<String, String> {
         if !skill_dir.exists() {
             return Err("Skill directory not found".to_string());
         }
@@ -95,7 +95,7 @@ impl PackageService {
         Ok(dir)
     }
 
-    pub fn is_skill_package_path(package_path: &PathBuf) -> bool {
+    pub fn is_skill_package_path(package_path: &Path) -> bool {
         package_path
             .to_string_lossy()
             .to_ascii_lowercase()
@@ -114,8 +114,8 @@ impl PackageService {
     }
 
     pub fn write_skill_package(
-        skill_dir: &PathBuf,
-        output_path: &PathBuf,
+        skill_dir: &Path,
+        output_path: &Path,
         metadata: &Value,
     ) -> Result<(), String> {
         let skill_dir_name = skill_dir
@@ -169,7 +169,7 @@ impl PackageService {
         Ok(())
     }
 
-    pub fn read_package_metadata(package_path: &PathBuf) -> Result<Option<Value>, String> {
+    pub fn read_package_metadata(package_path: &Path) -> Result<Option<Value>, String> {
         let file = fs::File::open(package_path).map_err(|e| e.to_string())?;
         let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
         if let Ok(mut entry) = archive.by_name("skill-package.json") {
@@ -181,13 +181,13 @@ impl PackageService {
         Ok(None)
     }
 
-    pub fn extract_skill_package(package_path: &PathBuf, dest_dir: &PathBuf) -> Result<(), String> {
+    pub fn extract_skill_package(package_path: &Path, dest_dir: &Path) -> Result<(), String> {
         Self::extract_skill_package_with_limit(package_path, dest_dir, MAX_PACKAGE_UNCOMPRESSED_SIZE)
     }
 
     pub fn extract_skill_package_with_limit(
-        package_path: &PathBuf,
-        dest_dir: &PathBuf,
+        package_path: &Path,
+        dest_dir: &Path,
         max_uncompressed_size: u64
     ) -> Result<(), String> {
         let file = fs::File::open(package_path).map_err(|e| e.to_string())?;
@@ -237,7 +237,7 @@ impl PackageService {
     }
 
     pub fn resolve_package_source_dir(
-        temp_dir: &PathBuf,
+        temp_dir: &Path,
         skill_dir_name: &Option<String>
     ) -> Result<PathBuf, String> {
         let source_dir_from_metadata = skill_dir_name
