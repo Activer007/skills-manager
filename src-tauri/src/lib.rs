@@ -119,6 +119,7 @@ pub fn run() {
             // Cache commands
             commands::cache::get_cache_stats,
             commands::cache::clear_cache,
+            commands::cache::update_cache_config,
 
             // Task commands
             commands::task::get_tasks,

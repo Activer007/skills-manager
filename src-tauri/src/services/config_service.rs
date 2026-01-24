@@ -4,6 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use crate::models::config::CacheConfig;
+
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct AppConfig {
     #[serde(default, rename = "projectPaths")]
@@ -11,6 +13,9 @@ pub struct AppConfig {
 
     #[serde(default, rename = "skillConfigs")]
     pub skill_configs: HashMap<String, serde_json::Value>,
+
+    #[serde(default)]
+    pub cache: CacheConfig,
 }
 
 pub struct ConfigService {
@@ -66,6 +71,17 @@ impl ConfigService {
     pub fn set_project_paths(&self, paths: Vec<String>) -> Result<(), String> {
         let mut cache = self.cache.lock().unwrap();
         cache.project_paths = paths;
+        self.save_to_disk(&cache)
+    }
+
+    pub fn get_cache_config(&self) -> CacheConfig {
+        let cache = self.cache.lock().unwrap();
+        cache.cache.clone()
+    }
+
+    pub fn set_cache_config(&self, config: CacheConfig) -> Result<(), String> {
+        let mut cache = self.cache.lock().unwrap();
+        cache.cache = config;
         self.save_to_disk(&cache)
     }
 
