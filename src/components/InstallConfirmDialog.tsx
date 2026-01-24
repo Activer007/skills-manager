@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
 import {
   Shield,
   AlertTriangle,
@@ -7,7 +8,8 @@ import {
   HardDrive,
   FolderOpen,
   ChevronDown,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -41,19 +43,37 @@ export const InstallConfirmDialog = ({
 }: InstallConfirmDialogProps) => {
   const { t, i18n } = useTranslation();
   const [target, setTarget] = useState<'system' | 'project'>('system');
-  const [projectPath, setProjectPath] = useState<string>(''); // In a real app, this would be selected from available projects
+  const [projects, setProjects] = useState<string[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 
-  // Reset state when opening
+  // Load projects and reset state when opening
   useEffect(() => {
     if (isOpen) {
       setTarget('system');
+      loadProjects();
     }
   }, [isOpen]);
+
+  const loadProjects = async () => {
+    setIsLoadingProjects(true);
+    try {
+      const paths = await invoke<string[]>('get_project_paths');
+      setProjects(paths);
+      if (paths.length > 0) {
+        setSelectedProject(paths[0]);
+      }
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  };
 
   const handleConfirm = () => {
     onConfirm({
       target,
-      projectPath: target === 'project' ? projectPath : undefined,
+      projectPath: target === 'project' ? selectedProject : undefined,
     });
   };
 
@@ -106,7 +126,7 @@ export const InstallConfirmDialog = ({
             variant="primary"
             onClick={handleConfirm}
             isLoading={isInstalling}
-            disabled={skill.securityLevel === 'blocked'}
+            disabled={skill.securityLevel === 'blocked' || (target === 'project' && !selectedProject)}
           >
             {i18n.language === 'zh' ? '确认安装' : 'Confirm Install'}
           </Button>
@@ -179,16 +199,16 @@ export const InstallConfirmDialog = ({
               {target === 'system' && <Check size={18} className="text-primary" />}
             </button>
 
-            {/* Project installation option - currently disabled/mocked as we need project context */}
             <button
               className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border text-left transition-all opacity-50 cursor-not-allowed",
-                // target === 'project'
-                //   ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                //   : "border-slate-200 dark:border-slate-700"
+                "flex items-start gap-3 p-3 rounded-lg border text-left transition-all",
+                target === 'project'
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                  : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600",
+                projects.length === 0 && !isLoadingProjects && "opacity-60 cursor-not-allowed"
               )}
-              // onClick={() => setTarget('project')}
-              disabled
+              onClick={() => projects.length > 0 && setTarget('project')}
+              disabled={projects.length === 0 && !isLoadingProjects}
             >
               <div className={cn(
                 "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
@@ -196,15 +216,32 @@ export const InstallConfirmDialog = ({
               )}>
                 <FolderOpen size={18} />
               </div>
-              <div className="flex-1">
-                <div className="font-medium text-sm">
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm flex items-center gap-2">
                   {i18n.language === 'zh' ? '项目级安装' : 'Project Installation'}
+                  {isLoadingProjects && <Loader2 className="w-3 h-3 animate-spin" />}
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  {i18n.language === 'zh' ? '仅当前项目可用 (暂未支持)' : 'Only for specific project (Coming soon)'}
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  {projects.length === 0 && !isLoadingProjects
+                    ? (i18n.language === 'zh' ? '未配置项目路径' : 'No projects configured')
+                    : (i18n.language === 'zh' ? '仅当前项目可用' : 'Only for specific project')}
                 </div>
+
+                {target === 'project' && projects.length > 0 && (
+                  <div className="relative mt-2" onClick={(e) => e.stopPropagation()}>
+                    <select
+                      className="w-full text-xs p-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+                      value={selectedProject}
+                      onChange={(e) => setSelectedProject(e.target.value)}
+                    >
+                      {projects.map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
-              {target === 'project' && <Check size={18} className="text-primary" />}
+              {target === 'project' && <Check size={18} className="text-primary mt-1" />}
             </button>
           </div>
         </div>
