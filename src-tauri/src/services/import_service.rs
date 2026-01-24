@@ -68,7 +68,13 @@ impl ImportService {
             let _ = fs::remove_dir_all(&temp_dir);
 
             let output = Command::new("git")
-                .args(["clone", "--depth", "1", "--filter=blob:none", "--sparse", &repo_base, temp_dir.to_str().unwrap()])
+                .arg("clone")
+                .arg("--depth")
+                .arg("1")
+                .arg("--filter=blob:none")
+                .arg("--sparse")
+                .arg(&repo_base)
+                .arg(&temp_dir)
                 .output();
 
             match output {
@@ -106,7 +112,11 @@ impl ImportService {
             let _ = fs::remove_dir_all(&target_dir);
 
             let output = Command::new("git")
-                .args(["clone", "--depth", "1", repo_url, target_dir.to_str().unwrap()])
+                .arg("clone")
+                .arg("--depth")
+                .arg("1")
+                .arg(repo_url)
+                .arg(&target_dir)
                 .output();
 
             match output {

@@ -106,7 +106,7 @@ fn process_imported_skills(
                 continue;
             }
 
-            match scanner.scan_directory(dir.to_str().unwrap(), &skill_name, "en", scan_mode, &whitelisted_rules) {
+            match scanner.scan_directory(&dir.to_string_lossy(), &skill_name, "en", scan_mode, &whitelisted_rules) {
                 Ok(report) => {
                     if report.blocked {
                         if let Err(e) = fs::remove_dir_all(dir) {
