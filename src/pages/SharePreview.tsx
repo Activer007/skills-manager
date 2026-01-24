@@ -26,6 +26,9 @@ import { InstallConfirmDialog, type InstallOptions } from '../components/Install
 import { InstallProgress, type InstallStage } from '../components/InstallProgress';
 import { CompatibilityBadge } from '../components/CompatibilityBadge';
 import type { CompatibilityInfo } from '../types';
+import { useTaskListener } from '../hooks/useTaskListener';
+import { useTaskStore } from '../store/useTaskStore';
+import { TaskStatus } from '../types/task';
 
 /**
  * 分享预览页面
@@ -36,6 +39,9 @@ const SharePreview = () => {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const locale = i18n.language;
+
+  // Initialize task listener since this page is outside the main Layout
+  useTaskListener();
 
   const [status, setStatus] = useState<SharePreviewStatus>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +63,48 @@ const SharePreview = () => {
   const [installStage, setInstallStage] = useState<InstallStage>('preparing');
   const [installProgress, setInstallProgress] = useState(0);
   const [installError, setInstallError] = useState<string | undefined>();
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+
+  // Subscribe to task updates
+  const task = useTaskStore(state =>
+    currentTaskId ? state.tasks.find(t => t.id === currentTaskId) : undefined
+  );
+
+  // Monitor task progress
+  useEffect(() => {
+    if (!task) return;
+
+    // Update progress percentage
+    if (task.progress) {
+      setInstallProgress(task.progress.percentage);
+
+      // Map task stage to UI stage
+      // Backend stages: "Downloading", "Scanning", "Installing"
+      const message = task.progress.message?.toLowerCase() || '';
+      if (message.includes('download')) {
+        setInstallStage('downloading');
+      } else if (message.includes('scan') || message.includes('security')) {
+        setInstallStage('scanning');
+      } else if (message.includes('install')) {
+        setInstallStage('installing');
+      }
+    }
+
+    // Handle completion
+    if (task.status === TaskStatus.Completed) {
+      setInstallStage('completed');
+      setInstallProgress(100);
+      setStatus('installed');
+      toast.success(locale === 'zh' ? '安装成功！' : 'Installation successful!');
+      setCurrentTaskId(null); // Clear task ID to stop watching
+    }
+    // Handle failure
+    else if (task.status === TaskStatus.Failed) {
+      setInstallStage('error');
+      setInstallError(task.error || 'Unknown error');
+      toast.error(`${locale === 'zh' ? '安装失败' : 'Installation failed'}: ${task.error}`);
+    }
+  }, [task, locale]);
 
   // 解析分享链接
   useEffect(() => {
@@ -145,60 +193,42 @@ const SharePreview = () => {
     setInstallError(undefined);
 
     try {
-      // 模拟进度 - 准备阶段
-      setInstallStage('downloading');
-      for (let i = 0; i <= 30; i += 5) {
-        setInstallProgress(i);
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-
       const installUrl = skillData?.installUrl || skillData?.sourceUrl;
       if (!installUrl) throw new Error('No install URL');
 
-      // 模拟进度 - 扫描阶段
-      setInstallStage('scanning');
-      for (let i = 30; i <= 60; i += 5) {
-        setInstallProgress(i);
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      // 模拟进度 - 安装阶段
-      setInstallStage('installing');
-      setInstallProgress(70);
-
-      // 调用后端导入命令
-      // 注意：根据 T1-5 和 lib.rs，import_github_skill 参数格式需为 request 对象
-      const result = await invoke<{ success: boolean; message?: string }>('import_github_skill', {
+      // Call backend to start installation task
+      const taskId = await invoke<string>('import_github_skill_with_progress', {
         request: {
           repoUrl: installUrl,
-          installPath: options.projectPath, // 如果选择了项目路径
-          skipSecurityCheck: false // 强制安全检查
+          installPath: options.projectPath, // Optional project path
+          skipSecurityCheck: false // Enforce security check
         }
       });
 
-      if (result.success) {
-        setInstallProgress(100);
-        setInstallStage('completed');
-        setStatus('installed');
-        toast.success(locale === 'zh' ? '安装成功！' : 'Installation successful!');
-      } else {
-        throw new Error(result.message || 'Installation failed');
-      }
+      console.log('Started installation task:', taskId);
+      setCurrentTaskId(taskId);
+
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      console.error('Failed to start installation:', err);
       setInstallError(message);
       setInstallStage('error');
-      // 保持 status 为 installing 以显示错误页面，或者可以处理为 error 状态
-      toast.error(`${locale === 'zh' ? '安装失败' : 'Installation failed'}: ${message}`);
+      // Keep status as installing to show the error state in InstallProgress
+      toast.error(`${locale === 'zh' ? '启动安装失败' : 'Failed to start installation'}: ${message}`);
     }
   };
 
   // 取消/重试安装
-  const handleCancelInstall = () => {
+  const handleCancelInstall = async () => {
+    if (currentTaskId && installStage !== 'completed' && installStage !== 'error') {
+       // Optional: Cancel task in backend if supported
+       // await invoke('cancel_task', { taskId: currentTaskId });
+    }
     setStatus('ready');
     setInstallStage('preparing');
     setInstallProgress(0);
     setInstallError(undefined);
+    setCurrentTaskId(null);
   };
 
   // 打开源链接
