@@ -19,22 +19,30 @@ pub struct ConfigService {
 }
 
 impl ConfigService {
-    pub fn new() -> Result<Self, String> {
+    pub fn new() -> Self {
         let config_path = dirs::home_dir()
             .map(|h| h.join(".claude").join("skill-manager-config.json"))
-            .ok_or("Cannot determine config path")?;
+            .unwrap_or_else(|| PathBuf::from("skill-manager-config.json"));
 
         let config = if config_path.exists() {
-            let content = fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
-            serde_json::from_str(&content).unwrap_or_default()
+            match fs::read_to_string(&config_path) {
+                Ok(content) => serde_json::from_str(&content).unwrap_or_else(|e| {
+                    eprintln!("Failed to parse config: {}", e);
+                    AppConfig::default()
+                }),
+                Err(e) => {
+                    eprintln!("Failed to read config file: {}", e);
+                    AppConfig::default()
+                }
+            }
         } else {
             AppConfig::default()
         };
 
-        Ok(Self {
+        Self {
             config_path,
             cache: Mutex::new(config),
-        })
+        }
     }
 
     pub fn get_skill_config(&self, skill_id: &str) -> Option<serde_json::Value> {
