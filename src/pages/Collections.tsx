@@ -84,11 +84,6 @@ const Collections = () => {
             <CollectionCard
               key={collection.id}
               collection={collection}
-              onClick={() => {
-                // TODO: Navigate to collection detail page
-                // navigate(`/collections/${collection.id}`);
-                toast.info(isZh ? '详情页开发中' : 'Detail view coming soon');
-              }}
               onEdit={() => openEditModal(collection)}
               onDelete={() => setDeleteConfirm(collection)}
               onShare={() => setSharingCollection(collection)}

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ShareTextDialog } from './ShareTextDialog';
@@ -73,6 +73,8 @@ describe('ShareTextDialog', () => {
     author: 'Test Author',
     version: '1.0.0',
     status: 'safe',
+    installDate: Date.now(),
+    type: 'system',
     config: {
       __origin: {
         sourceUrl: 'https://github.com/test/skill',
@@ -259,7 +261,7 @@ describe('ShareTextDialog', () => {
     });
 
     it('should display blocked status', () => {
-      const blockedSkill = { ...mockSkill, status: 'blocked' as any };
+      const blockedSkill = { ...mockSkill, status: 'unsafe' as any, securityLevel: 'blocked' as any };
       render(<ShareTextDialog skill={blockedSkill} isOpen={true} onClose={mockOnClose} />);
 
       expect(screen.getByText('Blocked')).toBeInTheDocument();

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Copy, Check, Twitter, MessageCircle } from 'lucide-react';
-import type { SharePanelProps, SharePlatform } from '../../types/share';
+import type { SharePanelProps } from '../../types/share';
 import { generatePlatformShareText, copyToClipboard } from '../../utils/shareTextGenerator';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';

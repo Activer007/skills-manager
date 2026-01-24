@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { PageLoader } from '../components/ui/PageLoader';
@@ -9,11 +8,12 @@ import { CreatorProfileCard } from '../components/CreatorProfileCard';
 import { EditCreatorModal } from '../components/EditCreatorModal';
 import { useCreator, useFollowCreator, useUnfollowCreator, useUpdateCreator } from '../hooks/useCreator';
 import { CreatorSkillsList } from '../components/CreatorSkillsList';
+import { toast } from '../store/useToastStore';
 
 export const CreatorProfile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isZh = i18n.language === 'zh';
 
   const { data: creator, isLoading, isError } = useCreator(id || null);

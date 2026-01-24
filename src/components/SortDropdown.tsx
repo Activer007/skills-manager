@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { ArrowDownAZ, ArrowUpAZ, Calendar, Star, Download } from 'lucide-react';
+import { ArrowDownAZ, ArrowUpAZ, Calendar, Star } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from '../utils/cn';
 import { useState, useRef, useEffect } from 'react';
@@ -12,7 +12,7 @@ interface SortDropdownProps {
 }
 
 export const SortDropdown = ({ value, onChange }: SortDropdownProps) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 

@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import type { InstalledSkill } from '../types';
 import type { ShareCardConfig, ShareCardTheme, ShareImageData } from '../types/share';
 import { resolveSkillLink } from './shareLink';
+import { getQualityScore } from './skillNormalizers';
 
 /**
  * 分享卡片主题预设
@@ -387,7 +388,7 @@ export const generateShareCard = async (
     accentColor: themeConfig.accentColor || '#3B82F6',
     brandLogo: '',
     securityLevel: normalizeShareSecurityLevel(skill.status),
-    qualityScore: skill.qualityScore,
+    qualityScore: getQualityScore(skill),
     footer: '来自 Skill Manager 分享',
     watermark: themeConfig.watermark || false,
   };

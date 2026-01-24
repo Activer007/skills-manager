@@ -6,9 +6,8 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
-import { Progress } from './ui/Progress';
 import type { InstalledSkill } from '../types';
-import type { PreflightResult, PreflightCheck, CheckStatusType, PublishResult } from '../types/publish';
+import type { PreflightResult, PreflightCheck, PublishResult } from '../types/publish';
 import { toast } from '../store/useToastStore';
 
 interface PublishWizardProps {
@@ -313,7 +312,7 @@ export const PublishWizard: React.FC<PublishWizardProps> = ({
       onClose={currentStep === 'publishing' ? () => {} : onClose}
       title={getModalTitle()}
       footer={getFooter()}
-      maxWidth="lg"
+      size="xl"
     >
       <div className="min-h-[300px]">
         {/* Progress Steps Indicator */}

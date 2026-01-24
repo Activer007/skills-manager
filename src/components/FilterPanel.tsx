@@ -33,7 +33,7 @@ export const FilterPanel = ({
   onReset,
   className
 }: FilterPanelProps) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
 
   const securityOptions: { value: SecurityFilter; label: string; icon?: React.ReactNode }[] = [
     { value: 'all', label: i18n.language === 'zh' ? '全部等级' : 'All Levels' },

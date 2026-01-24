@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Copy, Check, FileCode, Layout, MessageSquare } from 'lucide-react';
 import type { InstalledSkill } from '../../types';
 import type { EmbedFormat, EmbedTheme, EmbedSize, EmbedCardData, EmbedCardOptions } from '../../types/embed';
 import { generateEmbedCard } from '../../utils/embedCardGenerator';
+import { normalizeSecurityLevel, getQualityScore } from '../../utils/skillNormalizers';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import { toast } from '../../store/useToastStore';
@@ -30,17 +31,20 @@ export const ShareEmbedPanel: React.FC<ShareEmbedPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
 
   // 准备嵌入卡片数据
-  const embedData: EmbedCardData = useMemo(() => ({
-    name: skill.name,
-    description: skill.description || '',
-    author: skill.author,
-    version: skill.version,
-    securityLevel: skill.securityLevel === 'safe' ? 'safe' : skill.securityLevel === 'blocked' ? 'danger' : 'warning',
-    rating: skill.qualityScore,
-    tags: skill.tags || [],
-    installUrl: shareLink,
-    repoUrl: skill.githubUrl,
-  }), [skill, shareLink]);
+  const embedData: EmbedCardData = useMemo(() => {
+    const normalizedLevel = normalizeSecurityLevel(skill);
+    return {
+      name: skill.name,
+      description: skill.description || '',
+      author: skill.author,
+      version: skill.version,
+      securityLevel: normalizedLevel === 'safe' ? 'safe' : normalizedLevel === 'blocked' ? 'danger' : 'warning',
+      rating: getQualityScore(skill),
+      tags: skill.tags || [],
+      installUrl: shareLink,
+      repoUrl: skill.githubUrl,
+    };
+  }, [skill, shareLink]);
 
   // 嵌入卡片选项
   const embedOptions: EmbedCardOptions = useMemo(() => ({

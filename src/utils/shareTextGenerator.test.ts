@@ -67,8 +67,8 @@ describe('shareTextGenerator', () => {
 
     it('should display correct security level emojis', () => {
       const safeSkill = { ...mockSkill, status: 'safe' as const };
-      const riskSkill = { ...mockSkill, status: 'risk' as const };
-      const blockedSkill = { ...mockSkill, status: 'blocked' as const };
+      const riskSkill = { ...mockSkill, status: 'unsafe' as const };
+      const blockedSkill = { ...mockSkill, status: 'unsafe' as const, securityLevel: 'blocked' as const };
       const unknownSkill = { ...mockSkill, status: 'unknown' as const };
 
       expect(generateShareText(safeSkill, 'zh')).toContain('✅');

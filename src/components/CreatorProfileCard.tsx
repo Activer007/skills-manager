@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Github, Globe, Award, CheckCircle, UserPlus, UserCheck, Edit } from 'lucide-react';
 import type { Creator } from '../types/creator';
 import { Button } from './ui/Button';
-import { cn } from '../utils/cn';
 
 interface CreatorProfileCardProps {
   creator: Creator;
@@ -20,7 +19,7 @@ export const CreatorProfileCard: React.FC<CreatorProfileCardProps> = ({
   onEdit,
   isFollowingLoading,
 }) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isZh = i18n.language === 'zh';
 
   return (

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
-import { Download, Eye, Palette, ImageIcon, Loader2 } from 'lucide-react';
+import { Download, Eye, Palette, Loader2 } from 'lucide-react';
 import type { InstalledSkill } from '../types';
 import type { ShareCardTheme } from '../types/share';
 import { generateShareCard } from '../utils/shareCardGenerator';
@@ -163,12 +163,7 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={
-        <div className="flex items-center gap-2">
-          <ImageIcon className="w-5 h-5" />
-          {i18n.language === 'zh' ? '分享图片' : 'Share Image'}
-        </div>
-      }
+      title={i18n.language === 'zh' ? '分享图片' : 'Share Image'}
       size="xl"
       data-testid="share-image-dialog"
     >
@@ -183,7 +178,7 @@ export const ShareImageDialog: React.FC<ShareImageDialogProps> = ({
             <Button
               key={t}
               size="sm"
-              variant={theme === t ? 'default' : 'outline'}
+              variant={theme === t ? 'primary' : 'outline'}
               onClick={() => setTheme(t)}
               data-testid={`theme-${t}`}
             >

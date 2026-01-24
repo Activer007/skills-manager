@@ -52,11 +52,6 @@ const getBrightness = (hexColor: string): number => {
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 };
 
-const getExportDirectory = (filePath: string): string => {
-    const lastSeparator = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
-    return lastSeparator >= 0 ? filePath.slice(0, lastSeparator) : '';
-};
-
 interface SkillCardProps {
     skill: MarketplaceSkill | InstalledSkill;
     viewMode?: 'grid' | 'list';

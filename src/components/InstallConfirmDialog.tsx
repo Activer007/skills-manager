@@ -7,13 +7,11 @@ import {
   CheckCircle,
   HardDrive,
   FolderOpen,
-  ChevronDown,
   Check,
   Loader2
 } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
-import { Badge } from './ui/Badge';
 import { cn } from '../utils/cn';
 
 interface InstallConfirmDialogProps {

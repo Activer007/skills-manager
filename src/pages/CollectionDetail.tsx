@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
@@ -8,14 +8,14 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { PageLoader } from '../components/ui/PageLoader';
 import { CollectionModal } from '../components/CollectionModal';
 import { ShareCollectionModal } from '../components/ShareCollectionModal';
-import { CollectionItem, Collection } from '../types/collection';
+import type { CollectionItem, Collection } from '../types/collection';
 import { toast } from '../store/useToastStore';
 import { cn } from '../utils/cn';
 
 export const CollectionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isZh = i18n.language === 'zh';
 
   const [collection, setCollection] = useState<Collection | null>(null);
@@ -141,7 +141,7 @@ export const CollectionDetail = () => {
       <div className="bg-base-100 rounded-xl border border-base-200 shadow-sm overflow-hidden">
         {items.length > 0 ? (
           <div className="divide-y divide-base-200">
-            {items.map((item, index) => (
+            {items.map((item) => (
               <div
                 key={item.id}
                 className="flex items-center gap-4 p-4 hover:bg-base-50 transition-colors group"

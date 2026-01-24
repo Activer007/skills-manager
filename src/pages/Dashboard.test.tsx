@@ -30,7 +30,7 @@ vi.mock('../hooks/useSkills', () => ({
         id: 'skill-3',
         name: 'Unsafe Skill',
         type: 'system',
-        status: 'risk',
+        status: 'unsafe',
         localPath: '/path/to/skill3',
         description: 'A risky skill',
         author: 'Test Author',
@@ -65,7 +65,7 @@ vi.mock('recharts', () => ({
       {children}
     </div>
   ),
-  AreaChart: ({ children, data, margin }: any) => (
+  AreaChart: ({ children, data }: any) => (
     <div data-testid="area-chart" data-length={data?.length}>
       {children}
     </div>

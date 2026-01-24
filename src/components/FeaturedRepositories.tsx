@@ -118,7 +118,7 @@ export function FeaturedRepositories({
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium truncate">{repo.name}</h4>
                       {repo.featured && (
-                        <Badge variant="default" size="sm" className="text-[10px] h-4 px-1">
+                        <Badge variant="neutral" size="sm" className="text-[10px] h-4 px-1">
                           {t('repositories.featured')}
                         </Badge>
                       )}
