@@ -2,7 +2,7 @@
 
 > **文档版本**: 1.2
 > **创建日期**: 2026-01-22
-> **最后更新**: 2026-01-23
+> **最后更新**: 2026-01-24
 > **基于文档**: prd-v2.md, task.md, task-ui.md, agent-skills-guard.md
 > **当前版本**: v2.6.0
 
@@ -31,7 +31,7 @@
 - ✅ 默认仓库自动初始化已实现
 - ✅ 仓库管理 UI 已实现
 
-#### Share-First 生态 (进行中)
+#### Share-First 生态 (✅ 已完成)
 
 | 功能 | PRD 要求 | 当前状态 | 备注 |
 |------|---------|----------|------|
@@ -39,12 +39,12 @@
 | 分享链接 | Unlisted/Public Link | ✅ 已实现 | `SharePreview` 页面就绪 |
 | 发布向导 | Publish Wizard | ✅ 已实现 | 预检查/元数据/发布模拟 |
 | 社区市场 | Marketplace 搜索/筛选 | ✅ 已实现 | 完整的筛选和排序功能 |
-| 派生体系 | Fork/Remix + lineage | 无 | ❌ 规划中 (Phase 4) |
-| 合集 | Collections | 无 | ❌ 规划中 (Phase 4) |
-| 创作者页 | Creator Profile | 无 | ❌ 规划中 (Phase 4) |
+| 派生体系 | Fork/Remix + lineage | ✅ 已实现 | `ForkSkillModal`, `LineageTree` 组件 |
+| 合集 | Collections | ✅ 已实现 | `CollectionCard`, `ShareCollection` 组件 |
+| 创作者页 | Creator Profile | ✅ 已实现 | `CreatorProfileCard` 组件 |
 | SkillPack | 离线分享格式 | ✅ 已实现 | 🎉 已有 |
 | 兼容性徽章 | Multi-platform badge | ✅ 已实现 | `CompatibilityBadge` 组件 |
-| 嵌入卡片 | Embed Card | 无 | ❌ 规划中 (Phase 4) |
+| 嵌入卡片 | Embed Card | ✅ 已实现 | `EmbedCardGenerator` 组件 |
 
 ---
 
@@ -257,7 +257,7 @@
 
 ---
 
-## 第四阶段：高级分享功能 (✅ 进行中)
+## 第四阶段：高级分享功能 (✅ 已完成)
 
 **目标**：完善分享生态的高级功能
 **优先级**：P2
