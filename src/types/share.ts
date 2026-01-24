@@ -329,6 +329,7 @@ export interface ShareMetadata {
   description: string;
   version: string;
   author?: string;
+  url?: string;
   security_score?: number;
   security_level?: string;
 }

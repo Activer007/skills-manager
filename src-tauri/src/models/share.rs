@@ -25,6 +25,7 @@ pub struct ShareMetadata {
     pub description: String,
     pub version: String,
     pub author: Option<String>,
+    pub url: Option<String>,
     pub security_score: Option<f64>,
     pub security_level: Option<String>,
 }

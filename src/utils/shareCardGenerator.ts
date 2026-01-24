@@ -369,7 +369,8 @@ const waitForImages = (container: HTMLElement): Promise<void> => {
  */
 export const generateShareCard = async (
   skill: InstalledSkill,
-  theme: ShareCardTheme = 'default'
+  theme: ShareCardTheme = 'default',
+  options?: { shareLink?: string }
 ): Promise<Blob> => {
   const themeConfig = CARD_THEMES[theme];
   const qrCode = await generateSkillQRCode(skill);
@@ -380,7 +381,7 @@ export const generateShareCard = async (
     height: themeConfig.height || 600,
     title: skill.name,
     description: skill.description,
-    link: generateInstallLink(skill),
+    link: options?.shareLink || generateInstallLink(skill),
     qrCode,
     theme: themeConfig.theme || 'light',
     accentColor: themeConfig.accentColor || '#3B82F6',

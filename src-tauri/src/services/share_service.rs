@@ -42,6 +42,16 @@ pub fn get_share_by_id(share_id: &str) -> Result<Option<ShareRecord>> {
     if let Some(row) = rows.next()? {
         let metadata_json: String = row.get(6)?;
         let metadata: ShareMetadata = serde_json::from_str(&metadata_json)?;
+        let expires_at: Option<String> = row.get(5)?;
+
+        // Check for expiration
+        if let Some(ref expiry_str) = expires_at {
+            if let Ok(expiry_date) = chrono::DateTime::parse_from_rfc3339(expiry_str) {
+                 if expiry_date.with_timezone(&chrono::Utc) < chrono::Utc::now() {
+                     return Ok(None);
+                 }
+            }
+        }
 
         Ok(Some(ShareRecord {
             share_id: row.get(0)?,
@@ -49,7 +59,7 @@ pub fn get_share_by_id(share_id: &str) -> Result<Option<ShareRecord>> {
             target_id: row.get(2)?,
             visibility: row.get(3)?,
             created_at: row.get(4)?,
-            expires_at: row.get(5)?,
+            expires_at,
             metadata,
         }))
     } else {
