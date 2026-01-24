@@ -1,7 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
 use walkdir::WalkDir;
-use crate::services::utils::copy_dir_all;
+use crate::services::utils::{copy_dir_all, sanitize_filename};
 use crate::models::import::{ImportResult, OriginRecord};
 
 #[derive(Debug, Clone)]
@@ -32,6 +33,102 @@ impl ImportService {
         url.trim_end_matches('/')
             .trim_end_matches(".git")
             .to_string()
+    }
+
+    pub fn clone_and_prepare(
+        repo_url: &str,
+        install_dir: &std::path::Path,
+    ) -> Result<(PathBuf, Option<String>, GithubImportInfo), String> {
+        let github_info = Self::parse_github_import_url(repo_url);
+        let parts: Vec<&str> = repo_url
+            .trim_end_matches('/')
+            .split('/')
+            .collect();
+
+        if parts.len() < 5 {
+            return Err("Invalid GitHub URL".to_string());
+        }
+
+        let target_dir_name = if repo_url.contains("/tree/") {
+            parts.last().unwrap_or(&"skill").to_string()
+        } else {
+            parts.get(4).unwrap_or(&"skill").to_string()
+        };
+
+        let target_dir_name = sanitize_filename(&target_dir_name);
+        let target_dir = install_dir.join(&target_dir_name);
+        let detected_branch: Option<String>;
+
+        if repo_url.contains("/tree/") {
+            let repo_base = format!("https://github.com/{}/{}", parts[3], parts[4]);
+            let branch = parts.get(6).unwrap_or(&"main");
+            let subpath = parts[7..].join("/");
+
+            let temp_dir = install_dir.join(".temp_clone");
+            let _ = fs::remove_dir_all(&temp_dir);
+
+            let output = Command::new("git")
+                .arg("clone")
+                .arg("--depth")
+                .arg("1")
+                .arg("--filter=blob:none")
+                .arg("--sparse")
+                .arg(&repo_base)
+                .arg(&temp_dir)
+                .output();
+
+            match output {
+                Err(e) => return Err(format!("Git command failed: {}", e)),
+                Ok(o) if !o.status.success() => return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&o.stderr))),
+                _ => {}
+            }
+
+            let _ = Command::new("git")
+                .current_dir(&temp_dir)
+                .args(["sparse-checkout", "set", &subpath])
+                .output();
+
+            let _ = Command::new("git")
+                .current_dir(&temp_dir)
+                .args(["checkout", branch])
+                .output();
+
+            detected_branch = Some(branch.to_string());
+
+            let source = temp_dir.join(&subpath);
+            if source.exists() {
+                let _ = fs::remove_dir_all(&target_dir);
+                if let Err(e) = fs::rename(&source, &target_dir) {
+                    let _ = fs::remove_dir_all(&temp_dir);
+                    return Err(format!("Failed to move skill: {}", e));
+                }
+            } else {
+                 let _ = fs::remove_dir_all(&temp_dir);
+                 return Err(format!("Source path '{}' not found in repository", subpath));
+            }
+
+            let _ = fs::remove_dir_all(&temp_dir);
+        } else {
+            let _ = fs::remove_dir_all(&target_dir);
+
+            let output = Command::new("git")
+                .arg("clone")
+                .arg("--depth")
+                .arg("1")
+                .arg(repo_url)
+                .arg(&target_dir)
+                .output();
+
+            match output {
+                Err(e) => return Err(format!("Git command failed: {}", e)),
+                Ok(o) if !o.status.success() => return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&o.stderr))),
+                _ => {}
+            }
+
+            detected_branch = Self::detect_git_branch(&target_dir);
+        }
+
+        Ok((target_dir, detected_branch, github_info))
     }
 
     pub fn parse_github_import_url(repo_url: &str) -> GithubImportInfo {
