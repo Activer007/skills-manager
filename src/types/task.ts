@@ -30,6 +30,7 @@ export interface ProgressEvent {
   stage: ProgressStage;
   message: string;
   progress: number;
+  percentage?: number; // Added for compatibility
   total?: number;
   current?: number;
 }

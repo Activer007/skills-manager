@@ -76,7 +76,7 @@ const SharePreview = () => {
 
     // Update progress percentage
     if (task.progress) {
-      setInstallProgress(task.progress.percentage);
+      setInstallProgress(task.progress.progress); // Use 'progress' field directly
 
       // Map task stage to UI stage
       const stage = task.progress.stage;
@@ -321,7 +321,7 @@ const SharePreview = () => {
   // 安装中状态（使用 InstallProgress）
   if (status === 'installing') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-base-200 p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-base-200 p-4">
         <InstallProgress
           stage={installStage}
           progress={installProgress}
@@ -330,6 +330,9 @@ const SharePreview = () => {
           onDone={handleBack}
           skillName={skillData?.name || 'Skill'}
         />
+        <Button variant="ghost" onClick={() => navigate('/tasks')} className="mt-4">
+          {locale === 'zh' ? '后台运行并查看任务中心' : 'Run in background & View Tasks'}
+        </Button>
       </div>
     );
   }
@@ -497,10 +500,13 @@ const SharePreview = () => {
               variant="primary"
               className="flex-1"
               onClick={handleInstallClick}
-              disabled={status === 'installing' || skillData?.securityLevel === 'blocked'}
+              disabled={skillData?.securityLevel === 'blocked' || !skillData?.sourceUrl}
             >
               <Download className="w-4 h-4 mr-2" />
-              {locale === 'zh' ? '安装 Skill' : 'Install Skill'}
+              {skillData?.sourceUrl 
+                ? (locale === 'zh' ? '安装 Skill' : 'Install Skill')
+                : (locale === 'zh' ? '无法安装 (无源地址)' : 'Cannot Install (No Source)')
+              }
             </Button>
             {skillData?.sourceUrl && (
               <Button variant="outline" onClick={handleOpenSource}>

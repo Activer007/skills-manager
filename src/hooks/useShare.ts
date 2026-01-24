@@ -49,13 +49,27 @@ export const useShare = (
 
     const createLink = async () => {
       try {
+        let sourceUrl = resolveSkillLink(skill);
+
+        // If sourceUrl is missing, try to get git remote
+        if (!sourceUrl && skill.localPath) {
+          try {
+             const remote = await invoke<string | null>('get_git_remote_url', { path: skill.localPath });
+             if (remote) {
+               sourceUrl = remote;
+             }
+          } catch (e) {
+            console.warn('Failed to get git remote:', e);
+          }
+        }
+
         const metadata: ShareMetadata = {
           name: skill.name,
           description: skill.description || '',
           version: skill.version || '1.0.0',
           author: skill.author,
-          url: resolveSkillLink(skill),
-          source_url: resolveSkillLink(skill),
+          url: sourceUrl,
+          source_url: sourceUrl,
           security_score: skill.qualityScore,
           security_level: skill.status,
         };
