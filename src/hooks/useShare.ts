@@ -68,7 +68,6 @@ export const useShare = (
           description: skill.description || '',
           version: skill.version || '1.0.0',
           author: skill.author,
-          url: sourceUrl,
           source_url: sourceUrl,
           security_score: skill.qualityScore,
           security_level: skill.status,

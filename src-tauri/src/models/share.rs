@@ -25,7 +25,9 @@ pub struct ShareMetadata {
     pub description: String,
     pub version: String,
     pub author: Option<String>,
+    #[deprecated(note = "Use source_url instead")]
     pub url: Option<String>,
+    /// Skill 源代码 URL (GitHub 仓库链接)
     pub source_url: Option<String>,
     pub security_score: Option<f64>,
     pub security_level: Option<String>,
