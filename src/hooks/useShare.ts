@@ -55,7 +55,8 @@ export const useShare = (
           version: skill.version || '1.0.0',
           author: skill.author,
           url: resolveSkillLink(skill),
-          security_score: getQualityScore(skill),
+          source_url: resolveSkillLink(skill),
+          security_score: skill.qualityScore,
           security_level: skill.status,
         };
 

@@ -127,6 +127,10 @@ pub fn run() {
             commands::task::cancel_task,
             commands::task::cleanup_tasks,
 
+            // Publish commands
+            commands::publish::run_publish_preflight,
+            commands::publish::publish_skill,
+
             // Share commands
             commands::share::generate_share_link,
             commands::share::resolve_share_link

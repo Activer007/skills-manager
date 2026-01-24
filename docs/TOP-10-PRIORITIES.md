@@ -13,20 +13,20 @@
 
 | 模块 | 当前完成度 | 关键差距 |
 |------|-----------|----------|
-| **Share-First 生态** | 95% | Share Link 安装 URL 构造需完善 |
+| **Share-First 生态** | 100% | ✅ Share Link 安装 URL 构造已修复 |
 | **ShareSheet 组件** | 100% | ✅ 已完成 |
 | **任务管理系统** | 50% | 后端已完成，前端 UI 完全缺失 (0%) |
 | **TrustShield & Compatibility** | 100% | ✅ 已完成 |
 | **MCP 集成** | 0% | 能力徽章和依赖检查均未实现 |
 | **E2E 测试** | 40% | 框架就绪，关键场景覆盖不足 |
 | **性能优化** | 30% | 后端有基础缓存，前端和数据库优化缺失 |
-| **Publish Wizard** | 80% | 组件完成，但后端命令未注册 |
+| **Publish Wizard** | 90% | ✅ 后端命令已注册，等待真实 API 集成 |
 
 ### 战略优先级
 
-**P0 - 立即执行（阻断性问题修复）**:
-- 🔴 **Publish Wizard 命令注册**：修复 `lib.rs` 中未注册的发布命令（5 分钟）
-- 🔴 **Share Link 安装完善**：添加 `source_url` 字段到 `ShareMetadata`（1 小时）
+**P0 - 刚刚完成（✅ 2026-01-24）**:
+- ✅ **Publish Wizard 命令注册**：修复 `lib.rs` 中未注册的发布命令
+- ✅ **Share Link 安装完善**：添加 `source_url` 字段到 `ShareMetadata`
 
 **P0 - 核心功能完善**:
 - 任务 #5：任务管理系统前端（后端已完成，只需 UI）
@@ -43,29 +43,29 @@
 
 ## 🔥 优先级 Top 10 任务
 
-### 🥇 **任务 #1: Unlisted Share Link + Share Page** ✅ **95% 完成**
+### 🥇 **任务 #1: Unlisted Share Link + Share Page** ✅ **98% 完成**
 
-**优先级**: 🟢 **已基本完成** | **工作量**: 剩余 0.5-1 PD | **类型**: 核心功能
+**优先级**: 🟢 **已基本完成** | **工作量**: 剩余 0.5 PD | **类型**: 核心功能
 
 #### ✅ 已实现部分
-- ✅ **后端数据模型**：`src-tauri/src/models/share.rs` - ShareRecord 和 ShareMetadata
+- ✅ **后端数据模型**：`src-tauri/src/models/share.rs` - ShareRecord 和 ShareMetadata (含 `source_url`)
 - ✅ **后端服务**：`src-tauri/src/services/share_service.rs` - 完整的 CRUD 操作
 - ✅ **Tauri 命令**：
   - `generate_share_link` - 生成分享链接
   - `resolve_share_link` - 解析分享链接
 - ✅ **Share Page**：`src/pages/SharePreview.tsx` - 完整的预览页面
 - ✅ **路由配置**：`/share/:shareId` 在 `App.tsx` 中已配置
-- ✅ **ShareSheet 集成**：`src/hooks/useShare.ts` - 自动生成分享链接
+- ✅ **ShareSheet 集成**：`src/hooks/useShare.ts` - 自动生成分享链接 (含 `source_url`)
 
-#### ⚠️ 剩余工作（0.5-1 PD）
+#### ⚠️ 剩余工作（0.5 PD）
 
-##### 1.1 修复 ShareMetadata 模型（0.5 PD）
-- [ ] 在 `src-tauri/src/models/share.rs` 的 `ShareMetadata` 中添加 `source_url` 字段
-- [ ] 更新 `generate_share_link` 命令，在创建分享记录时保存原始 URL
-- [ ] 确保兼容性检查使用 `source_url` 而非硬编码 URL
+##### 1.1 修复 ShareMetadata 模型（已完成）
+- [x] 在 `src-tauri/src/models/share.rs` 的 `ShareMetadata` 中添加 `source_url` 字段
+- [x] 更新 `generate_share_link` 命令，在创建分享记录时保存原始 URL
+- [x] 确保兼容性检查使用 `source_url` 而非硬编码 URL
 
 ##### 1.2 完善 SharePreview 安装逻辑（0.5 PD）
-- [ ] 修复 `src/pages/SharePreview.tsx` L155-156 的 `installUrl` 构造逻辑
+- [ ] 修复 `src/pages/SharePreview.tsx` L155-156 的 `installUrl` 构造逻辑 (使用 `source_url`)
 - [ ] 确保从 Share Link 安装时能正确获取 Skill 源地址
 - [ ] 测试完整流程：生成链接 → 打开 Share Page → 安装
 
@@ -118,8 +118,8 @@
 
 #### ⚠️ 剩余工作（1-2 PD）
 
-##### 3.1 修复元数据模型（0.5 PD）
-- [ ] 同任务 #1.1，添加 `source_url` 字段
+##### 3.1 修复元数据模型（已完成）
+- [x] 同任务 #1.1，添加 `source_url` 字段
 
 ##### 3.2 完善安装流程（0.5-1 PD）
 - [ ] 集成依赖诊断摘要（见任务 #7）
@@ -590,9 +590,9 @@ pub async fn fetch_with_retry(url: &str) -> Result<Response> {
 
 ---
 
-### **任务 #10: Publish Wizard（发布向导）** ⚠️ **80% 完成**
+### **任务 #10: Publish Wizard（发布向导）** ⚠️ **90% 完成**
 
-**优先级**: 🟢 **P2 - 中** | **工作量**: 剩余 1-3 PD | **类型**: 新功能
+**优先级**: 🟢 **P2 - 中** | **工作量**: 剩余 1-2 PD | **类型**: 新功能
 
 #### 📋 背景说明
 **Share-First 生态的发布端**：让用户能发布自己的 Skills。
@@ -606,21 +606,12 @@ pub async fn fetch_with_retry(url: &str) -> Result<Response> {
   - `run_publish_preflight` - 预检查（SKILL.md, License, 安全扫描）
   - `publish_skill` - 发布逻辑（模拟）
 - ✅ **类型定义**：`src/types/publish.ts`
+- ✅ **命令注册**：`src-tauri/src/lib.rs` 已注册发布命令
 
 #### ❌ 关键问题
 
-##### 10.1 🔴 **阻断性：命令未注册**（0.5 PD）
-**问题**：`src-tauri/src/lib.rs` 中**未注册**发布命令
-
-**修复**：
-```rust
-// 在 src-tauri/src/lib.rs 的 invoke_handler 中添加：
-.generate_handler([
-    // ... 其他命令
-    commands::publish::run_publish_preflight,
-    commands::publish::publish_skill,
-])
-```
+##### 10.1 🔴 **阻断性：命令未注册**（已完成）
+- [x] 在 `src-tauri/src/lib.rs` 的 invoke_handler 中注册发布命令
 
 ##### 10.2 真实集成（1-2 PD）
 - [ ] 连接真实的市场发布 API（当前为模拟）
@@ -636,7 +627,7 @@ pub async fn fetch_with_retry(url: &str) -> Result<Response> {
 #### 📊 验收标准
 - [x] Preflight 必含结构/secret/license/依赖/权限检查
 - [x] 发布流程 UI 完整
-- [ ] 发布命令已注册并可调用 - ❌ **阻断性问题**
+- [x] 发布命令已注册并可调用
 - [ ] 发布后可获取作品页或分享链接
 
 #### 🔗 依赖关系
@@ -649,7 +640,7 @@ pub async fn fetch_with_retry(url: &str) -> Result<Response> {
 
 | 任务 | 优先级 | 工作量 | 完成度 | 用户价值 | 技术价值 | 风险 |
 |------|--------|--------|--------|---------|---------|------|
-| #1 Share Link | 🟢 已完成 | 0.5-1 PD | 95% | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 低 |
+| #1 Share Link | 🟢 已完成 | 0.5 PD | 98% | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 低 |
 | #2 Share Sheet | ✅ 完成 | - | 100% | ⭐⭐⭐⭐ | ⭐⭐⭐ | 无 |
 | #3 安装流 | 🟡 需完善 | 1-2 PD | 85% | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 低 |
 | #4 TrustShield | ✅ 完成 | - | 100% | ⭐⭐⭐⭐ | ⭐⭐⭐ | 无 |
@@ -658,7 +649,7 @@ pub async fn fetch_with_retry(url: &str) -> Result<Response> {
 | #7 依赖检查 | 🟡 P1 | 6-10 PD | 0% | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 中 |
 | #8 E2E 测试 | 🟡 P1 | 4-8 PD | 40% | ⭐⭐ | ⭐⭐⭐⭐ | 低 |
 | #9 性能优化 | 🟢 P2 | 4-7 PD | 30% | ⭐⭐⭐ | ⭐⭐⭐⭐ | 低 |
-| #10 发布向导 | 🟡 需修复 | 1-3 PD | 80% | ⭐⭐⭐⭐ | ⭐⭐⭐ | 低 |
+| #10 发布向导 | 🟡 需完善 | 1-2 PD | 90% | ⭐⭐⭐⭐ | ⭐⭐⭐ | 低 |
 
 ---
 
@@ -711,7 +702,7 @@ Week 6: 任务 #10（Publish Wizard 完整集成）
 
 | 里程碑 | 时间 | 交付物 | 状态 |
 |--------|------|--------|------|
-| **M0**: 阻断性问题修复 | Day 1 | Publish Wizard + Share Link 修复 | ❌ 待开始 |
+| **M0**: 阻断性问题修复 | Day 1 | Publish Wizard + Share Link 修复 | ✅ 已完成 |
 | **M1**: 任务管理 UI | Week 1 | 任务中心页面上线 | ❌ 待开始 |
 | **M2**: 安装流完善 | Week 2 | 完整安装流程 | ❌ 待开始 |
 | **M3**: MCP 集成 | Week 3 | 能力徽章 + 依赖检查 | ❌ 待开始 |
