@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Library, ShoppingBag, ShieldCheck, Settings, Box, Sun, Moon, Globe, GitBranch, Folder } from 'lucide-react';
+import { Library, ShoppingBag, ShieldCheck, Settings, Box, Sun, Moon, Globe, GitBranch, Folder, Activity } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 import { useSkillStore } from '../../store/useSkillStore';
@@ -24,6 +24,7 @@ const Sidebar = () => {
         { to: '/collections', icon: Folder, label: i18n.language === 'zh' ? '合集' : 'Collections' },
         { to: '/marketplace', icon: ShoppingBag, label: t('marketplace') },
         { to: '/repositories', icon: GitBranch, label: t('repositories.title') },
+        { to: '/tasks', icon: Activity, label: t('tasks.title', 'Tasks') },
         ...(showSecuritySection ? [{ to: '/security', icon: ShieldCheck, label: t('security') }] : []),
         { to: '/settings', icon: Settings, label: t('settings') },
     ];

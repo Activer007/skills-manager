@@ -4,10 +4,14 @@ import Sidebar from './Sidebar';
 import ThemeManager from '../common/ThemeManager';
 import ToastContainer from '../common/ToastContainer';
 import { cn } from '../../utils/cn';
+import { useTaskListener } from '../../hooks/useTaskListener';
 
 const Layout = () => {
     const location = useLocation();
     const isMarketplace = location.pathname.startsWith('/marketplace');
+
+    // Initialize task listener
+    useTaskListener();
 
     return (
         <div className="flex h-screen bg-[#FAFBFC] dark:bg-base-300 font-sans text-slate-900 dark:text-slate-100 overflow-hidden selection:bg-primary/20 selection:text-primary">

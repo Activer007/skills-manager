@@ -11,6 +11,7 @@ const Settings = lazy(() => import('./pages/Settings'));
 const Collections = lazy(() => import('./pages/Collections'));
 const CollectionDetail = lazy(() => import('./pages/CollectionDetail'));
 const ScanHistory = lazy(() => import('./pages/ScanHistory'));
+const TaskCenter = lazy(() => import('./pages/TaskCenter'));
 const SharePreview = lazy(() => import('./pages/SharePreview'));
 const CreatorProfile = lazy(() => import('./pages/CreatorProfile'));
 
@@ -68,6 +69,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <ScanHistory />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'tasks',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <TaskCenter />
           </Suspense>
         ),
       },
