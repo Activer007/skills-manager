@@ -253,29 +253,69 @@ export const SkillCard = ({
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-base-100 pl-2 shadow-sm rounded-l-lg border-l border-t border-b border-gray-100 dark:border-base-200 absolute right-4 py-1.5 px-2">
                     {isInstalled ? (
                         <>
-                             <div onClick={(e) => e.stopPropagation()} className="flex items-center" data-testid="skill-switch">
+                             <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center px-1"
+                                data-testid="skill-switch"
+                                title={isActive ? (isZh ? '禁用 Skill' : 'Disable Skill') : (isZh ? '启用 Skill' : 'Enable Skill')}
+                             >
                                 <Switch
                                     checked={isActive}
                                     onChange={handleToggle}
                                     size="sm"
                                 />
                              </div>
-                             <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onConfigure?.(); }}>
+                             <div className="h-4 w-px bg-gray-200 dark:bg-base-300 mx-1" />
+                             <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 hover:bg-base-200"
+                                onClick={(e) => { e.stopPropagation(); onConfigure?.(); }}
+                                title={isZh ? '设置' : 'Settings'}
+                             >
                                 <Settings size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" onClick={handleShare} title={isZh ? '分享' : 'Share'} data-testid="share-button">
+                             <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 hover:bg-base-200"
+                                onClick={handleShare}
+                                title={isZh ? '分享' : 'Share'}
+                                data-testid="share-button"
+                             >
                                 <Share2 size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" onClick={handleAddToCollection} title={isZh ? '添加到合集' : 'Add to Collection'} data-testid="add-to-collection-button">
+                             <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 hover:bg-base-200"
+                                onClick={handleAddToCollection}
+                                title={isZh ? '添加到合集' : 'Add to Collection'}
+                                data-testid="add-to-collection-button"
+                             >
                                 <FolderPlus size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" onClick={handleFork} title={isZh ? 'Fork/Remix' : 'Fork/Remix'} data-testid="fork-button">
+                             <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 hover:bg-base-200"
+                                onClick={handleFork}
+                                title={isZh ? 'Fork/Remix' : 'Fork/Remix'}
+                                data-testid="fork-button"
+                             >
                                 <GitFork size={16} />
                              </Button>
-                             <Button size="sm" variant="ghost" className="text-error border border-error hover:bg-error/10" onClick={(e) => { e.stopPropagation(); onUninstall?.(); }} data-testid="uninstall-button">
+                             <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-error hover:bg-error/10"
+                                onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}
+                                title={isZh ? '卸载' : 'Uninstall'}
+                                data-testid="uninstall-button"
+                             >
                                 <Trash2 size={16} />
                              </Button>
                         </>
