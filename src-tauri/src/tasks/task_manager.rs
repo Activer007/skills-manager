@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
-use tauri::{AppHandle, Manager, Emitter};
+use tauri::{AppHandle, Emitter};
 use once_cell::sync::Lazy;
 use chrono::{Utc, DateTime};
 
@@ -32,7 +32,7 @@ impl TaskManager {
         }
     }
 
-    pub async fn add_task(&self, mut task: BackgroundTask) -> String {
+    pub async fn add_task(&self, task: BackgroundTask) -> String {
         let id = task.id.clone();
 
         // Initialize cancellation token

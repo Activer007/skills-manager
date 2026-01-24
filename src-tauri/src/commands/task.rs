@@ -1,4 +1,4 @@
-use tauri::{AppHandle, command, State};
+use tauri::{AppHandle, command};
 use crate::tasks::TASK_MANAGER;
 use crate::tasks::BackgroundTask;
 use crate::tasks::TaskStatus;
