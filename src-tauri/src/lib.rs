@@ -1720,16 +1720,8 @@ pub fn run() {
             }
 
             // Initialize and manage ConfigService
-            match ConfigService::new() {
-                Ok(config_service) => {
-                    app.manage(config_service);
-                }
-                Err(e) => {
-                    log::error!("Failed to initialize ConfigService: {}", e);
-                    // Decide if we should panic or continue. Continuing might mean config features are broken.
-                    // For now, log error.
-                }
-            }
+            let config_service = ConfigService::new();
+            app.manage(config_service);
 
             Ok(())
         })
@@ -1756,7 +1748,40 @@ pub fn run() {
             commands::collection::delete_collection,
             commands::collection::add_collection_item,
             commands::collection::remove_collection_item,
-            commands::collection::reorder_collection_items
+            commands::collection::reorder_collection_items,
+            // Security commands
+            commands::security::scan_skill_security,
+            commands::security::batch_scan_skills,
+            commands::security::scan_skill_security_incremental,
+            commands::security::batch_scan_skills_incremental,
+            commands::security::get_security_config,
+            commands::security::update_security_config,
+            commands::security::get_scan_history,
+            commands::security::add_whitelist_entry,
+            commands::security::remove_whitelist_entry,
+            commands::security::get_whitelist,
+            // Config commands
+            commands::config::get_skill_config,
+            commands::config::set_skill_config,
+            commands::config::get_project_paths,
+            commands::config::save_project_paths,
+            // Repository commands
+            commands::repository::get_repositories,
+            commands::repository::get_repository,
+            commands::repository::add_repository,
+            commands::repository::delete_repository,
+            commands::repository::toggle_repository_enabled,
+            commands::repository::get_featured_repositories,
+            commands::repository::refresh_featured_repositories,
+            commands::repository::get_unscanned_repositories,
+            commands::repository::get_repository_stats,
+            // Analyzer commands
+            commands::analyzer::analyze_skill_quality,
+            commands::analyzer::batch_analyze_skills,
+            commands::analyzer::batch_analyze_skills_detailed,
+            // Cache commands
+            commands::cache::get_cache_stats,
+            commands::cache::clear_cache
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

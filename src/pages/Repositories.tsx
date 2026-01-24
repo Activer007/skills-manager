@@ -322,9 +322,9 @@ export default function RepositoriesPage() {
       {/* 添加仓库模态框 */}
       <ModalDialog
         isOpen={showAddForm}
-        onClose={() => setShowAddForm(false)}
+        onCancel={() => setShowAddForm(false)}
         title={t('repositories.addDialog.title')}
-        className="max-w-md"
+        message=""
       >
         <div className="space-y-4 py-2">
           <div className="space-y-2">
