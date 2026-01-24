@@ -30,7 +30,6 @@ export const useShare = (
 
   // 状态
   const [shareLink, setShareLink] = useState<string | undefined>(undefined);
-  const [isLoadingLink, setIsLoadingLink] = useState(false);
   const [isModified, setIsModified] = useState<boolean | null>(null);
   const [isCheckingModified, setIsCheckingModified] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -49,7 +48,6 @@ export const useShare = (
     let isMounted = true;
 
     const createLink = async () => {
-      setIsLoadingLink(true);
       try {
         const metadata: ShareMetadata = {
           name: skill.name,
@@ -78,10 +76,6 @@ export const useShare = (
         console.error('Failed to generate share link:', error);
         if (isMounted) {
           toast.error(locale === 'zh' ? '生成分享链接失败' : 'Failed to generate share link');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingLink(false);
         }
       }
     };
@@ -166,13 +160,11 @@ export const useShare = (
   // 生成文本
   const generateText = useCallback(
     (platform: SharePlatform): string => {
-      // Pass the generated shareLink explicitly if available
       return generatePlatformShareText(skill, platform, locale, {
         modified: isModified === true,
-        shareLink: shareLink, // Ensure generator uses this link
       });
     },
-    [skill, locale, isModified, shareLink]
+    [skill, locale, isModified]
   );
 
   // 复制文本

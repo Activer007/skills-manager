@@ -73,6 +73,8 @@ describe('ShareTextDialog', () => {
     author: 'Test Author',
     version: '1.0.0',
     status: 'safe',
+    installDate: Date.now(),
+    type: 'system',
     config: {
       __origin: {
         sourceUrl: 'https://github.com/test/skill',

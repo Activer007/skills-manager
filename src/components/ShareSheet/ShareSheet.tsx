@@ -111,12 +111,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={
-        <div className="flex items-center gap-2">
-          <Share2 className="w-5 h-5" />
-          {locale === 'zh' ? '分享 Skill' : 'Share Skill'}
-        </div>
-      }
+      title={locale === 'zh' ? '分享 Skill' : 'Share Skill'}
       size="xl"
       data-testid="share-sheet"
     >

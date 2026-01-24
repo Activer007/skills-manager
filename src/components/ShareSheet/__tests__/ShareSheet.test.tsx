@@ -43,6 +43,7 @@ const mockSkill: InstalledSkill = {
   version: '1.0.0',
   type: 'system',
   localPath: '/path/to/skill',
+  installDate: Date.now(),
   status: 'safe',
   enabled: true,
   config: {
