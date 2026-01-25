@@ -198,8 +198,14 @@ const SharePreview = () => {
   // 取消/重试安装
   const handleCancelInstall = async () => {
     if (currentTaskId && installStage !== 'completed' && installStage !== 'error') {
-       // Optional: Cancel task in backend if supported
-       // await invoke('cancel_task', { taskId: currentTaskId });
+      try {
+        // Cancel task in backend
+        await invoke('cancel_task', { taskId: currentTaskId });
+        console.log('Cancelled installation task:', currentTaskId);
+      } catch (err) {
+        console.error('Failed to cancel task:', err);
+        // Continue with UI cleanup even if backend cancellation fails
+      }
     }
     setStatus('ready');
     setInstallStage('preparing');

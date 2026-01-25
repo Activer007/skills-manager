@@ -167,6 +167,8 @@ export type ExportStatus = 'idle' | 'exporting' | 'success' | 'error';
 export interface UseShareOptions {
   /** 是否在挂载时自动检测修改状态 */
   autoCheckModified?: boolean;
+  /** 是否在挂载时自动生成分享链接 */
+  autoGenerateLink?: boolean;
   /** 默认分享主题 */
   defaultTheme?: ShareCardTheme;
   /** 默认分享平台 */

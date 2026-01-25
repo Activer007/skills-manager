@@ -33,7 +33,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
     copyLink,
     linkCopied,
     cleanup,
-  } = useShare(skill, locale);
+  } = useShare(skill, locale, { autoGenerateLink: true });
 
   // 重置面板状态
   useEffect(() => {

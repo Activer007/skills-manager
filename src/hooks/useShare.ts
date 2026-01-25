@@ -26,10 +26,11 @@ export const useShare = (
   locale: string = 'zh',
   options: UseShareOptions = {}
 ): UseShareReturn => {
-  const { autoCheckModified = true } = options;
+  const { autoCheckModified = true, autoGenerateLink = false } = options;
 
   // 状态
   const [shareLink, setShareLink] = useState<string | undefined>(undefined);
+  const [isLoadingLink, setIsLoadingLink] = useState(false);
   const [isModified, setIsModified] = useState<boolean | null>(null);
   const [isCheckingModified, setIsCheckingModified] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -42,64 +43,79 @@ export const useShare = (
   // Refs
   const cardBlobRef = useRef<Blob | null>(null);
   const previewUrlRef = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // 生成分享链接 (调用后端)
-  useEffect(() => {
-    let isMounted = true;
+  const generateLink = useCallback(async (): Promise<string | null> => {
+    if (shareLink) return shareLink;
 
-    const createLink = async () => {
-      try {
-        let sourceUrl = resolveSkillLink(skill);
+    setIsLoadingLink(true);
+    try {
+      let sourceUrl = resolveSkillLink(skill);
 
-        // If sourceUrl is missing, try to get git remote
-        if (!sourceUrl && skill.localPath) {
-          try {
-             const remote = await invoke<string | null>('get_git_remote_url', { path: skill.localPath });
-             if (remote) {
-               sourceUrl = remote;
-             }
-          } catch (e) {
-            console.warn('Failed to get git remote:', e);
-          }
-        }
-
-        const metadata: ShareMetadata = {
-          name: skill.name,
-          description: skill.description || '',
-          version: skill.version || '1.0.0',
-          author: skill.author,
-          source_url: sourceUrl,
-          security_score: skill.qualityScore,
-          security_level: skill.status,
-        };
-
-        const result = await invoke<ShareRecord>('generate_share_link', {
-          targetType: 'skill',
-          targetId: skill.id,
-          visibility: 'public',
-          metadata: metadata,
-          expiresAt: null, // Optional: set expiration if needed
-        });
-
-        if (isMounted && result.share_id) {
-          // Construct the full URL
-          const origin = window.location.origin;
-          setShareLink(`${origin}/share/${result.share_id}`);
-        }
-      } catch (error) {
-        console.error('Failed to generate share link:', error);
-        if (isMounted) {
-          toast.error(locale === 'zh' ? '生成分享链接失败' : 'Failed to generate share link');
+      // If sourceUrl is missing, try to get git remote
+      if (!sourceUrl && skill.localPath) {
+        try {
+           const remote = await invoke<string | null>('get_git_remote_url', { path: skill.localPath });
+           if (remote) {
+             sourceUrl = remote;
+           }
+        } catch (e) {
+          console.warn('Failed to get git remote:', e);
         }
       }
-    };
 
-    createLink();
+      const metadata: ShareMetadata = {
+        name: skill.name,
+        description: skill.description || '',
+        version: skill.version || '1.0.0',
+        author: skill.author,
+        source_url: sourceUrl,
+        security_score: skill.qualityScore,
+        security_level: skill.status,
+      };
 
-    return () => {
-      isMounted = false;
-    };
-  }, [skill, locale]);
+      const result = await invoke<ShareRecord>('generate_share_link', {
+        targetType: 'skill',
+        targetId: skill.id,
+        visibility: 'public',
+        metadata: metadata,
+        expiresAt: null,
+      });
+
+      if (isMountedRef.current && result.share_id) {
+        const origin = window.location.origin;
+        const link = `${origin}/share/${result.share_id}`;
+        setShareLink(link);
+        return link;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to generate share link:', error);
+      if (isMountedRef.current) {
+        toast.error(locale === 'zh' ? '生成分享链接失败' : 'Failed to generate share link');
+      }
+      return null;
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoadingLink(false);
+      }
+    }
+  }, [skill, locale, shareLink]);
+
+  // 自动生成链接
+  useEffect(() => {
+    if (autoGenerateLink && !shareLink) {
+      generateLink();
+    }
+  }, [autoGenerateLink, generateLink, shareLink]);
 
   // 检测修改状态
   useEffect(() => {
@@ -156,12 +172,17 @@ export const useShare = (
 
   // 复制链接
   const copyLink = useCallback(async (): Promise<boolean> => {
-    if (!shareLink) {
-      toast.error(locale === 'zh' ? '正在生成链接...' : 'Generating link...');
+    let link = shareLink;
+
+    if (!link) {
+      link = await generateLink();
+    }
+
+    if (!link) {
       return false;
     }
 
-    const success = await copyToClipboard(shareLink);
+    const success = await copyToClipboard(link);
     if (success) {
       setLinkCopied(true);
       toast.success(locale === 'zh' ? '链接已复制' : 'Link copied');
@@ -169,7 +190,7 @@ export const useShare = (
       toast.error(locale === 'zh' ? '复制失败' : 'Copy failed');
     }
     return success;
-  }, [shareLink, locale]);
+  }, [shareLink, locale, generateLink]);
 
   // 生成文本
   const generateText = useCallback(
@@ -215,8 +236,13 @@ export const useShare = (
     async (theme: ShareCardTheme): Promise<Blob> => {
       setIsGeneratingCard(true);
       try {
+        let link = shareLink;
+        if (!link) {
+           link = await generateLink();
+        }
+
         // We need to pass the shareLink to the card generator
-        const blob = await generateShareCard(skill, theme, { shareLink });
+        const blob = await generateShareCard(skill, theme, { shareLink: link || undefined });
         cardBlobRef.current = blob;
 
         // 清理旧的预览 URL
@@ -234,10 +260,12 @@ export const useShare = (
         toast.error(locale === 'zh' ? '生成失败' : 'Failed to generate image');
         throw error;
       } finally {
-        setIsGeneratingCard(false);
+        if (isMountedRef.current) {
+          setIsGeneratingCard(false);
+        }
       }
     },
-    [skill, locale, shareLink]
+    [skill, locale, shareLink, generateLink]
   );
 
   // 下载卡片
