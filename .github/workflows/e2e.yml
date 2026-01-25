@@ -3,13 +3,11 @@ name: E2E Tests
 on:
   push:
     branches:
-      - master
       - main
       - 'feature/**'
       - 'fix/**'
   pull_request:
     branches:
-      - master
       - main
 
 jobs:
