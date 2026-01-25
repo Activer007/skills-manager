@@ -29,6 +29,8 @@ export interface PublishResult {
   success: boolean;
   message: string;
   skill_id?: string;
+  listing_id?: string;
+  published_at?: number;
 }
 
 export interface PublishMetadata {
@@ -37,4 +39,20 @@ export interface PublishMetadata {
   author: string;
   version: string;
   tags: string[];
+}
+
+export type PublishStatus = 'Published' | 'Failed' | 'Pending';
+
+export interface PublishRecord {
+  id: string;
+  skill_name: string;
+  skill_version: string;
+  skill_id: string;
+  listing_id: string;
+  author: string | null;
+  description: string | null;
+  tags: string[];
+  published_at: number;
+  status: PublishStatus;
+  error_message: string | null;
 }

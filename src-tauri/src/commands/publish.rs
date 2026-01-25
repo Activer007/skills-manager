@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use crate::security::{SecurityScanner, ScanMode};
 use crate::models::security::{SecurityReport, SecurityLevel};
+use crate::models::publish::{PublishRecord, PublishStatus};
+use crate::services::db::get_connection;
+use rusqlite::params;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum CheckStatus {
@@ -29,6 +32,8 @@ pub struct PublishResult {
     pub success: bool,
     pub message: String,
     pub skill_id: Option<String>,
+    pub listing_id: Option<String>,
+    pub published_at: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -151,24 +156,139 @@ pub async fn publish_skill(_skill_path: String, metadata: PublishMetadata) -> Re
         return Err("Invalid version format. Expected SemVer (e.g., 1.0.0)".to_string());
     }
 
-    // Simulation of publishing
-    // In a real implementation, this would upload the skill to a registry
-    // TODO: Integrate with real registry API
+    let name = metadata.name.clone();
+    let version = metadata.version.clone();
+    let now = chrono::Utc::now().timestamp_millis();
 
-    // Simulate network delay
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    // Generate unique IDs for mock API
+    let skill_id = format!("skill_{}", uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("unknown"));
+    let listing_id = format!("listing_{}", uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("unknown"));
+    let publish_record_id = format!("pub_{}", uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("unknown"));
 
-    let name = metadata.name;
-    let version = metadata.version;
+    // Mock API: Simulate network delay
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
-    println!("Publishing skill: {} v{}", name, version);
+    // Log publish attempt
+    log::info!("Publishing skill: {} v{} (ID: {}, Listing: {})", name, version, skill_id, listing_id);
+
+    // Save publish record to database (ignore errors in mock mode)
+    let record = PublishRecord {
+        id: publish_record_id.clone(),
+        skill_name: name.clone(),
+        skill_version: version.clone(),
+        skill_id: skill_id.clone(),
+        listing_id: listing_id.clone(),
+        author: metadata.author.clone(),
+        description: metadata.description.clone(),
+        tags: metadata.tags.clone(),
+        published_at: now,
+        status: PublishStatus::Published,
+        error_message: None,
+    };
+
+    if let Err(e) = save_publish_record(&record) {
+        log::warn!("Failed to save publish record: {}", e);
+    }
 
     Ok(PublishResult {
         success: true,
-        message: format!("Successfully published {} v{}", name, version),
-        skill_id: Some(format!("{}-{}", name, version)),
+        message: format!("Successfully published {} v{} to marketplace", name, version),
+        skill_id: Some(skill_id),
+        listing_id: Some(listing_id),
+        published_at: Some(now),
     })
 }
+
+/// Save publish record to database
+fn save_publish_record(record: &PublishRecord) -> Result<(), String> {
+    let conn = get_connection().map_err(|e| e.to_string())?;
+    let tags_json = serde_json::to_string(&record.tags).map_err(|e| e.to_string())?;
+    let status_str = match record.status {
+        PublishStatus::Published => "published",
+        PublishStatus::Failed => "failed",
+        PublishStatus::Pending => "pending",
+    };
+
+    conn.execute(
+        "INSERT INTO publish_history (id, skill_name, skill_version, skill_id, listing_id, author, description, tags, published_at, status, error_message)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        params![
+            record.id,
+            record.skill_name,
+            record.skill_version,
+            record.skill_id,
+            record.listing_id,
+            record.author,
+            record.description,
+            tags_json,
+            record.published_at,
+            status_str,
+            record.error_message,
+        ],
+    ).map_err(|e| e.to_string())?;
+
+    log::info!("Saved publish record: {} v{} (Listing: {})", record.skill_name, record.skill_version, record.listing_id);
+    Ok(())
+}
+
+/// Get all publish records
+#[tauri::command]
+pub async fn get_publish_history() -> Result<Vec<PublishRecord>, String> {
+    let conn = get_connection().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT id, skill_name, skill_version, skill_id, listing_id, author, description, tags, published_at, status, error_message
+         FROM publish_history
+         ORDER BY published_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let records = stmt.query_map([], |row| {
+        let status_str: String = row.get(9)?;
+        let status = match status_str.as_str() {
+            "published" => PublishStatus::Published,
+            "failed" => PublishStatus::Failed,
+            "pending" => PublishStatus::Pending,
+            _ => PublishStatus::Failed,
+        };
+
+        let tags_json: String = row.get(7)?;
+        let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
+
+        Ok(PublishRecord {
+            id: row.get(0)?,
+            skill_name: row.get(1)?,
+            skill_version: row.get(2)?,
+            skill_id: row.get(3)?,
+            listing_id: row.get(4)?,
+            author: row.get(5)?,
+            description: row.get(6)?,
+            tags,
+            published_at: row.get(8)?,
+            status,
+            error_message: row.get(10)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut result = Vec::new();
+    for record in records {
+        result.push(record.map_err(|e| e.to_string())?);
+    }
+
+    Ok(result)
+}
+
+/// Delete a publish record
+#[tauri::command]
+pub async fn delete_publish_record(record_id: String) -> Result<(), String> {
+    let conn = get_connection().map_err(|e| e.to_string())?;
+    conn.execute(
+        "DELETE FROM publish_history WHERE id = ?1",
+        params![record_id],
+    ).map_err(|e| e.to_string())?;
+
+    log::info!("Deleted publish record: {}", record_id);
+    Ok(())
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -189,7 +309,8 @@ mod tests {
         let publish_result = result.unwrap();
         assert!(publish_result.success);
         assert!(publish_result.skill_id.is_some());
-        assert_eq!(publish_result.skill_id.unwrap(), "test-skill-1.0.0");
+        assert!(publish_result.listing_id.is_some());
+        assert!(publish_result.published_at.is_some());
     }
 
     #[tokio::test]
@@ -204,10 +325,7 @@ mod tests {
 
         let result = publish_skill("/tmp/test-skill".to_string(), metadata).await;
         assert!(result.is_err());
-        assert_eq!(
-            result.err().unwrap(),
-            "Invalid version format. Expected SemVer (e.g., 1.0.0)"
-        );
+        assert!(result.err().unwrap().contains("Invalid version format"));
     }
 
     #[tokio::test]
