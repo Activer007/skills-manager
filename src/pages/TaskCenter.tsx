@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTaskStore } from '../store/useTaskStore';
 import { TaskItem } from '../components/tasks/TaskItem';
 import { invoke } from '@tauri-apps/api/core';
 import { Trash2, Activity, History } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Task, TaskStatus } from '../types/task';
+import type { Task } from '../types/task';
+import { TaskStatus } from '../types/task';
 
 // Component for Active Tasks List
 const ActiveTasksList = () => {
@@ -19,7 +20,7 @@ const ActiveTasksList = () => {
 
   if (activeTasks.length === 0) {
     return (
-      <div className="text-center py-12 text-base-content/50 bg-base-200/50 rounded-lg">
+      <div className="text-center py-12 text-base-content/50 bg-base-200/50 rounded-lg" data-testid="active-empty-state">
         <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
         <p>{t('tasks.noActiveTasks', 'No active tasks running')}</p>
       </div>
@@ -27,7 +28,7 @@ const ActiveTasksList = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="active-task-list">
       {activeTasks.map((task) => (
         <TaskItem key={task.id} task={task} />
       ))}
@@ -70,7 +71,7 @@ const HistoryTasksList = () => {
             {t('tasks.clearHistory', 'Clear History')}
           </button>
         </div>
-        <div className="text-center py-12 text-base-content/50 bg-base-200/50 rounded-lg">
+        <div className="text-center py-12 text-base-content/50 bg-base-200/50 rounded-lg" data-testid="history-empty-state">
           <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>{t('tasks.noHistory', 'No task history available')}</p>
         </div>
@@ -79,7 +80,7 @@ const HistoryTasksList = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="history-task-list">
       <div className="flex justify-end mb-2">
         <button
           onClick={handleClearHistory}

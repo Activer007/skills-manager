@@ -101,7 +101,7 @@ test.describe('Share Link - 完整安装流程', () => {
 
   test('应该完成完整的安装流程（项目级）', async ({ page }) => {
     // 使用 mock 分享链接
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
 
     // 点击安装按钮
     await page.click('button:has-text("安装 Skill")');
@@ -130,7 +130,7 @@ test.describe('Share Link - 完整安装流程', () => {
 
   test('应该支持导航到任务中心并查看进度', async ({ page }) => {
     // 访问分享链接
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
 
     // 开始安装
     await page.click('button:has-text("安装 Skill")');
@@ -195,7 +195,7 @@ test.describe('Share Link - 完整安装流程', () => {
     });
 
     // 访问分享链接
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
 
     // 开始安装
     await page.click('button:has-text("安装 Skill")');
@@ -223,7 +223,7 @@ test.describe('Share Link - 完整安装流程', () => {
 
   test('应该支持取消正在进行的安装', async ({ page }) => {
     // 访问分享链接
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
 
     // 开始安装
     await page.click('button:has-text("安装 Skill")');
@@ -245,7 +245,7 @@ test.describe('Share Link - 完整安装流程', () => {
   });
 
   test('应该正确显示所有阶段的进度文本', async ({ page }) => {
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
 
     // 开始安装
     await page.click('button:has-text("安装 Skill")');
@@ -271,7 +271,7 @@ test.describe('Share Link - 完整安装流程', () => {
   });
 
   test('应该验证进度百分比从 0 到 100 的变化', async ({ page }) => {
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
 
     // 开始安装
     await page.click('button:has-text("安装 Skill")');
@@ -307,7 +307,7 @@ test.describe('Share Link - 完整安装流程', () => {
   });
 
   test('应该显示正确的 Skill 信息在预览页面', async ({ page }) => {
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
 
     // 验证 Skill 名称
     await expect(page.locator('h1:has-text("E2E Test Safe Skill")')).toBeVisible();
@@ -346,7 +346,7 @@ test.describe('Share Link - 完整安装流程', () => {
   });
 
   test('应该在安装完成后支持返回主页', async ({ page }) => {
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
 
     // 快速完成安装（使用 mock）
     await page.click('button:has-text("安装 Skill")');
@@ -368,7 +368,7 @@ test.describe('Share Link - 完整安装流程', () => {
 
 test.describe('Share Link - 进度更新验证', () => {
   test('应该实时更新进度条宽度', async ({ page }) => {
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
 
     // 开始安装
     await page.click('button:has-text("安装 Skill")');
@@ -398,7 +398,7 @@ test.describe('Share Link - 进度更新验证', () => {
   });
 
   test('应该显示正确的阶段图标', async ({ page }) => {
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
 
     // 开始安装
     await page.click('button:has-text("安装 Skill")');
@@ -414,7 +414,7 @@ test.describe('Share Link - 进度更新验证', () => {
 
 test.describe('Share Link - UI/UX 验证', () => {
   test('应该有良好的视觉反馈', async ({ page }) => {
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
 
     // 验证页面加载状态
     await expect(page.locator('min-h-screen')).toBeVisible();
@@ -437,15 +437,15 @@ test.describe('Share Link - UI/UX 验证', () => {
 
   test('应该正确显示不同状态的样式', async ({ page }) => {
     // 测试安全状态
-    await page.goto('http://localhost:1420/share/mock-share-safe-skill');
+    await page.goto('http://localhost:5175/share/mock-share-safe-skill');
     await expect(page.locator('.text-green-600')).toBeVisible();
 
     // 测试风险状态
-    await page.goto('http://localhost:1420/share/mock-share-risk-skill');
+    await page.goto('http://localhost:5175/share/mock-share-risk-skill');
     await expect(page.locator('.text-yellow-600')).toBeVisible();
 
     // 测试阻止状态
-    await page.goto('http://localhost:1420/share/mock-share-blocked-skill');
+    await page.goto('http://localhost:5175/share/mock-share-blocked-skill');
     await expect(page.locator('.text-red-600')).toBeVisible();
   });
 });

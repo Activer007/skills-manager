@@ -70,7 +70,7 @@ describe('Marketplace', () => {
   it('detects GitHub URL and updates import button text', () => {
     render(<Marketplace />);
 
-    const input = screen.getByPlaceholderText('searchSkills');
+    const input = screen.getByTestId('search-input');
 
     // Initial state (Import text might be inside the button which has an icon)
     // The button contains "Import" text initially
@@ -89,7 +89,7 @@ describe('Marketplace', () => {
 
   it('passes URL to modal when clicking import with URL', () => {
      render(<Marketplace />);
-     const input = screen.getByPlaceholderText('searchSkills');
+     const input = screen.getByTestId('search-input');
      const url = 'https://github.com/test/repo';
 
      fireEvent.change(input, { target: { value: url } });

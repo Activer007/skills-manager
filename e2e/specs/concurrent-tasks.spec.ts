@@ -324,8 +324,8 @@ test.describe('Concurrent Tasks - 从不同入口并发', () => {
   test('应该支持多个 Share Link 同时安装', async ({ page }) => {
     // 创建多个页面来同时安装不同的 Share Links
     const shareUrls = [
-      'http://localhost:1420/share/mock-share-safe-skill',
-      'http://localhost:1420/share/mock-share-risk-skill',
+      'http://localhost:5175/share/mock-share-safe-skill',
+      'http://localhost:5175/share/mock-share-risk-skill',
     ];
 
     const pages: Awaited<ReturnType<typeof page.context().newPage>>[] = [];
