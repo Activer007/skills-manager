@@ -550,7 +550,7 @@ const SharePreview = () => {
         <div className="mt-6 text-center text-sm text-base-content/50">
           <div className="flex items-center justify-center gap-2">
             <Package className="w-4 h-4" />
-            <span>Skill Manager</span>
+            <span>Skill Master</span>
           </div>
         </div>
       </div>

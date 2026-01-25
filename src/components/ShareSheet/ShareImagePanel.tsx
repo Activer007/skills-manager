@@ -190,8 +190,8 @@ export const ShareImagePanel: React.FC<SharePanelProps> = ({
             <Eye className="w-4 h-4 mt-0.5 flex-shrink-0" />
             <span>
               {locale === 'zh'
-                ? '提示：将此图片拖拽到 Skill Manager 窗口，或粘贴（Ctrl+V）即可导入 Skill'
-                : 'Tip: Drag this image to Skill Manager or paste (Ctrl+V) to import the Skill'}
+                ? '提示：将此图片拖拽到 Skill Master 窗口，或粘贴（Ctrl+V）即可导入 Skill'
+                : 'Tip: Drag this image to Skill Master or paste (Ctrl+V) to import the Skill'}
             </span>
           </p>
         </div>

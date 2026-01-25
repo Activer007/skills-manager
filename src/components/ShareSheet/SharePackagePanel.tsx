@@ -194,8 +194,8 @@ export const SharePackagePanel: React.FC<SharePanelProps> = ({
       <div className="mt-4 text-xs text-base-content/50">
         <p>
           {locale === 'zh'
-            ? '提示：导出的 .zip 文件可以通过拖拽到 Skill Manager 窗口导入。'
-            : 'Tip: The exported .zip file can be imported by dragging it to the Skill Manager window.'}
+            ? '提示：导出的 .zip 文件可以通过拖拽到 Skill Master 窗口导入。'
+            : 'Tip: The exported .zip file can be imported by dragging it to the Skill Master window.'}
         </p>
       </div>
     </div>

@@ -5,6 +5,9 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 const resources = {
   en: {
     translation: {
+      // App
+      appName: "Skill Master",
+
       // Navigation
       dashboard: "Dashboard",
       mySkills: "My Skills",
@@ -204,6 +207,9 @@ const resources = {
   },
   zh: {
     translation: {
+      // 应用
+      appName: "Skill Master",
+
       // 导航
       dashboard: "仪表盘",
       mySkills: "我的 Skills",

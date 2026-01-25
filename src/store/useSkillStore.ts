@@ -286,7 +286,7 @@ export const useSkillStore = create<SkillStore>()(
       }
     }),
     {
-      name: 'skill-manager-storage',
+      name: 'skill-master-storage',
       partialize: (state) => ({
         // 不持久化 installedSkills，每次启动重新扫描
         projectPaths: state.projectPaths,

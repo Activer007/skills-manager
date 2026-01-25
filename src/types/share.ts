@@ -11,7 +11,7 @@ export interface ShareTextTemplate {
   link: string; // GitHub 链接或市场链接
   securityLevel: 'safe' | 'risk' | 'blocked' | 'unknown'; // 安全等级
   qualityScore?: number; // 质量评分（可选）
-  source: string; // "来自 Skill Manager 分享"
+  source: string; // "来自 Skill Master 分享"
 }
 
 /**
@@ -50,14 +50,14 @@ export interface ShareCardConfig {
   // 样式
   theme: 'light' | 'dark' | 'auto';
   accentColor: string; // 主题色
-  brandLogo: string; // Skill Manager Logo
+  brandLogo: string; // Skill Master Logo
 
   // 质量信息
   securityLevel: 'safe' | 'risk' | 'blocked' | 'unknown';
   qualityScore?: number;
 
   // 元数据
-  footer: string; // "来自 Skill Manager 分享"
+  footer: string; // "来自 Skill Master 分享"
   watermark?: boolean; // 是否添加水印
 }
 

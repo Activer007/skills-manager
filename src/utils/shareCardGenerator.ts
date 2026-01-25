@@ -344,7 +344,7 @@ const generateCardHTML = (config: ShareCardConfig): string => {
           pointer-events: none;
           white-space: nowrap;
           user-select: none;
-        ">SKILL MANAGER</div>
+        ">SKILL MASTER</div>
       ` : ''}
     </div>
   `;
@@ -389,7 +389,7 @@ export const generateShareCard = async (
     brandLogo: '',
     securityLevel: normalizeShareSecurityLevel(skill.status),
     qualityScore: getQualityScore(skill),
-    footer: '来自 Skill Manager 分享',
+    footer: '来自 Skill Master 分享',
     watermark: themeConfig.watermark || false,
   };
 
