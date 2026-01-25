@@ -767,7 +767,7 @@ skills-manager/
 
 ### 代码仓库
 - **GitHub**: https://github.com/Activer007/skills-manager
-- **主分支**: master
+- **主分支**: main
 - **最新 PR**: #96 (Publish Wizard Mock API 集成)
 
 ### 联系方式

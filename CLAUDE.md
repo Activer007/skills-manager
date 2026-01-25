@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-Skill Manager 是一个用于管理 Claude Code Skills 的桌面应用程序，使用 Tauri v2（Rust 后端）和 React 19（前端）构建。
+Skill Master 是一个用于管理 Claude Code Skills 的桌面应用程序，使用 Tauri v2（Rust 后端）和 React 19（前端）构建。
 
 ### 核心功能
 - **我的 Skills**：扫描和管理已安装的系统级/项目级 Skills，支持查看质量评分和安全状态
@@ -355,9 +355,9 @@ Rust 版本的 Skill 质量评分系统已实现，提供高性能的本地分�
 ## 重要注意事项
 
 ### 分支管理规范
-- **严禁直接在 master 分支上修改代码**
+- **严禁直接在 main 分支上修改代码**
 - 所有代码修改必须在功能分支上进行
-- 完成开发后必须通过 Pull Request 合并到 master
+- 完成开发后必须通过 Pull Request 合并到 main
 - **严禁自行合并 PR**：创建 PR 后，必须将链接发送给用户，等待用户确认或指令后再进行合并操作。
 - 功能分支命名规范：
   - `feature/功能名称` - 新功能开发

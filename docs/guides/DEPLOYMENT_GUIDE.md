@@ -29,7 +29,7 @@ cd C:\Users\17136\Desktop\work\project\others\creat\skill-manager
 git remote set-url origin https://github.com/Activer007/skills-manager.git
 
 # 推送代码
-git push -u origin master
+git push -u origin main
 ```
 
 如果网络问题无法推送，可以使用 GitHub Desktop 或者：

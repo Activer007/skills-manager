@@ -1,4 +1,4 @@
-# Skill Manager
+# Skill Master
 
 [English](./README_en.md)
 

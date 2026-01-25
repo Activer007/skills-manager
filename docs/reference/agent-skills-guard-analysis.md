@@ -8,7 +8,7 @@
 
 ## 📋 执行摘要
 
-**Agent Skills Guard** 是一个功能完整的 Claude Code Skills 管理工具，**实现了真正的安全检查功能**，与当前的 **Skills Manager** 项目形成鲜明对比。
+**Agent Skills Guard** 是一个功能完整的 Claude Code Skills 管理工具，**实现了真正的安全检查功能**，与当前的 **Skill Master** 项目形成鲜明对比.
 
 ---
 
@@ -33,7 +33,7 @@
 - 直接下载 SKILL.md 文件（非克隆整个仓库）
 - 仓库级缓存机制（zip 下载后缓存）
 - 安装前自动安全扫描
-- 支持多分支尝试（main/master）
+- 支持多分支尝试（main）
 - SQLite 数据库持久化存储
 
 ---
@@ -57,13 +57,13 @@
 
 ### 对比表二：下载方式
 
-| 功能 | Skills Manager | Agent Skills Guard | 评价 |
+| 功能 | Skill Master | Agent Skills Guard | 评价 |
 |------|----------------|-------------------|------|
 | **下载方式** | Git Clone 完整仓库 | GitHub API + 直接下载 SKILL.md | 🔴 Agent Skills Guard 更轻量 |
-| **缓存机制** | ❌ 无 | ✅ 仓库级 Zip 缓存 | 🟡 Skills Manager 效率低 |
-| **分支支持** | ✅ 指定分支 | ✅ 自动尝试 main/master | 🟢 相当 |
+| **缓存机制** | ❌ 无 | ✅ 仓库级 Zip 缓存 | 🟡 Skill Master 效率低 |
+| **分支支持** | ✅ 指定分支 | ✅ 自动尝试 main | 🟢 相当 |
 | **子目录支持** | ✅ sparse-checkout | ✅ API 递归扫描 | 🟢 相当 |
-| **数据库** | ❌ 无 | ✅ SQLite 持久化 | 🟡 Skills Manager 无状态 |
+| **数据库** | ❌ 无 | ✅ SQLite 持久化 | 🟡 Skill Master 无状态 |
 | **安装前扫描** | ❌ 无 | ✅ 自动扫描 + 阻止危险 | 🔴 关键差异 |
 
 ---
@@ -267,7 +267,7 @@ pub async fn download_and_analyze(&self, skill: &mut Skill) -> Result<(Vec<u8>, 
     let (owner, repo) = Repository::from_github_url(&skill.repository_url)?;
 
     // 2. 尝试多个分支下载 SKILL.md 文件
-    let branches = ["main", "master"];
+    let branches = ["main"];
     for branch in branches.iter() {
         let download_url = format!(
             "https://raw.githubusercontent.com/{}/{}/{}/{}/SKILL.md",
