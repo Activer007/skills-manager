@@ -38,6 +38,9 @@ Skill Manager 是一个用于管理 Claude Code Skills 的桌面应用程序，�
   - 生成/解析分享链接
   - 分享预览页面 (`/share/:shareId`)
   - 安全等级显示和一键安装
+  - 支持系统级和项目级安装
+  - 实时进度显示和任务集成
+  - URL 验证和边界情况处理
 
 ## 开发命令
 
@@ -134,6 +137,14 @@ cargo clippy              # Rust lint 检查
 - `import_skill_package` - 从 `.zip` 包文件导入 Skill（验证格式和安全性）
 - `parse_share_image_qr` - 解析分享图片中的 QR 码数据
 
+**v2.6.0 新增特性（分享链接系统）**:
+- `generate_share_link` - 生成分享链接（返回 share_id）
+- `resolve_share_link` - 解析分享链接（返回 ShareRecord）
+- `import_github_skill_with_progress` - 从 GitHub 导入 Skill（带进度跟踪）
+- `get_git_remote_url` - 获取本地仓库的远程 URL
+
+#### Share Link 相关命令（src-tauri/src/commands/share.rs）
+
 #### Skill 质量评分命令（src-tauri/src/commands/analyzer.rs）
 - `analyze_skill_quality` - 分析单个 Skill 质量
 - `batch_analyze_skills` - 批量分析 Skills（返回 Vec<Option<SkillScore>>）
@@ -200,6 +211,88 @@ Your skill content here...
 - `SecurityLevel` - 安全等级类型
 - `ScanRecord` - 扫描历史记录接口
 - `WhitelistEntry` - 白名单条目接口
+
+前端分享相关类型定义在 `src/types/share.ts`：
+- `ShareMetadata` - 分享元数据接口（包含 `source_url` 字段）
+- `ShareRecord` - 分享记录接口（后端返回）
+- `ShareLink` - 分享链接接口
+- `ParsedShareLink` - 解析后的分享链接接口
+- `SharePreviewStatus` - 分享预览页面状态类型
+- `SharePlatform` - 分享平台类型
+- `ShareCardTheme` - 分享卡片主题类型
+- `ShareImageData` - 分享图片嵌入数据接口
+- `ExportResult` - 包导出结果接口
+- `ExportStatus` - 包导出状态类型
+- `UseShareReturn` - `useShare` Hook 返回值接口
+
+## Share Link 工作流程 (v2.6.0)
+
+### 生成分享链接
+
+1. **用户操作**：在"我的 Skills"页面点击"分享"按钮
+2. **调用 Hook**：`useShare(skill)` 自动生成分享链接
+3. **后端处理**：
+   - 调用 `generate_share_link` 命令
+   - 解析 Skill 元数据（name, description, version, author, source_url）
+   - 将元数据存储到数据库
+   - 生成唯一的 `share_id`
+4. **返回链接**：`{origin}/share/{share_id}`
+5. **复制到剪贴板**：用户可分享链接
+
+### 解析和安装
+
+1. **访问链接**：用户打开分享链接 `/share/:shareId`
+2. **解析链接**：`parseShareLink(shareId)` 验证格式
+3. **获取数据**：调用 `resolve_share_link(shareId)` 获取 ShareRecord
+4. **显示预览**：`SharePreview.tsx` 渲染 Skill 信息
+5. **URL 验证**：
+   - 检查 `source_url` 是否存在
+   - 验证是否为有效的 GitHub URL
+   - 显示相应的警告或提示
+6. **用户确认**：点击"安装 Skill"按钮
+7. **安装流程**：
+   - 调用 `import_github_skill_with_progress`
+   - 返回 `task_id`
+   - 实时监听任务进度（通过 `useTaskListener`）
+   - 显示安装进度（下载、扫描、安装）
+   - 完成后显示成功页面
+
+### 字段映射规范
+
+**重要**：ShareMetadata 字段映射已在 v2.6.0+ 统一
+
+| 字段 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `name` | string | ✅ | Skill 名称 |
+| `description` | string | ✅ | Skill 描述 |
+| `version` | string | ✅ | 版本号（默认 "1.0.0"） |
+| `author` | string? | ❌ | 作者名称 |
+| `source_url` | string? | ❌ | **主要字段**：GitHub 仓库链接 |
+| `url` | string? | ❌ | **@deprecated**：已废弃，向后兼容 |
+| `security_score` | number? | ❌ | 质量评分（0-100） |
+| `security_level` | string? | ❌ | 安全等级（safe/risk/blocked/unknown） |
+
+**向前兼容策略**：
+- 生成时仅设置 `source_url`
+- 解析时优先使用 `source_url`，回退到 `url`
+- 安装 URL：`source_url \|\| url \|\| fallback`
+
+### 边界情况处理
+
+1. **缺少 source_url**：
+   - 显示黄色警告："无法安装 - 此分享链接缺少源地址信息"
+   - 安装按钮禁用，显示"无法安装 (无源地址)"
+
+2. **非 GitHub URL**：
+   - 显示蓝色警告："非标准 GitHub 链接 - 安装可能失败，请谨慎操作"
+
+3. **无效链接**：
+   - shareId 不存在 → 显示"链接已过期或不存在"
+   - shareId 格式错误 → 显示"无效的分享链接格式"
+
+4. **网络错误**：
+   - 后端调用失败 → 显示"加载分享内容失败"
+   - 安装失败 → 显示错误消息和重试按钮
 
 ## Rust Skill 评分系统（已完成）
 
