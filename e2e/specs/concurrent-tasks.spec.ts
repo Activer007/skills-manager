@@ -328,7 +328,7 @@ test.describe('Concurrent Tasks - 从不同入口并发', () => {
       'http://localhost:5175/share/mock-share-risk-skill',
     ];
 
-    const pages: Awaited<ReturnType<typeof page.context().newPage>>[] = [];
+    const pages: Array<import('@playwright/test').Page> = [];
 
     // 为每个 URL 创建新页面并开始安装
     for (const url of shareUrls) {
@@ -375,7 +375,7 @@ test.describe('Concurrent Tasks - 任务取消', () => {
     await page.goto('/tasks');
 
     // 查找第一个运行中的任务
-    const firstRunningTask = page.locator('[data-testid="task-card"]:has-text("running)").first();
+    const firstRunningTask = page.locator('[data-testid="task-card"]:has-text("running")').first();
 
     if (await firstRunningTask.isVisible()) {
       // 点击取消按钮
@@ -470,7 +470,7 @@ test.describe('Concurrent Tasks - 任务取消', () => {
     console.log(`[E2E] Before cancel - Running: ${initialRunning}, Pending: ${initialPending}`);
 
     // 取消一个运行中的任务
-    const firstRunningTask = page.locator('[data-testid="task-card"]:has-text("running)").first();
+    const firstRunningTask = page.locator('[data-testid="task-card"]:has-text("running")').first();
     const cancelButton = firstRunningTask.locator('button:has-text("取消")');
 
     if (await cancelButton.isVisible()) {

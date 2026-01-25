@@ -104,6 +104,8 @@ export const Modal = ({
             size="sm"
             className="btn-circle btn-sm hover:bg-slate-100 dark:hover:bg-base-200 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             onClick={onClose}
+            data-testid="close-dialog"
+            aria-label="Close"
           >
             <X size={20} />
           </Button>

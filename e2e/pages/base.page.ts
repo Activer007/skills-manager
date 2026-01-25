@@ -98,6 +98,14 @@ export class BasePage {
   }
 
   /**
+   * 等待指定时间（用于处理动画或异步操作）
+   */
+  async waitForTimeout(ms: number) {
+    console.log(`[e2e] waitForTimeout ${ms}ms`);
+    await this.page.waitForTimeout(ms);
+  }
+
+  /**
    * 截图
    */
   async screenshot(name: string) {
