@@ -1,14 +1,14 @@
 [package]
-name = "skill-manager"
+name = "skill-master"
 version = "1.2.2"
-description = "Skill Manager Desktop App"
+description = "Skill Master Desktop App"
 authors = ["you"]
 license = ""
 repository = ""
 edition = "2021"
 
 [lib]
-name = "skill_manager_lib"
+name = "skill_master_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

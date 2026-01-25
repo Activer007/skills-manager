@@ -53,6 +53,7 @@ pub fn run() {
             commands::skill_cmds::scan_skills,
             commands::skill_cmds::scan_skills_with_progress,
             commands::skill_cmds::uninstall_skill,
+            commands::skill_cmds::read_skill,
 
             // Import commands
             commands::import_cmds::import_github_skill,
