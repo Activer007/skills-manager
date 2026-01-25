@@ -510,6 +510,22 @@ export const test = base.extend({
     const settingsPage = new SettingsPage(page);
     await use(settingsPage);
   },
+
+  // Test data fixtures
+  testShareLinks: async ({}, use) => {
+    const { testShareLinks } = await import('./test-data');
+    await use(testShareLinks);
+  },
+
+  testShareRecords: async ({}, use) => {
+    const { testShareRecords } = await import('./test-data');
+    await use(testShareRecords);
+  },
+
+  testTasks: async ({}, use) => {
+    const { testTasks } = await import('./test-data');
+    await use(testTasks);
+  },
 });
 
 export { expect } from '@playwright/test';

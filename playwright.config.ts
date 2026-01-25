@@ -46,7 +46,7 @@ export default defineConfig({
   // 全局配置
   use: {
     // 基础 URL（Vite 开发服务器）
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5175',
 
     // 失败时保留 trace（用于调试）
     trace: 'on-first-retry',
@@ -81,12 +81,12 @@ export default defineConfig({
 
   // 开发服务器配置
   webServer: {
-    // 启动 Tauri 开发模式
-    command: 'npm run tauri:dev',
+    // 启动 Vite 开发服务器（不启动 Tauri，使用 Mock 模式）
+    command: 'npm run dev',
     // 端口
-    port: 5173,
-    // 启动超时时间（Tauri 首次编译需要较长时间）
-    timeout: 180 * 1000,
+    port: 5175,
+    // 启动超时时间（Vite 启动很快）
+    timeout: 30 * 1000,
     // 重用已存在的服务器（本地开发时）
     reuseExistingServer: !process.env.CI,
     // stdout 忽略（避免日志过多）
