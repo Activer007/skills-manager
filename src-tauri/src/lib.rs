@@ -131,6 +131,8 @@ pub fn run() {
             // Publish commands
             commands::publish::run_publish_preflight,
             commands::publish::publish_skill,
+            commands::publish::get_publish_history,
+            commands::publish::delete_publish_record,
 
             // Share commands
             commands::share::generate_share_link,

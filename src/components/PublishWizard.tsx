@@ -7,16 +7,16 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import type { InstalledSkill } from '../types';
-import type { PreflightResult, PreflightCheck, PublishResult } from '../types/publish';
+import type { PreflightResult, PublishResult } from '../types/publish';
 import { toast } from '../store/useToastStore';
+
+type WizardStep = 'preflight' | 'metadata' | 'publishing' | 'success';
 
 interface PublishWizardProps {
   isOpen: boolean;
   onClose: () => void;
   skill: InstalledSkill;
 }
-
-type WizardStep = 'preflight' | 'metadata' | 'publishing' | 'success';
 
 export const PublishWizard: React.FC<PublishWizardProps> = ({
   isOpen,
@@ -26,6 +26,7 @@ export const PublishWizard: React.FC<PublishWizardProps> = ({
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<WizardStep>('preflight');
   const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
+  const [publishResult, setPublishResult] = useState<PublishResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +44,7 @@ export const PublishWizard: React.FC<PublishWizardProps> = ({
     if (isOpen) {
       setCurrentStep('preflight');
       setPreflightResult(null);
+      setPublishResult(null);
       setError(null);
       setMetadata({
         name: skill.name,
@@ -74,13 +76,14 @@ export const PublishWizard: React.FC<PublishWizardProps> = ({
     setCurrentStep('publishing');
     setError(null);
     try {
-      await invoke<PublishResult>('publish_skill', {
+      const result = await invoke<PublishResult>('publish_skill', {
         skillPath: skill.localPath,
         metadata: {
           ...metadata,
           tags: metadata.tags.split(',').map(t => t.trim()).filter(Boolean),
         },
       });
+      setPublishResult(result);
       setCurrentStep('success');
       toast.success(t('publishSuccess', 'Skill published successfully!'));
     } catch (err) {
@@ -242,10 +245,30 @@ export const PublishWizard: React.FC<PublishWizardProps> = ({
           <span className="text-slate-500">{t('skillName', 'Skill Name')}</span>
           <span className="font-medium">{metadata.name}</span>
         </div>
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between text-sm mb-2">
           <span className="text-slate-500">{t('version', 'Version')}</span>
           <span className="font-medium">{metadata.version}</span>
         </div>
+        {publishResult?.listing_id && (
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-slate-500">{t('listingId', 'Listing ID')}</span>
+            <span className="font-medium text-xs">{publishResult.listing_id}</span>
+          </div>
+        )}
+        {publishResult?.skill_id && (
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-slate-500">{t('skillId', 'Skill ID')}</span>
+            <span className="font-medium text-xs">{publishResult.skill_id}</span>
+          </div>
+        )}
+        {publishResult?.published_at && (
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500">{t('publishedAt', 'Published At')}</span>
+            <span className="font-medium text-xs">
+              {new Date(publishResult.published_at).toLocaleString()}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

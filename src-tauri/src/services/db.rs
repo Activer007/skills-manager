@@ -53,7 +53,7 @@ fn get_db_path() -> Result<PathBuf> {
 }
 
 /// Current database schema version
-const CURRENT_DB_VERSION: i32 = 7;
+const CURRENT_DB_VERSION: i32 = 8;
 
 /// Run database migrations to ensure schema is up to date.
 /// This function creates a schema_migrations table to track version.
@@ -138,6 +138,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             migrate_v7(conn)?;
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (7, ?)",
+                [chrono::Utc::now().timestamp_millis()],
+            )?;
+        }
+
+        // Migration v8: Create publish_history table
+        if current_version < 8 {
+            migrate_v8(conn)?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (8, ?)",
                 [chrono::Utc::now().timestamp_millis()],
             )?;
         }
@@ -505,5 +514,43 @@ fn migrate_v7(conn: &Connection) -> Result<()> {
     )?;
 
     log::info!("Created shares table");
+    Ok(())
+}
+
+/// Migration v8: Create publish_history table
+fn migrate_v8(conn: &Connection) -> Result<()> {
+    // Create publish_history table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS publish_history (
+            id TEXT PRIMARY KEY,
+            skill_name TEXT NOT NULL,
+            skill_version TEXT NOT NULL,
+            skill_id TEXT NOT NULL,
+            listing_id TEXT NOT NULL,
+            author TEXT,
+            description TEXT,
+            tags TEXT NOT NULL,
+            published_at INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            error_message TEXT
+        )",
+        [],
+    )?;
+
+    // Create indexes
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_publish_history_skill_id ON publish_history(skill_id)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_publish_history_published ON publish_history(published_at DESC)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_publish_history_status ON publish_history(status)",
+        [],
+    )?;
+
+    log::info!("Created publish_history table");
     Ok(())
 }
