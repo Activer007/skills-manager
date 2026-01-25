@@ -37,7 +37,7 @@ const Sidebar = () => {
                     <Box size={20} strokeWidth={2.5} />
                 </div>
                 <div>
-                    <h1 className="font-bold text-base leading-tight tracking-tight text-slate-900 dark:text-slate-100">Skill Manager</h1>
+                    <h1 className="font-bold text-base leading-tight tracking-tight text-slate-900 dark:text-slate-100">{t('appName')}</h1>
                     <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">v1.0.0</p>
                 </div>
             </div>

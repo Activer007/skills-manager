@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2.0.0",
-  "productName": "Skill Manager",
+  "productName": "Skill Master",
   "version": "1.2.3",
-  "identifier": "com.skillmanager.desktop",
+  "identifier": "com.skillmaster.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:5175",
@@ -39,7 +39,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Skill Manager",
+        "title": "Skill Master",
         "width": 1200,
         "height": 800,
         "resizable": true,

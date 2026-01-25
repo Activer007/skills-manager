@@ -178,3 +178,26 @@ pub fn uninstall_skill(request: UninstallRequest) -> Result<ImportResult, String
         }),
     }
 }
+
+#[tauri::command]
+pub fn read_skill(skill_path: String) -> Result<String, String> {
+    let path = PathBuf::from(&skill_path);
+    let skill_md = if path.is_dir() {
+        path.join("SKILL.md")
+    } else {
+        path
+    };
+
+    if !skill_md.exists() {
+        return Err(format!("SKILL.md not found at: {}", skill_md.display()));
+    }
+
+    // Basic safety check: only allow reading from .claude/skills directories
+    let path_str = skill_md.to_string_lossy().to_string();
+    if !path_str.contains(".claude") || !path_str.contains("skills") {
+        return Err("Invalid skill path - must be in .claude/skills directory".to_string());
+    }
+
+    fs::read_to_string(&skill_md)
+        .map_err(|e| format!("Failed to read SKILL.md: {}", e))
+}

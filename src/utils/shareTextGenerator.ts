@@ -136,7 +136,7 @@ export const generateShareText = (
 ${securityEmoji} 安全等级: ${securityLabel}${qualityLine}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-来自 Skill Manager 分享
+来自 Skill Master 分享
 https://github.com/activer007/skills-manager
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   `.trim();
@@ -193,7 +193,7 @@ ${skill.description}
 - ✅ 安全等级: ${securityLabel}
 ${qualityText}
 ---
-来自 Skill Manager 分享`;
+来自 Skill Master 分享`;
 };
 
 /**

@@ -294,7 +294,7 @@ const Settings = () => {
                     <Package size={20} className="text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-sm mb-1">Skill Manager (Skill)</h4>
+                    <h4 className="font-semibold text-sm mb-1">Skill Master (Skill)</h4>
                     <p className="text-xs text-base-content/70 mb-3">
                       {i18n.language === 'zh'
                         ? '命令行版本的 Skill 管理工具，支持智能搜索、安装Skill，内置skill市场功能。'

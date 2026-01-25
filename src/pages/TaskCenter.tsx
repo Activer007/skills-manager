@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTaskStore } from '../store/useTaskStore';
 import { TaskItem } from '../components/tasks/TaskItem';
 import { invoke } from '@tauri-apps/api/core';
@@ -10,12 +10,13 @@ import { TaskStatus } from '../types/task';
 // Component for Active Tasks List
 const ActiveTasksList = () => {
   const { t } = useTranslation();
-  // Using selector to only subscribe to active tasks
-  const activeTasks = useTaskStore(state =>
-    state.tasks.filter(t =>
+  const tasks = useTaskStore(state => state.tasks);
+  const activeTasks = useMemo(
+    () => tasks.filter(t =>
       t.status === TaskStatus.Pending ||
       t.status === TaskStatus.Running
-    )
+    ),
+    [tasks]
   );
 
   if (activeTasks.length === 0) {
@@ -39,13 +40,14 @@ const ActiveTasksList = () => {
 // Component for History Tasks List
 const HistoryTasksList = () => {
   const { t } = useTranslation();
-  // Using selector to only subscribe to history tasks
-  const historyTasks = useTaskStore(state =>
-    state.tasks.filter(t =>
+  const tasks = useTaskStore(state => state.tasks);
+  const historyTasks = useMemo(
+    () => tasks.filter(t =>
       t.status === TaskStatus.Completed ||
       t.status === TaskStatus.Failed ||
       t.status === TaskStatus.Cancelled
-    )
+    ),
+    [tasks]
   );
 
   const handleClearHistory = async () => {
@@ -102,13 +104,14 @@ export default function TaskCenter() {
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
   const { t } = useTranslation();
 
-  // These are lightweight selectors just for counts, could be optimized further if needed
-  const activeCount = useTaskStore(state =>
-    state.tasks.filter(t => t.status === TaskStatus.Pending || t.status === TaskStatus.Running).length
+  const tasks = useTaskStore(state => state.tasks);
+  const activeCount = useMemo(
+    () => tasks.filter(t => t.status === TaskStatus.Pending || t.status === TaskStatus.Running).length,
+    [tasks]
   );
-
-  const historyCount = useTaskStore(state =>
-    state.tasks.filter(t => t.status !== TaskStatus.Pending && t.status !== TaskStatus.Running).length
+  const historyCount = useMemo(
+    () => tasks.filter(t => t.status !== TaskStatus.Pending && t.status !== TaskStatus.Running).length,
+    [tasks]
   );
 
   return (
