@@ -12,7 +12,9 @@ export class SettingsPage extends BasePage {
   readonly projectPathsList: Locator;
   readonly pathInput: Locator;
   readonly savePathButton: Locator;
-  readonly securityModeSelect: Locator;
+  readonly securityModeStrict: Locator;
+  readonly securityModeStandard: Locator;
+  readonly securityModeRelaxed: Locator;
   readonly systemInstallPath: Locator;
 
   constructor(page: Page) {
@@ -26,8 +28,10 @@ export class SettingsPage extends BasePage {
     this.pathInput = page.locator('[data-testid="path-input"]');
     this.savePathButton = page.locator('[data-testid="save-path"]');
 
-    // 安全配置相关
-    this.securityModeSelect = page.locator('[data-testid="security-mode-select"]');
+    // 安全配置相关 - 使用radio按钮UI
+    this.securityModeStrict = page.locator('[data-testid="security-mode-strict"]');
+    this.securityModeStandard = page.locator('[data-testid="security-mode-standard"]');
+    this.securityModeRelaxed = page.locator('[data-testid="security-mode-relaxed"]');
 
     // 系统信息相关
     this.systemInstallPath = page.locator('[data-testid="system-install-path"]');
@@ -81,15 +85,43 @@ export class SettingsPage extends BasePage {
    * 选择安全扫描模式
    */
   async selectSecurityMode(mode: 'strict' | 'standard' | 'relaxed') {
-    await this.securityModeSelect.selectOption(mode);
-    await this.waitForLoading();
+    let modeElement;
+    switch (mode) {
+      case 'strict':
+        modeElement = this.securityModeStrict;
+        break;
+      case 'standard':
+        modeElement = this.securityModeStandard;
+        break;
+      case 'relaxed':
+        modeElement = this.securityModeRelaxed;
+        break;
+    }
+
+    if (modeElement) {
+      // 等待元素可见
+      await this.waitForVisible(modeElement);
+      // 点击整个卡片
+      await modeElement.click();
+      // 等待保存完成
+      await this.waitForTimeout(500);
+    }
   }
 
   /**
    * 获取当前安全扫描模式
    */
   async getSecurityMode(): Promise<string> {
-    return await this.securityModeSelect.inputValue();
+    // 检查哪个radio按钮被选中
+    const strictRadio = this.securityModeStrict.locator('input[type="radio"]');
+    const standardRadio = this.securityModeStandard.locator('input[type="radio"]');
+    const relaxedRadio = this.securityModeRelaxed.locator('input[type="radio"]');
+
+    if (await strictRadio.isChecked()) return 'strict';
+    if (await standardRadio.isChecked()) return 'standard';
+    if (await relaxedRadio.isChecked()) return 'relaxed';
+
+    return 'standard'; // 默认值
   }
 
   /**

@@ -31,8 +31,9 @@ export const test = base.extend({
         state.projectPaths = [];
       }
       if (!Array.isArray(state.skills)) {
-        // 预置一个测试 Skill 用于分享/详情等测试
+        // 预置多个测试 Skills，覆盖不同安全状态
         state.skills = [
+          // Safe Skill - 安全的测试 Skill
           {
             id: 'e2e-test-skill-001',
             name: 'E2E Test Skill',
@@ -53,12 +54,85 @@ export const test = base.extend({
             stars: 42,
             forks: 5,
             securityScore: 90,
+            qualityScore: 88,
+          },
+          // Risk Skill - 有安全风险的测试 Skill
+          {
+            id: 'e2e-test-risk-001',
+            name: 'E2E Risk Skill',
+            description: 'A skill with potential security risks - 包含潜在安全风险的 Skill',
+            descriptionZh: '包含潜在安全风险的 Skill',
+            descriptionEn: 'A skill with potential security risks',
+            installDate: Date.now() - 172800000, // 2 days ago
+            localPath: 'C:\\mock\\skills\\e2e-test-risk',
+            path: 'C:\\mock\\skills\\e2e-test-risk',
+            status: 'risk',
+            type: 'system',
+            version: '1.2.0',
+            enabled: true,
+            config: { enabled: true },
+            author: 'Risk Tester',
+            authorAvatar: 'https://github.com/risk.png',
+            githubUrl: 'https://github.com/test/e2e-test-risk',
+            stars: 15,
+            forks: 2,
+            securityScore: 45,
+            qualityScore: 65,
+          },
+          // Blocked Skill - 被阻止的危险 Skill
+          {
+            id: 'e2e-test-blocked-001',
+            name: 'E2E Blocked Skill',
+            description: 'A blocked skill with dangerous patterns - 包含危险模式而被阻止的 Skill',
+            descriptionZh: '包含危险模式而被阻止的 Skill',
+            descriptionEn: 'A blocked skill with dangerous patterns',
+            installDate: Date.now() - 259200000, // 3 days ago
+            localPath: 'C:\\mock\\skills\\e2e-test-blocked',
+            path: 'C:\\mock\\skills\\e2e-test-blocked',
+            status: 'blocked',
+            type: 'system',
+            version: '0.5.0',
+            enabled: false,
+            config: { enabled: false },
+            author: 'Blocked Tester',
+            authorAvatar: 'https://github.com/blocked.png',
+            githubUrl: 'https://github.com/test/e2e-test-blocked',
+            stars: 3,
+            forks: 0,
+            securityScore: 10,
+            qualityScore: 30,
+          },
+          // High Quality Skill - 高质量 Skill
+          {
+            id: 'e2e-test-high-quality-001',
+            name: 'E2E High Quality Skill',
+            description: 'A high-quality skill with excellent documentation - 高质量的 Skill',
+            descriptionZh: '高质量的 Skill',
+            descriptionEn: 'A high-quality skill with excellent documentation',
+            installDate: Date.now() - 43200000, // 12 hours ago
+            localPath: 'C:\\mock\\skills\\e2e-test-high-quality',
+            path: 'C:\\mock\\skills\\e2e-test-high-quality',
+            status: 'safe',
+            type: 'system',
+            version: '2.0.0',
+            enabled: true,
+            config: { enabled: true },
+            author: 'Quality Tester',
+            authorAvatar: 'https://github.com/quality.png',
+            githubUrl: 'https://github.com/test/e2e-test-high-quality',
+            stars: 128,
+            forks: 24,
+            securityScore: 95,
+            qualityScore: 92,
           },
         ];
       }
       if (typeof state.skillConfigs !== 'object' || state.skillConfigs === null) {
         state.skillConfigs = {
           'e2e-test-skill-001': { enabled: true },
+          'e2e-test-risk-001': { enabled: true },
+          'e2e-test-blocked-001': { enabled: false },
+          'e2e-test-high-quality-001': { enabled: true },
         };
       }
       if (typeof state.securityMode !== 'string') {
@@ -128,6 +202,15 @@ export const test = base.extend({
       const tauriInternals = window.__TAURI_INTERNALS__ ?? {
         metadata: {
           currentWindow: { label: 'main' },
+        },
+        // 添加 transformCallback 以修复警告
+        transformCallback: (callback: Function, once: boolean = false) => {
+          const id = Date.now() + Math.random();
+          if (!window.__TAURI_CALLBACKS__) {
+            window.__TAURI_CALLBACKS__ = {};
+          }
+          window.__TAURI_CALLBACKS__[id] = { callback, once };
+          return id;
         },
       };
 
@@ -279,8 +362,9 @@ export const test = base.extend({
             }
             case 'resolve_share_link': {
               const shareId = args?.shareId ?? '';
-              // Mock database of share records
+              // Mock database of share records - 扩展边界情况
               const mockShares = {
+                // Safe Skill
                 'mock-share-001': {
                   share_id: 'mock-share-001',
                   target_type: 'skill',
@@ -295,42 +379,64 @@ export const test = base.extend({
                     source_url: 'https://github.com/test/e2e-test-skill',
                     security_score: 90,
                     security_level: 'safe',
+                    quality_score: 88,
                   },
                 },
-                'non-existent-share': null,
-                'expired-share': null,
+                // Risk Skill
                 'mock-share-risk-skill': {
                   share_id: 'mock-share-risk-skill',
                   target_type: 'skill',
-                  target_id: 'e2e-risk-skill',
+                  target_id: 'e2e-test-risk-001',
                   visibility: 'public',
                   created_at: new Date().toISOString(),
                   metadata: {
                     name: 'E2E Risk Skill',
                     description: 'A skill with potential security risks',
-                    version: '1.0.0',
-                    author: 'Test Author',
-                    source_url: 'https://github.com/test/risk-skill',
+                    version: '1.2.0',
+                    author: 'Risk Tester',
+                    source_url: 'https://github.com/test/e2e-test-risk',
                     security_score: 45,
                     security_level: 'risk',
+                    quality_score: 65,
                   },
                 },
+                // Blocked Skill
                 'mock-share-blocked-skill': {
                   share_id: 'mock-share-blocked-skill',
                   target_type: 'skill',
-                  target_id: 'e2e-blocked-skill',
+                  target_id: 'e2e-test-blocked-001',
                   visibility: 'public',
                   created_at: new Date().toISOString(),
                   metadata: {
                     name: 'E2E Blocked Skill',
                     description: 'A blocked skill with dangerous patterns',
-                    version: '1.0.0',
-                    author: 'Test Author',
-                    source_url: 'https://github.com/test/blocked-skill',
+                    version: '0.5.0',
+                    author: 'Blocked Tester',
+                    source_url: 'https://github.com/test/e2e-test-blocked',
                     security_score: 10,
                     security_level: 'blocked',
+                    quality_score: 30,
                   },
                 },
+                // High Quality Skill
+                'mock-share-high-quality': {
+                  share_id: 'mock-share-high-quality',
+                  target_type: 'skill',
+                  target_id: 'e2e-test-high-quality-001',
+                  visibility: 'public',
+                  created_at: new Date().toISOString(),
+                  metadata: {
+                    name: 'E2E High Quality Skill',
+                    description: 'A high-quality skill with excellent documentation',
+                    version: '2.0.0',
+                    author: 'Quality Tester',
+                    source_url: 'https://github.com/test/e2e-test-high-quality',
+                    security_score: 95,
+                    security_level: 'safe',
+                    quality_score: 92,
+                  },
+                },
+                // No Source URL
                 'mock-share-no-source': {
                   share_id: 'mock-share-no-source',
                   target_type: 'skill',
@@ -345,8 +451,31 @@ export const test = base.extend({
                     source_url: undefined,
                     security_score: 75,
                     security_level: 'unknown',
+                    quality_score: 70,
                   },
                 },
+                // Non-GitHub URL (GitLab)
+                'mock-share-non-github': {
+                  share_id: 'mock-share-non-github',
+                  target_type: 'skill',
+                  target_id: 'gitlab-skill',
+                  visibility: 'public',
+                  created_at: new Date().toISOString(),
+                  metadata: {
+                    name: 'GitLab Test Skill',
+                    description: 'A skill from GitLab',
+                    version: '1.0.0',
+                    author: 'GitLab User',
+                    source_url: 'https://gitlab.com/test/skill',
+                    security_score: 80,
+                    security_level: 'safe',
+                    quality_score: 75,
+                  },
+                },
+                // Expired/Non-existent links
+                'non-existent-share': null,
+                'expired-share': null,
+                'invalid-share': null,
               };
               return mockShares[shareId] ?? null;
             }
@@ -401,24 +530,68 @@ export const test = base.extend({
               return taskId;
             }
             case 'get_tasks': {
-              // Return mock task list
+              // Return mock task list - 扩展包含所有状态
               return [
+                // Completed task
                 {
-                  id: 'task-001',
+                  id: 'task-completed-001',
                   type: 'import',
-                  target: 'https://github.com/test/skill-1',
+                  target: 'https://github.com/test/skill-completed',
                   status: 'completed',
-                  progress: { stage: 'Completed', progress: 100, message: 'Complete' },
-                  created_at: new Date(Date.now() - 60000).toISOString(),
+                  progress: { stage: 'Completed', progress: 100, message: 'Installation completed successfully' },
+                  result: { success: true, skill_id: 'completed-skill-001' },
+                  created_at: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
+                  updated_at: new Date(Date.now() - 60000).toISOString(), // 1 minute ago
+                },
+                // Running task
+                {
+                  id: 'task-running-001',
+                  type: 'import',
+                  target: 'https://github.com/test/skill-running',
+                  status: 'running',
+                  progress: { stage: 'Downloading', progress: 35, message: 'Downloading repository...' },
+                  created_at: new Date(Date.now() - 45000).toISOString(), // 45 seconds ago
                   updated_at: new Date().toISOString(),
                 },
+                // Pending task
                 {
-                  id: 'task-002',
+                  id: 'task-pending-001',
                   type: 'import',
-                  target: 'https://github.com/test/skill-2',
+                  target: 'https://github.com/test/skill-pending',
+                  status: 'pending',
+                  progress: { stage: 'Pending', progress: 0, message: 'Waiting in queue...' },
+                  created_at: new Date(Date.now() - 15000).toISOString(), // 15 seconds ago
+                  updated_at: new Date().toISOString(),
+                },
+                // Failed task
+                {
+                  id: 'task-failed-001',
+                  type: 'import',
+                  target: 'https://github.com/test/skill-failed',
+                  status: 'failed',
+                  progress: { stage: 'Failed', progress: 45, message: 'Security scan blocked: dangerous patterns detected' },
+                  error: { type: 'SecurityBlock', message: 'Installation blocked by security scan' },
+                  created_at: new Date(Date.now() - 120000).toISOString(), // 2 minutes ago
+                  updated_at: new Date(Date.now() - 120000).toISOString(),
+                },
+                // Cancelled task
+                {
+                  id: 'task-cancelled-001',
+                  type: 'import',
+                  target: 'https://github.com/test/skill-cancelled',
+                  status: 'cancelled',
+                  progress: { stage: 'Cancelled', progress: 25, message: 'Installation cancelled by user' },
+                  created_at: new Date(Date.now() - 90000).toISOString(), // 1.5 minutes ago
+                  updated_at: new Date(Date.now() - 80000).toISOString(), // 80 seconds ago
+                },
+                // Another running task
+                {
+                  id: 'task-running-002',
+                  type: 'import',
+                  target: 'https://github.com/test/e2e-test-risk',
                   status: 'running',
-                  progress: { stage: 'Downloading', progress: 50, message: 'Downloading' },
-                  created_at: new Date(Date.now() - 30000).toISOString(),
+                  progress: { stage: 'Scanning', progress: 60, message: 'Scanning for security issues...' },
+                  created_at: new Date(Date.now() - 60000).toISOString(), // 1 minute ago
                   updated_at: new Date().toISOString(),
                 },
               ];

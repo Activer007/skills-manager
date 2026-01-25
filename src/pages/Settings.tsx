@@ -25,14 +25,35 @@ const Settings = () => {
   } = useSkillStore();
   const [paths, setPaths] = useState<string[]>([]);
   const [newPath, setNewPath] = useState('');
+  const [securityMode, setSecurityMode] = useState<'strict' | 'standard' | 'relaxed'>('standard');
 
   useEffect(() => {
     fetchProjectPaths();
+    // 加载安全模式配置
+    invoke('get_security_config').then((config: any) => {
+      if (config?.scan_mode) {
+        setSecurityMode(config.scan_mode);
+      }
+    }).catch(() => {
+      // 忽略错误，使用默认值
+    });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setPaths(projectPaths);
   }, [projectPaths]);
+
+  // 保存安全模式配置
+  const handleSecurityModeChange = async (mode: 'strict' | 'standard' | 'relaxed') => {
+    setSecurityMode(mode);
+    try {
+      await invoke('update_security_config', { config: { scan_mode: mode } });
+      toast.success(i18n.language === 'zh' ? '安全模式已更新' : 'Security mode updated');
+    } catch (error) {
+      console.error('Failed to update security mode:', error);
+      toast.error(i18n.language === 'zh' ? '更新失败' : 'Failed to update');
+    }
+  };
 
   const handleAddPath = async () => {
     if (newPath && !paths.includes(newPath)) {
@@ -460,6 +481,122 @@ const Settings = () => {
                   }
                 </span>
               </label>
+            </div>
+        </div>
+      </div>
+
+      {/* 安全扫描设置 */}
+      <div className="card bg-base-100 shadow-sm border border-base-200">
+        <div className="card-body">
+            <h3 className="card-title text-lg">
+              {i18n.language === 'zh' ? '安全扫描设置' : 'Security Scan Settings'}
+            </h3>
+            <p className="text-sm text-base-content/60 mb-4">
+              {i18n.language === 'zh'
+                ? '选择安全扫描的严格程度。更严格的模式会报告更多潜在风险，但也可能产生更多误报。'
+                : 'Choose the strictness level of security scanning. Stricter modes report more potential risks but may also produce more false positives.'
+              }
+            </p>
+
+            <div
+              className="space-y-3"
+              data-testid="security-mode-selector"
+            >
+              {/* 严格模式 */}
+              <div
+                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                  securityMode === 'strict'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-base-300 hover:border-base-400'
+                }`}
+                onClick={() => handleSecurityModeChange('strict')}
+                data-testid="security-mode-strict"
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="security-mode"
+                    className="radio radio-primary mt-1"
+                    checked={securityMode === 'strict'}
+                    onChange={() => handleSecurityModeChange('strict')}
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-base">
+                      {i18n.language === 'zh' ? '严格模式 (Strict)' : 'Strict Mode'}
+                    </div>
+                    <div className="text-sm text-base-content/60 mt-1">
+                      {i18n.language === 'zh'
+                        ? '报告所有匹配的规则，包括低置信度规则。适合对安全性要求极高的场景。'
+                        : 'Report all matched rules, including low-confidence rules. Suitable for high-security requirements.'
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 标准模式 */}
+              <div
+                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                  securityMode === 'standard'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-base-300 hover:border-base-400'
+                }`}
+                onClick={() => handleSecurityModeChange('standard')}
+                data-testid="security-mode-standard"
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="security-mode"
+                    className="radio radio-primary mt-1"
+                    checked={securityMode === 'standard'}
+                    onChange={() => handleSecurityModeChange('standard')}
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-base">
+                      {i18n.language === 'zh' ? '标准模式 (Standard)' : 'Standard Mode'}
+                    </div>
+                    <div className="text-sm text-base-content/60 mt-1">
+                      {i18n.language === 'zh'
+                        ? '跳过低置信度规则，减少误报。推荐大多数用户使用。'
+                        : 'Skip low-confidence rules to reduce false positives. Recommended for most users.'
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 宽松模式 */}
+              <div
+                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                  securityMode === 'relaxed'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-base-300 hover:border-base-400'
+                }`}
+                onClick={() => handleSecurityModeChange('relaxed')}
+                data-testid="security-mode-relaxed"
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="security-mode"
+                    className="radio radio-primary mt-1"
+                    checked={securityMode === 'relaxed'}
+                    onChange={() => handleSecurityModeChange('relaxed')}
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-base">
+                      {i18n.language === 'zh' ? '宽松模式 (Relaxed)' : 'Relaxed Mode'}
+                    </div>
+                    <div className="text-sm text-base-content/60 mt-1">
+                      {i18n.language === 'zh'
+                        ? '仅报告高置信度规则，误报最少。适合经验丰富的开发者。'
+                        : 'Only report high-confidence rules with minimal false positives. Suitable for experienced developers.'
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
         </div>
       </div>

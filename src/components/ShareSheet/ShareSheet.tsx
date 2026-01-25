@@ -175,7 +175,14 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
                 setActivePanel(option.type as SharePanelType);
               }
             }}
-            data-testid={`share-option-${option.type}`}
+            data-testid={
+              // 向后兼容：为text/image/package面板添加tab别名
+              option.type === 'text' ? 'share-text-tab' :
+              option.type === 'image' ? 'share-image-tab' :
+              option.type === 'package' ? 'share-package-tab' :
+              option.type === 'embed' ? 'share-embed-tab' :
+              `share-option-${option.type}`
+            }
           >
             <div className="flex items-center gap-3">
               <div className={cn(
@@ -202,12 +209,16 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
 
       {/* 分享链接快速展示 */}
       {shareLink && activePanel === 'link' && (
-        <div className="bg-base-200 dark:bg-base-700 p-3 rounded-lg mb-4">
+        <div className="bg-base-200 dark:bg-base-700 p-3 rounded-lg mb-4" data-testid="share-link-container">
           <div className="flex items-center gap-2">
             <Link2 className="w-4 h-4 text-base-content/50" />
-            <span className="text-sm text-base-content/70 truncate flex-1">
-              {shareLink}
-            </span>
+            <input
+              type="text"
+              value={shareLink}
+              readOnly
+              className="text-sm text-base-content/70 truncate flex-1 bg-transparent border-none outline-none"
+              data-testid="share-link-input"
+            />
             <button
               className={cn(
                 'text-xs px-2 py-1 rounded',
@@ -216,6 +227,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
                   : 'bg-primary/20 text-primary hover:bg-primary/30'
               )}
               onClick={copyLink}
+              data-testid="copy-link-button"
             >
               {linkCopied
                 ? (locale === 'zh' ? '已复制' : 'Copied')

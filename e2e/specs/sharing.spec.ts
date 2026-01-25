@@ -27,12 +27,17 @@ test.describe('Skill Sharing', () => {
       await skillCard.waitFor({ state: 'visible', timeout: 10000 });
 
       if (await skillCard.count() > 0) {
-        // 点击分享按钮
+        // 点击分享按钮并等待对话框打开
         const shareBtn = skillCard.locator('[data-testid="share-button"]');
-        await shareBtn.click();
+
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          shareBtn.click()
+        ]);
 
         // 验证对话框打开 - 使用正确的 test-id
-        const shareDialog = page.locator('[data-testid="share-text-dialog"]');
+        const shareDialog = page.locator('[data-testid="share-sheet"]');
         await expect(shareDialog).toBeVisible();
       } else {
         test.skip();
@@ -44,7 +49,11 @@ test.describe('Skill Sharing', () => {
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       await skillCard.waitFor({ state: 'visible', timeout: 10000 });
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         // 切换到文本分享标签
         const textTab = page.locator('[data-testid="share-text-tab"]');
@@ -75,7 +84,11 @@ test.describe('Skill Sharing', () => {
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         // 点击复制按钮
         const copyBtn = page.locator('[data-testid="copy-text"]');
@@ -97,7 +110,11 @@ test.describe('Skill Sharing', () => {
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         // 检查平台选项
         const platforms = page.locator('[data-testid="share-platform"]');
@@ -121,7 +138,11 @@ test.describe('Skill Sharing', () => {
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         // 切换到图片分享标签
         const imageTab = page.locator('[data-testid="share-image-tab"]');
@@ -143,7 +164,11 @@ test.describe('Skill Sharing', () => {
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         const imageTab = page.locator('[data-testid="share-image-tab"]');
         if (await imageTab.count() > 0) {
@@ -177,7 +202,11 @@ test.describe('Skill Sharing', () => {
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         const imageTab = page.locator('[data-testid="share-image-tab"]');
         if (await imageTab.count() > 0) {
@@ -213,7 +242,11 @@ test.describe('Skill Sharing', () => {
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         const imageTab = page.locator('[data-testid="share-image-tab"]');
         if (await imageTab.count() > 0) {
@@ -248,7 +281,11 @@ test.describe('Skill Sharing', () => {
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         // 查找 QR 码标签或按钮
         const qrTab = page.locator('[data-testid="share-qr-tab"], button:has-text("QR Code")');
@@ -270,7 +307,11 @@ test.describe('Skill Sharing', () => {
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         const qrTab = page.locator('[data-testid="share-qr-tab"], button:has-text("QR Code")');
         if (await qrTab.count() > 0) {
@@ -453,7 +494,11 @@ test.describe('Skill Sharing', () => {
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         // 检查修改警告
         const warning = page.locator('[data-testid="modification-warning"]');
@@ -474,15 +519,20 @@ test.describe('Skill Sharing', () => {
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         // 点击关闭按钮
-        const closeBtn = page.locator('[data-testid="close-dialog"], button[aria-label="Close"]');
+        const closeBtn = page.locator('[data-testid="close-dialog"]');
+        await expect(closeBtn).toBeVisible();
         await closeBtn.click();
 
-        // 验证对话框关闭
-        const shareDialog = page.locator('[data-testid="share-text-dialog"]');
-        await expect(shareDialog).not.toBeVisible();
+        // 验证对话框关闭 - 等待对话框消失
+        const shareDialog = page.locator('[data-testid="share-sheet"]');
+        await expect(shareDialog).not.toBeVisible({ timeout: 5000 });
       } else {
         test.skip();
       }
@@ -494,7 +544,11 @@ test.describe('Skill Sharing', () => {
 
       const skillCard = page.locator('[data-testid="skill-card"]').first();
       if (await skillCard.count() > 0) {
-        await skillCard.locator('[data-testid="share-button"]').click();
+        // 使用 Promise.all 等待对话框打开
+        await Promise.all([
+          page.waitForSelector('[data-testid="share-sheet"]', { state: 'visible', timeout: 10000 }),
+          skillCard.locator('[data-testid="share-button"]').click()
+        ]);
 
         // 测试标签切换
         const textTab = page.locator('[data-testid="share-text-tab"]');

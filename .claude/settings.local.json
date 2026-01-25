@@ -30,7 +30,13 @@
       "Search(pattern:*)",
       "Bash(read_file:*)",
       "Bash(src-tauri/src/models/skill.rs:*)",
-      "Bash(cargo test:*)"
+      "Bash(cargo test:*)",
+      "Bash(find:*)",
+      "Bash(npm run e2e:*)",
+      "Bash(powershell -Command \"Get-Content test-run-output.log -Tail 50\")",
+      "Bash(Select-String -Pattern '^\\\\s+\\(ok|x|-\\)\\\\s+\\\\d+\\\\s+\\\\[chromium\\\\]')",
+      "Bash(Select-Object -Last 30 \")",
+      "Bash(powershell:*)"
     ]
   }
 }
