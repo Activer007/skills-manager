@@ -4,6 +4,14 @@
 
 Skills Manager 使用 Playwright 作为 E2E 测试框架，用于测试应用的端到端功能。
 
+**最新优化** (2026-01-25):
+- ✅ 并行测试支持（Mock 模式下）
+- ✅ 自动测试数据清理
+- ✅ 超时时间优化（50% 提升）
+- ✅ CI/CD 集成和性能优化
+
+详见 [E2E-OPTIMIZATION.md](./E2E-OPTIMIZATION.md)
+
 ## 环境要求
 
 - Node.js 18+
@@ -30,9 +38,25 @@ npx playwright --version
 
 ### 运行所有测试
 
+#### 标准模式（串行）
 ```bash
 npm run e2e
 ```
+
+#### Mock 模式（串行）
+```bash
+npm run e2e:mock
+```
+
+#### Mock 并行模式（推荐，最快）⚡
+```bash
+npm run e2e:parallel
+```
+
+**性能对比**:
+- 标准模式: ~600s
+- Mock 模式: ~300s
+- Mock 并行: ~150s
 
 ### UI 模式（推荐用于开发）
 

@@ -2,6 +2,7 @@ import { test as base } from '@playwright/test';
 import { MySkillsPage } from '../pages/my-skills.page';
 import { MarketplacePage } from '../pages/marketplace.page';
 import { SettingsPage } from '../pages/settings.page';
+import { setupBeforeTest, cleanupAfterTest } from '../helpers/test-cleanup';
 
 /**
  * 测试夹具扩展
@@ -11,6 +12,9 @@ import { SettingsPage } from '../pages/settings.page';
 export const test = base.extend({
   page: async ({ page }, use, testInfo) => {
     const prefix = `[e2e:${testInfo.title}]`;
+
+    // 测试前准备：重置状态到初始值
+    await setupBeforeTest(page, testInfo);
 
     await page.addInitScript(() => {
       const loadState = () => {
@@ -665,6 +669,9 @@ export const test = base.extend({
     });
 
     await use(page);
+
+    // 测试后清理：清理数据状态
+    await cleanupAfterTest(page, testInfo);
 
     console.log(`${prefix} end`);
   },

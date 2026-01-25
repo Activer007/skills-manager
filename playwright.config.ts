@@ -17,7 +17,8 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
 
   // 桌面应用建议串行执行，避免端口冲突
-  fullyParallel: false,
+  // 但在 Mock 模式下可以并行运行
+  fullyParallel: process.env.MOCK_MODE === 'true',
 
   // 禁止 only 测试（CI 环境下）
   forbidOnly: !!process.env.CI,
@@ -25,23 +26,25 @@ export default defineConfig({
   // 失败重试次数
   retries: process.env.CI ? 2 : 0,
 
-  // 单 worker 避免端口冲突
-  workers: 1,
+  // 根据模式调整 workers
+  workers: process.env.MOCK_MODE === 'true' ? '50%' : 1,
 
-  // 测试超时时间（Tauri 启动较慢）
-  timeout: 60 * 1000,
+  // 测试超时时间（Tauri 启动较慢，但在 Mock 模式下可以更快）
+  timeout: process.env.MOCK_MODE === 'true' ? 30 * 1000 : 60 * 1000,
 
   // 期望超时时间（异步操作）
   expect: {
-    timeout: 10 * 1000,
+    timeout: process.env.MOCK_MODE === 'true' ? 5 * 1000 : 10 * 1000,
   },
 
   // 报告器配置
   reporter: [
-    ['html', { open: 'never' }],
+    ['html', { open: 'never', outputFolder: 'playwright-report' }],
     ['junit', { outputFile: 'test-results/junit.xml' }],
     ['list'],
-  ],
+    // 添加 GitHub 注释支持（用于 PR）
+    process.env.CI ? ['github'] : null,
+  ].filter(Boolean),
 
   // 全局配置
   use: {
