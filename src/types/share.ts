@@ -330,7 +330,9 @@ export interface ShareMetadata {
   description: string;
   version: string;
   author?: string;
+  /** @deprecated 使用 source_url 代替 */
   url?: string;
+  /** Skill 源代码 URL (GitHub 仓库链接) */
   source_url?: string;
   security_score?: number;
   security_level?: string;

@@ -134,8 +134,8 @@ const SharePreview = () => {
             description: record.metadata.description,
             author: record.metadata.author,
             version: record.metadata.version,
-            sourceUrl: record.metadata.url,
-            installUrl: record.metadata.url || `skills-manager://install?id=${record.target_id}`,
+            sourceUrl: record.metadata.source_url || record.metadata.url,
+            installUrl: record.metadata.source_url || record.metadata.url || `skills-manager://install?id=${record.target_id}`,
             securityLevel: record.metadata.security_level as any,
             qualityScore: record.metadata.security_score, // mapped from qualityScore
             createdAt: new Date(record.created_at).getTime(),
@@ -278,6 +278,17 @@ const SharePreview = () => {
           icon: <Shield className="w-4 h-4" />,
           label: locale === 'zh' ? '未知' : 'Unknown',
         };
+    }
+  };
+
+  // URL 验证函数
+  const isValidGitHubUrl = (url?: string): boolean => {
+    if (!url) return false;
+    try {
+      const parsed = new URL(url);
+      return parsed.hostname === 'github.com' || parsed.hostname === 'www.github.com';
+    } catch {
+      return false;
     }
   };
 
@@ -488,6 +499,40 @@ const SharePreview = () => {
                     {locale === 'zh'
                       ? '此 Skill 因安全原因已被阻止安装。'
                       : 'This Skill has been blocked for security reasons.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 缺少源地址提示 */}
+            {!skillData?.sourceUrl && (
+              <div className="flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+                    {locale === 'zh' ? '无法安装' : 'Cannot Install'}
+                  </h3>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    {locale === 'zh'
+                      ? '此分享链接缺少源地址信息。请联系分享者更新链接，或者手动从 GitHub 导入。'
+                      : 'This share link is missing source URL information. Please contact the sharer to update the link, or manually import from GitHub.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 非 GitHub URL 提示 */}
+            {skillData?.sourceUrl && !isValidGitHubUrl(skillData.sourceUrl) && (
+              <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
+                    {locale === 'zh' ? '非标准 GitHub 链接' : 'Non-standard GitHub Link'}
+                  </h3>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    {locale === 'zh'
+                      ? '此 Skill 的源地址不是标准的 GitHub 链接。安装可能失败，请谨慎操作。'
+                      : 'This Skill source URL is not a standard GitHub link. Installation may fail, please proceed with caution.'}
                   </p>
                 </div>
               </div>
