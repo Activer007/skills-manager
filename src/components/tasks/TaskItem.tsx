@@ -1,5 +1,6 @@
 import React, { useState, memo } from 'react';
-import { Task, TaskStatus } from '../../types/task';
+import type { Task } from '../../types/task';
+import { TaskStatus } from '../../types/task';
 import { invoke } from '@tauri-apps/api/core';
 import { format, isValid } from 'date-fns';
 import { XCircle, CheckCircle, AlertCircle, Clock, Loader2, Ban } from 'lucide-react';
@@ -68,7 +69,11 @@ export const TaskItem: React.FC<TaskItemProps> = memo(({ task }) => {
   };
 
   return (
-    <div className={`p-4 mb-3 bg-base-100 rounded-lg shadow-sm border border-base-200 border-l-4 ${getStatusColor()}`}>
+    <div
+      className={`p-4 mb-3 bg-base-100 rounded-lg shadow-sm border border-base-200 border-l-4 ${getStatusColor()}`}
+      data-testid="task-card"
+      data-task-id={task.id}
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0 mr-4">
           <div className="flex items-center gap-2 mb-1">
@@ -76,7 +81,10 @@ export const TaskItem: React.FC<TaskItemProps> = memo(({ task }) => {
             <h3 className="font-medium text-base-content truncate" title={task.title}>
               {task.title}
             </h3>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-base-200 text-base-content/70">
+            <span
+              className="text-xs px-2 py-0.5 rounded-full bg-base-200 text-base-content/70"
+              data-testid={`task-status-${task.status.toLowerCase()}`}
+            >
               {isCancelling ? 'Cancelling...' : task.status}
             </span>
           </div>
@@ -101,6 +109,11 @@ export const TaskItem: React.FC<TaskItemProps> = memo(({ task }) => {
                 <span>{task.progress.progress}%</span>
               </div>
               <progress
+                role="progressbar"
+                aria-label="Task progress"
+                aria-valuenow={task.progress.progress}
+                aria-valuemin={0}
+                aria-valuemax={100}
                 className="progress progress-primary w-full h-2"
                 value={task.progress.progress}
                 max="100"
