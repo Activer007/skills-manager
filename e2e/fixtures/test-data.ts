@@ -171,3 +171,194 @@ export const TEST_TIMEOUTS = {
 export function getOSPath(unixPath: string, windowsPath: string): string {
   return process.platform === 'win32' ? windowsPath : unixPath;
 }
+
+/**
+ * Share Link 测试数据
+ */
+export const testShareLinks = {
+  valid: 'http://localhost:1420/share/mock-share-001',
+  invalid: 'http://localhost:1420/share/non-existent-share',
+  expired: 'http://localhost:1420/share/expired-share',
+  safeSkill: 'http://localhost:1420/share/mock-share-safe-skill',
+  riskSkill: 'http://localhost:1420/share/mock-share-risk-skill',
+  blockedSkill: 'http://localhost:1420/share/mock-share-blocked-skill',
+  noSourceUrl: 'http://localhost:1420/share/mock-share-no-source',
+} as const;
+
+/**
+ * Share Record 测试数据
+ */
+export const testShareRecords = {
+  safeSkill: {
+    share_id: 'mock-share-safe-skill',
+    target_type: 'skill' as const,
+    target_id: 'e2e-test-skill-001',
+    visibility: 'public' as const,
+    created_at: new Date(Date.now() - 86400000).toISOString(),
+    expires_at: null,
+    metadata: {
+      name: 'E2E Test Safe Skill',
+      description: 'A safe test skill for E2E testing',
+      version: '1.0.0',
+      author: 'E2E Test',
+      source_url: 'https://github.com/test/e2e-test-skill',
+      security_score: 90,
+      security_level: 'safe',
+    },
+  },
+  riskSkill: {
+    share_id: 'mock-share-risk-skill',
+    target_type: 'skill' as const,
+    target_id: 'e2e-risk-skill',
+    visibility: 'public' as const,
+    created_at: new Date(Date.now() - 43200000).toISOString(),
+    expires_at: null,
+    metadata: {
+      name: 'E2E Risk Skill',
+      description: 'A skill with potential security risks',
+      version: '1.0.0',
+      author: 'Test Author',
+      source_url: 'https://github.com/test/risk-skill',
+      security_score: 45,
+      security_level: 'risk',
+    },
+  },
+  blockedSkill: {
+    share_id: 'mock-share-blocked-skill',
+    target_type: 'skill' as const,
+    target_id: 'e2e-blocked-skill',
+    visibility: 'public' as const,
+    created_at: new Date(Date.now() - 3600000).toISOString(),
+    expires_at: null,
+    metadata: {
+      name: 'E2E Blocked Skill',
+      description: 'A blocked skill with dangerous patterns',
+      version: '1.0.0',
+      author: 'Test Author',
+      source_url: 'https://github.com/test/blocked-skill',
+      security_score: 10,
+      security_level: 'blocked',
+    },
+  },
+  noSourceUrl: {
+    share_id: 'mock-share-no-source',
+    target_type: 'skill' as const,
+    target_id: 'e2e-no-source-skill',
+    visibility: 'public' as const,
+    created_at: new Date().toISOString(),
+    expires_at: null,
+    metadata: {
+      name: 'E2E No Source Skill',
+      description: 'A skill without source URL',
+      version: '1.0.0',
+      author: 'Test Author',
+      source_url: undefined,
+      security_score: 75,
+      security_level: 'unknown',
+    },
+  },
+  legacyUrlField: {
+    share_id: 'mock-share-legacy',
+    target_type: 'skill' as const,
+    target_id: 'e2e-legacy-skill',
+    visibility: 'public' as const,
+    created_at: new Date(Date.now() - 172800000).toISOString(),
+    expires_at: null,
+    metadata: {
+      name: 'E2E Legacy Skill',
+      description: 'A skill using deprecated url field',
+      version: '0.9.0',
+      author: 'Legacy Author',
+      url: 'https://github.com/test/legacy-skill',
+      source_url: undefined,
+      security_score: 80,
+      security_level: 'safe',
+    },
+  },
+} as const;
+
+/**
+ * Task 相关测试数据
+ */
+export const testTasks = {
+  pending: {
+    id: 'task-pending-001',
+    type: 'import',
+    target: 'https://github.com/test/pending-skill',
+    status: 'pending' as const,
+    progress: { stage: 'Queued', progress: 0, message: 'Task queued' },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  running: {
+    id: 'task-running-001',
+    type: 'import',
+    target: 'https://github.com/test/running-skill',
+    status: 'running' as const,
+    progress: { stage: 'Downloading', progress: 50, message: 'Downloading files' },
+    created_at: new Date(Date.now() - 30000).toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  completed: {
+    id: 'task-completed-001',
+    type: 'import',
+    target: 'https://github.com/test/completed-skill',
+    status: 'completed' as const,
+    progress: { stage: 'Completed', progress: 100, message: 'Installation complete' },
+    created_at: new Date(Date.now() - 60000).toISOString(),
+    updated_at: new Date(Date.now() - 10000).toISOString(),
+  },
+  failed: {
+    id: 'task-failed-001',
+    type: 'import',
+    target: 'https://github.com/test/failed-skill',
+    status: 'failed' as const,
+    progress: { stage: 'Error', progress: 0, message: 'Network error' },
+    error: 'Failed to clone repository',
+    created_at: new Date(Date.now() - 90000).toISOString(),
+    updated_at: new Date(Date.now() - 90000).toISOString(),
+  },
+  cancelled: {
+    id: 'task-cancelled-001',
+    type: 'import',
+    target: 'https://github.com/test/cancelled-skill',
+    status: 'cancelled' as const,
+    progress: { stage: 'Cancelled', progress: 25, message: 'Task cancelled by user' },
+    created_at: new Date(Date.now() - 45000).toISOString(),
+    updated_at: new Date(Date.now() - 15000).toISOString(),
+  },
+} as const;
+
+/**
+ * 模拟进度事件
+ */
+export const mockProgressEvents = [
+  { task_id: 'task-001', stage: 'Downloading', progress: 25 },
+  { task_id: 'task-001', stage: 'Scanning', progress: 50 },
+  { task_id: 'task-001', stage: 'Installing', progress: 75 },
+  { task_id: 'task-001', stage: 'Completed', progress: 100 },
+] as const;
+
+/**
+ * Share UI 测试选择器
+ */
+export const SHARE_TEST_IDS = {
+  SHARE_LINK_INPUT: 'share-link-input',
+  COPY_LINK_BUTTON: 'copy-link-button',
+  SHARE_SHEET: 'share-sheet',
+  SHARE_PANEL_LINK: 'share-panel-link',
+  SHARE_PANEL_TEXT: 'share-panel-text',
+  SHARE_PANEL_IMAGE: 'share-panel-image',
+  SHARE_PANEL_PACKAGE: 'share-panel-package',
+  INSTALL_BUTTON: 'install-button',
+  INSTALL_CONFIRM_DIALOG: 'install-confirm-dialog',
+  SYSTEM_INSTALL_RADIO: 'system-install-radio',
+  PROJECT_INSTALL_RADIO: 'project-install-radio',
+  PROJECT_SELECT: 'project-select',
+  PROGRESS_BAR: 'progress-bar',
+  PROGRESS_TEXT: 'progress-text',
+  VIEW_TASKS_BUTTON: 'view-tasks-button',
+  SOURCE_URL_WARNING: 'source-url-warning',
+  GITHUB_URL_WARNING: 'github-url-warning',
+} as const;
+
