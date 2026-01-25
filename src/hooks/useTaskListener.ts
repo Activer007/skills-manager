@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
+import { listen } from '@tauri-apps/api/event';
+import type { UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { useTaskStore } from '../store/useTaskStore';
 import { useToastStore } from '../store/useToastStore';
-import { Task, ProgressEvent, TaskStatus } from '../types/task';
+import { TaskStatus } from '../types/task';
+import type { Task, ProgressEvent } from '../types/task';
 
 export function useTaskListener() {
   const { setTasks, upsertTask, updateTaskProgress } = useTaskStore();

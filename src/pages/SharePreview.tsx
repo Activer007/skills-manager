@@ -158,28 +158,6 @@ const SharePreview = () => {
 
   // 点击安装按钮
   const handleInstallClick = () => {
-    // If we rely on backend, we might need a way to get the install source.
-    // Current metadata doesn't have sourceUrl.
-    // For MVP, we might assume we can fetch it via target_id or if it's a public skill.
-    // However, if it's a local skill shared, we need the source.
-    // The previous implementation had sourceUrl in the link data.
-    // The backend `ShareMetadata` currently lacks `sourceUrl`.
-    // I should probably add `sourceUrl` to `ShareMetadata` in backend or assume `installUrl` construction.
-    // For now, I will proceed, but note that `sourceUrl` might be missing.
-    // Update: I will check if I can use target_id to install?
-    // The `import_github_skill` needs a URL.
-    // If `skillData.installUrl` is constructed as `skills-manager://...`, the installer needs to handle it.
-    // But `handleConfirmInstall` uses `import_github_skill` which expects `repoUrl`.
-
-    // CRITICAL: `ShareMetadata` in Rust needs `source_url` or similar if we want to install from it!
-    // The Reviewer said "Architecture & Implementation" issues.
-    // If I fix the security but break the install, it's bad.
-    // I should check `ShareMetadata` struct again.
-    // It has: name, description, version, author, security_score, security_level.
-    // It MISSES the actual install URL/Source!
-
-    // I must update Backend `ShareMetadata` to include `source_url` or `install_url`.
-    // But first let's finish the frontend structure.
     setShowConfirm(true);
   };
 

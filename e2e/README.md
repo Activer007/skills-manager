@@ -89,7 +89,7 @@ npm run e2e:report
 ```
 e2e/
 ├── fixtures/          # 测试数据和夹具
-│   ├── index.ts       # 扩展的 test 对象
+│   ├── index.ts       # 扩展的 test 对象（Tauri Mock）
 │   └── test-data.ts   # 测试数据常量
 ├── helpers/           # 辅助函数
 │   └── tauri-helpers.ts  # Tauri 特定辅助函数
@@ -99,13 +99,43 @@ e2e/
 │   ├── marketplace.page.ts
 │   └── settings.page.ts
 └── specs/             # 测试规范
-    ├── example.spec.ts          # 示例测试
-    ├── skill-management.spec.ts # Skill 管理测试
-    ├── skill-import.spec.ts     # 导入流程测试
-    ├── security.spec.ts         # 安全扫描测试
-    ├── sharing.spec.ts          # 分享功能测试
-    └── settings.spec.ts         # 设置页面测试
+    ├── example.spec.ts            # 示例测试
+    ├── skill-management.spec.ts   # Skill 管理测试
+    ├── skill-import.spec.ts       # 导入流程测试
+    ├── security.spec.ts           # 安全扫描测试
+    ├── sharing.spec.ts            # 分享功能测试
+    ├── settings.spec.ts           # 设置页面测试
+    ├── share-link-flow.spec.ts    # Share Link 流程测试 ✨
+    └── task-management.spec.ts    # 任务管理测试 ✨
 ```
+
+## 新增测试（v2.6.0）
+
+### Share Link 流程测试 (`share-link-flow.spec.ts`)
+
+测试分享链接的完整生命周期：
+
+- ✅ **生成分享链接**: 验证链接生成、复制功能
+- ✅ **解析分享链接**: 验证链接解析、数据展示
+- ✅ **安装 Skill**: 系统级/项目级安装、实时进度
+- ✅ **边界情况**: 缺少源地址、无效链接、网络错误
+- ✅ **向后兼容**: 支持废弃的 `url` 字段
+- ✅ **UI/UX**: 安全等级徽章、质量评分显示
+
+**测试用例数**: 15+
+
+### 任务管理测试 (`task-management.spec.ts`)
+
+测试任务系统的完整功能：
+
+- ✅ **任务创建**: 导入任务创建、显示
+- ✅ **实时进度**: 进度条、阶段文本、百分比更新
+- ✅ **状态转换**: Pending → Running → Completed
+- ✅ **任务操作**: 取消、重试、清除历史
+- ✅ **集成测试**: Share Preview、Marketplace 导航
+- ✅ **UI/UX**: 任务类型标签、筛选、搜索
+
+**测试用例数**: 20+
 
 ## 编写测试
 
@@ -242,8 +272,144 @@ test('my test', async ({ page }) => {
 | security.spec.ts | 12+ | ✅ 安全扫描 |
 | sharing.spec.ts | 15+ | ✅ 分享功能 |
 | settings.spec.ts | 15+ | ✅ 设置页面 |
+| share-link-flow.spec.ts | 15+ | ✅ Share Link 流程 |
+| task-management.spec.ts | 20+ | ✅ 任务管理 |
 
-**总计**: 70+ 个测试用例
+**总计**: 107+ 个测试用例
+
+## Mock 数据说明
+
+### Share Link Mock Commands
+
+所有 Share Link 相关的 Tauri Commands 都在 `fixtures/index.ts` 中 Mock：
+
+```typescript
+case 'generate_share_link': {
+  // 生成分享链接，返回 ShareRecord
+  return {
+    share_id: 'mock-share-001',
+    target_type: 'skill',
+    metadata: { /* ... */ },
+  };
+}
+
+case 'resolve_share_link': {
+  // 解析分享链接，返回 ShareRecord 或 null
+  const mockShares = {
+    'mock-share-001': { /* Safe Skill */ },
+    'mock-share-risk-skill': { /* Risk Skill */ },
+    'mock-share-blocked-skill': { /* Blocked Skill */ },
+    'mock-share-no-source': { /* No Source URL */ },
+  };
+  return mockShares[shareId] ?? null;
+}
+```
+
+### Task Mock Commands
+
+任务管理相关的 Mock Commands：
+
+```typescript
+case 'import_github_skill_with_progress': {
+  // 模拟进度事件（通过 setTimeout）
+  // 返回 taskId
+}
+
+case 'get_tasks': {
+  // 返回任务列表
+  return [/* mock tasks */];
+}
+
+case 'cancel_task': {
+  // 取消任务
+  return true;
+}
+```
+
+### 使用测试数据
+
+测试数据常量定义在 `fixtures/test-data.ts`：
+
+```typescript
+import { testShareLinks, testShareRecords, testTasks } from '../fixtures/test-data';
+
+// Share Link URLs
+testShareLinks.safeSkill      // 'http://localhost:1420/share/mock-share-safe-skill'
+testShareLinks.invalid        // 'http://localhost:1420/share/non-existent-share'
+
+// Share Records
+testShareRecords.safeSkill    // Safe Skill ShareRecord
+testShareRecords.riskSkill    // Risk Skill ShareRecord
+testShareRecords.blockedSkill // Blocked Skill ShareRecord
+testShareRecords.noSourceUrl  // No Source URL ShareRecord
+
+// Tasks
+testTasks.pending    // Pending task
+testTasks.running    // Running task
+testTasks.completed  // Completed task
+testTasks.failed     // Failed task
+```
+
+## Share Link 测试注意事项
+
+### 测试前准备
+
+Share Link 测试依赖 Mock 数据，确保 `fixtures/index.ts` 中有以下 Mock：
+
+1. **`generate_share_link`** - 生成分享链接
+2. **`resolve_share_link`** - 解析分享链接
+3. **`get_git_remote_url`** - 获取 Git 远程 URL
+4. **`import_github_skill_with_progress`** - 导入并显示进度
+
+### 边界情况测试
+
+测试以下边界情况：
+
+- ✅ **缺少 source_url**: 验证警告提示显示
+- ✅ **非 GitHub URL**: 验证蓝色警告显示
+- ✅ **无效链接**: 验证错误处理
+- ✅ **网络错误**: Mock 错误并验证提示
+- ✅ **向后兼容**: 使用废弃的 `url` 字段
+
+### 安装进度测试
+
+安装进度测试依赖 Mock 的进度事件：
+
+```typescript
+setTimeout(() => emitProgress({ stage: 'Downloading', progress: 25 }), 1000);
+setTimeout(() => emitProgress({ stage: 'Scanning', progress: 50 }), 2000);
+```
+
+测试需要等待足够时间以捕获所有进度事件。
+
+## 任务管理测试注意事项
+
+### 进度事件监听
+
+任务管理测试依赖后端进度事件，测试时确保：
+
+1. **Mock emit 函数** - `window.__TAURI__.core.emit`
+2. **监听正确的事件** - `task-progress`
+3. **验证事件数据** - `{ task_id, stage, progress, message }`
+
+### 任务状态测试
+
+测试任务状态转换时，使用 `await expect(...).toPass()` 处理异步状态变化：
+
+```typescript
+await expect(async () => {
+  const status = await taskStatus.textContent();
+  expect(status).toMatch(/Running|Downloading/);
+}).toPass({ timeout: 5000 });
+```
+
+### 多任务测试
+
+测试多个并发任务时，注意：
+
+- 使用不同的 GitHub URLs
+- 验证任务独立性和正确性
+- 检查任务列表的正确排序
 
 ## 注意事项
 

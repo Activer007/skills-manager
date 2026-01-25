@@ -254,6 +254,184 @@ export const test = base.extend({
             case 'open_url':
             case 'open_path_in_file_manager':
               return true;
+            // Share Link Commands
+            case 'generate_share_link': {
+              const targetId = request?.targetId ?? args?.targetId ?? 'mock-skill';
+              const metadata = request?.metadata ?? args?.metadata ?? {};
+              const shareId = `mock-share-${targetId}-${Date.now()}`;
+              return {
+                share_id: shareId,
+                target_type: request?.targetType ?? 'skill',
+                target_id: targetId,
+                visibility: request?.visibility ?? 'public',
+                created_at: new Date().toISOString(),
+                expires_at: null,
+                metadata: {
+                  name: metadata?.name ?? 'Mock Skill',
+                  description: metadata?.description ?? 'Mock description',
+                  version: metadata?.version ?? '1.0.0',
+                  author: metadata?.author,
+                  source_url: metadata?.source_url,
+                  security_score: metadata?.security_score ?? 85,
+                  security_level: metadata?.security_level ?? 'safe',
+                },
+              };
+            }
+            case 'resolve_share_link': {
+              const shareId = args?.shareId ?? '';
+              // Mock database of share records
+              const mockShares = {
+                'mock-share-001': {
+                  share_id: 'mock-share-001',
+                  target_type: 'skill',
+                  target_id: 'e2e-test-skill-001',
+                  visibility: 'public',
+                  created_at: new Date(Date.now() - 86400000).toISOString(),
+                  metadata: {
+                    name: 'E2E Test Safe Skill',
+                    description: 'A safe test skill for E2E testing',
+                    version: '1.0.0',
+                    author: 'E2E Test',
+                    source_url: 'https://github.com/test/e2e-test-skill',
+                    security_score: 90,
+                    security_level: 'safe',
+                  },
+                },
+                'non-existent-share': null,
+                'expired-share': null,
+                'mock-share-risk-skill': {
+                  share_id: 'mock-share-risk-skill',
+                  target_type: 'skill',
+                  target_id: 'e2e-risk-skill',
+                  visibility: 'public',
+                  created_at: new Date().toISOString(),
+                  metadata: {
+                    name: 'E2E Risk Skill',
+                    description: 'A skill with potential security risks',
+                    version: '1.0.0',
+                    author: 'Test Author',
+                    source_url: 'https://github.com/test/risk-skill',
+                    security_score: 45,
+                    security_level: 'risk',
+                  },
+                },
+                'mock-share-blocked-skill': {
+                  share_id: 'mock-share-blocked-skill',
+                  target_type: 'skill',
+                  target_id: 'e2e-blocked-skill',
+                  visibility: 'public',
+                  created_at: new Date().toISOString(),
+                  metadata: {
+                    name: 'E2E Blocked Skill',
+                    description: 'A blocked skill with dangerous patterns',
+                    version: '1.0.0',
+                    author: 'Test Author',
+                    source_url: 'https://github.com/test/blocked-skill',
+                    security_score: 10,
+                    security_level: 'blocked',
+                  },
+                },
+                'mock-share-no-source': {
+                  share_id: 'mock-share-no-source',
+                  target_type: 'skill',
+                  target_id: 'e2e-no-source-skill',
+                  visibility: 'public',
+                  created_at: new Date().toISOString(),
+                  metadata: {
+                    name: 'E2E No Source Skill',
+                    description: 'A skill without source URL',
+                    version: '1.0.0',
+                    author: 'Test Author',
+                    source_url: undefined,
+                    security_score: 75,
+                    security_level: 'unknown',
+                  },
+                },
+              };
+              return mockShares[shareId] ?? null;
+            }
+            case 'get_git_remote_url': {
+              const path = args?.path ?? '';
+              if (path.includes('e2e-test-skill')) {
+                return 'https://github.com/test/e2e-test-skill';
+              }
+              return null;
+            }
+            // Task Commands
+            case 'import_github_skill_with_progress': {
+              const repoUrl = request?.repoUrl ?? '';
+              const taskId = `task-${Date.now()}`;
+              // Mock progress simulation via setTimeout
+              setTimeout(() => {
+                if (window.__TAURI__?.core?.emit) {
+                  window.__TAURI__.core.emit('task-progress', {
+                    task_id: taskId,
+                    stage: 'Downloading',
+                    progress: 25,
+                  });
+                }
+              }, 1000);
+              setTimeout(() => {
+                if (window.__TAURI__?.core?.emit) {
+                  window.__TAURI__.core.emit('task-progress', {
+                    task_id: taskId,
+                    stage: 'Scanning',
+                    progress: 50,
+                  });
+                }
+              }, 2000);
+              setTimeout(() => {
+                if (window.__TAURI__?.core?.emit) {
+                  window.__TAURI__.core.emit('task-progress', {
+                    task_id: taskId,
+                    stage: 'Installing',
+                    progress: 75,
+                  });
+                }
+              }, 3000);
+              setTimeout(() => {
+                if (window.__TAURI__?.core?.emit) {
+                  window.__TAURI__.core.emit('task-progress', {
+                    task_id: taskId,
+                    stage: 'Completed',
+                    progress: 100,
+                  });
+                }
+              }, 4000);
+              return taskId;
+            }
+            case 'get_tasks': {
+              // Return mock task list
+              return [
+                {
+                  id: 'task-001',
+                  type: 'import',
+                  target: 'https://github.com/test/skill-1',
+                  status: 'completed',
+                  progress: { stage: 'Completed', progress: 100, message: 'Complete' },
+                  created_at: new Date(Date.now() - 60000).toISOString(),
+                  updated_at: new Date().toISOString(),
+                },
+                {
+                  id: 'task-002',
+                  type: 'import',
+                  target: 'https://github.com/test/skill-2',
+                  status: 'running',
+                  progress: { stage: 'Downloading', progress: 50, message: 'Downloading' },
+                  created_at: new Date(Date.now() - 30000).toISOString(),
+                  updated_at: new Date().toISOString(),
+                },
+              ];
+            }
+            case 'cancel_task': {
+              const taskId = args?.taskId ?? '';
+              // Mock cancellation
+              return true;
+            }
+            case 'cleanup_tasks': {
+              // Mock cleanup - remove completed tasks
+              return;
+            }
             default:
               console.log(`[e2e] mock invoke ${command}`);
               return null;

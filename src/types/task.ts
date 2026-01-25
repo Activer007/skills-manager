@@ -11,13 +11,14 @@ export type TaskType =
   | 'ScanSkill'
   | 'ScanRepository'
   | 'Download'
-  | { Other: string };
+  | 'Other';
 
 export enum ProgressStage {
   Queued = 'Queued',
   Preparing = 'Preparing',
   Downloading = 'Downloading',
   Scanning = 'Scanning',
+  Analyzing = 'Analyzing',
   Installing = 'Installing',
   Finalizing = 'Finalizing',
   Completed = 'Completed',
@@ -27,10 +28,10 @@ export enum ProgressStage {
 
 export interface ProgressEvent {
   task_id: string;
-  stage: ProgressStage;
+  stage: ProgressStage | string;
   message: string;
   progress: number;
-  percentage?: number; // Added for compatibility
+  percentage?: number;
   total?: number;
   current?: number;
 }

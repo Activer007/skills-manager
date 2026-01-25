@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { Task, TaskStatus, ProgressEvent } from '../types/task';
+import { TaskStatus } from '../types/task';
+import type { Task, ProgressEvent } from '../types/task';
 
 interface TaskStore {
   tasks: Task[];
