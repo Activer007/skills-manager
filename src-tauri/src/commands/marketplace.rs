@@ -149,19 +149,30 @@ pub async fn import_marketplace_from_json(
     let json_file = if let Some(path) = json_path {
         PathBuf::from(path)
     } else {
-        // Default path: public/data/marketplace.json
-        let mut path = PathBuf::from("public/data/marketplace.json");
+        // Try multiple possible paths for the marketplace.json file
+        let candidates = vec![
+            "public/data/marketplace.json",           // From project root
+            "../public/data/marketplace.json",       // From src-tauri (dev mode)
+            "../../public/data/marketplace.json",    // From deeper directory
+            "dist/data/marketplace.json",            // Production build
+            "../dist/data/marketplace.json",         // Production from src-tauri
+        ];
 
-        // Try development path first
-        if !path.exists() {
-            // Try dist path (for production builds)
-            let dist_path = PathBuf::from("dist/data/marketplace.json");
-            if dist_path.exists() {
-                path = dist_path;
+        let mut found_path = None;
+        for candidate in &candidates {
+            let path = PathBuf::from(candidate);
+            if path.exists() {
+                found_path = Some(path);
+                break;
             }
         }
 
-        path
+        found_path.ok_or_else(|| {
+            format!(
+                "Cannot find marketplace.json. Tried: {:?}",
+                candidates
+            )
+        })?
     };
 
     log::info!("Importing marketplace skills from: {:?}", json_file);
