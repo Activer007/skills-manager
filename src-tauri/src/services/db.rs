@@ -53,7 +53,7 @@ fn get_db_path() -> Result<PathBuf> {
 }
 
 /// Current database schema version
-const CURRENT_DB_VERSION: i32 = 8;
+const CURRENT_DB_VERSION: i32 = 9;
 
 /// Run database migrations to ensure schema is up to date.
 /// This function creates a schema_migrations table to track version.
@@ -147,6 +147,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             migrate_v8(conn)?;
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (8, ?)",
+                [chrono::Utc::now().timestamp_millis()],
+            )?;
+        }
+
+        // Migration v9: Create marketplace_skills table and FTS optimization
+        if current_version < 9 {
+            migrate_v9(conn)?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (9, ?)",
                 [chrono::Utc::now().timestamp_millis()],
             )?;
         }
@@ -559,5 +568,94 @@ fn migrate_v8(conn: &Connection) -> Result<()> {
     )?;
 
     log::info!("Created publish_history table");
+    Ok(())
+}
+
+/// Migration v9: Create marketplace_skills table and FTS5 search optimization
+fn migrate_v9(conn: &Connection) -> Result<()> {
+    // 1. Create the main marketplace_skills table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS marketplace_skills (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            author TEXT NOT NULL,
+            description TEXT,
+            github_url TEXT,
+            stars INTEGER DEFAULT 0,
+            forks INTEGER DEFAULT 0,
+            updated_at INTEGER NOT NULL,
+            tags TEXT,
+            security_score INTEGER,
+            compatibility TEXT,
+            data TEXT
+        )",
+        [],
+    )?;
+
+    // 2. Create FTS5 virtual table
+    // We include skill_id as UNINDEXED to link back to the main table
+    conn.execute(
+        "CREATE VIRTUAL TABLE IF NOT EXISTS marketplace_skills_fts USING fts5(
+            name,
+            description,
+            author,
+            tags,
+            skill_id UNINDEXED
+        )",
+        [],
+    )?;
+
+    // 3. Create Triggers to keep FTS in sync
+
+    // Insert Trigger
+    // IMPORTANT: Explicitly sync rowid to ensure DELETE triggers work correctly
+    conn.execute(
+        "CREATE TRIGGER IF NOT EXISTS marketplace_skills_ai AFTER INSERT ON marketplace_skills BEGIN
+            INSERT INTO marketplace_skills_fts(rowid, name, description, author, tags, skill_id)
+            VALUES (new.rowid, new.name, new.description, new.author, new.tags, new.id);
+        END",
+        [],
+    )?;
+
+    // Delete Trigger
+    // Uses the External Content delete syntax
+    conn.execute(
+        "CREATE TRIGGER IF NOT EXISTS marketplace_skills_ad AFTER DELETE ON marketplace_skills BEGIN
+            INSERT INTO marketplace_skills_fts(marketplace_skills_fts, rowid, name, description, author, tags, skill_id)
+            VALUES('delete', old.rowid, old.name, old.description, old.author, old.tags, old.id);
+        END",
+        [],
+    )?;
+
+    // Update Trigger
+    conn.execute(
+        "CREATE TRIGGER IF NOT EXISTS marketplace_skills_au AFTER UPDATE ON marketplace_skills BEGIN
+            INSERT INTO marketplace_skills_fts(marketplace_skills_fts, rowid, name, description, author, tags, skill_id)
+            VALUES('delete', old.rowid, old.name, old.description, old.author, old.tags, old.id);
+            INSERT INTO marketplace_skills_fts(rowid, name, description, author, tags, skill_id)
+            VALUES (new.rowid, new.name, new.description, new.author, new.tags, new.id);
+        END",
+        [],
+    )?;
+
+    // 4. Create Indexes for performance
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_marketplace_skills_stars ON marketplace_skills(stars DESC)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_marketplace_skills_updated ON marketplace_skills(updated_at DESC)",
+        [],
+    )?;
+
+    // 5. Backfill FTS table if main table already has data
+    conn.execute(
+        "INSERT INTO marketplace_skills_fts(rowid, name, description, author, tags, skill_id)
+         SELECT rowid, name, description, author, tags, id FROM marketplace_skills
+         WHERE rowid NOT IN (SELECT rowid FROM marketplace_skills_fts)",
+        [],
+    )?;
+
+    log::info!("Created marketplace_skills table and FTS optimization");
     Ok(())
 }

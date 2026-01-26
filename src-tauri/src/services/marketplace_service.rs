@@ -50,18 +50,34 @@ impl MarketplaceService {
         let conn = get_connection()?;
         let max_limit = limit_param.unwrap_or(50);
 
-        let search_pattern = format!("%{}%", query);
+        // Prepare FTS query string
+        // Split by whitespace to support multiple terms (AND logic)
+        // "rust ui" -> "rust"* AND "ui"*
+        let terms: Vec<&str> = query.split_whitespace().collect();
+        let search_query = if terms.is_empty() {
+            return Ok(vec![]);
+        } else {
+            terms.iter()
+                .map(|term| {
+                    // Escape double quotes by doubling them, wrap in quotes, append * for prefix match
+                    format!("\"{}\"*", term.replace("\"", "\"\""))
+                })
+                .collect::<Vec<String>>()
+                .join(" AND ")
+        };
 
+        // Use FTS match query
         let mut stmt = conn.prepare(
-            "SELECT id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, compatibility
-             FROM marketplace_skills
-             WHERE name LIKE ?1 OR description LIKE ?1 OR author LIKE ?1
-             ORDER BY stars DESC, updated_at DESC
+            "SELECT m.id, m.name, m.author, m.description, m.github_url, m.stars, m.forks, m.updated_at, m.tags, m.security_score, m.compatibility
+             FROM marketplace_skills m
+             JOIN marketplace_skills_fts f ON m.id = f.skill_id
+             WHERE f.marketplace_skills_fts MATCH ?1
+             ORDER BY m.stars DESC, m.updated_at DESC
              LIMIT ?2"
         )?;
 
         let skill_iter = stmt.query_map(
-            params![search_pattern, max_limit as i64],
+            params![search_query, max_limit as i64],
             |row| {
                 Ok(MarketplaceSkill {
                     id: row.get(0)?,
@@ -99,50 +115,62 @@ impl MarketplaceService {
         let conn = get_connection()?;
         let max_limit = limit.unwrap_or(100);
 
-        let (sql, params) = if let Some(tag) = tag_filter {
-            (
-                "SELECT id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, compatibility
-                 FROM marketplace_skills
-                 WHERE tags LIKE ?1
-                 ORDER BY stars DESC, updated_at DESC
-                 LIMIT ?2",
-                params![format!("%{}%", tag), max_limit as i64]
-            )
-        } else {
-            (
-                "SELECT id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, compatibility
-                 FROM marketplace_skills
-                 ORDER BY stars DESC, updated_at DESC
-                 LIMIT ?1",
-                params![max_limit as i64]
-            )
-        };
+        // Build dynamic query
+        let mut query = String::from(
+            "SELECT id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, compatibility
+             FROM marketplace_skills WHERE 1=1"
+        );
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
-        let mut stmt = conn.prepare(sql)?;
+        // Add Tag Filter
+        if let Some(tag) = tag_filter {
+            query.push_str(" AND tags LIKE ?");
+            params.push(Box::new(format!("%{}%", tag)));
+        }
 
-        let skill_iter = stmt.query_map(params, |row| {
-            Ok(MarketplaceSkill {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                author: row.get(2)?,
-                description: row.get(3)?,
-                github_url: row.get(4)?,
-                stars: row.get(5)?,
-                forks: row.get(6)?,
-                updated_at: row.get(7)?,
-                tags: row.get(8)?,
-                security_score: row.get(9)?,
-                compatibility: row.get(10)?,
-                data: None,
-            })
-        })?;
+        // Add Min Stars Filter
+        if let Some(stars) = min_stars {
+            query.push_str(" AND stars >= ?");
+            params.push(Box::new(stars));
+        }
+
+        // Add Ordering and Limit
+        query.push_str(" ORDER BY stars DESC, updated_at DESC LIMIT ?");
+        params.push(Box::new(max_limit as i64));
+
+        // Execute
+        let mut stmt = conn.prepare(&query)?;
+
+        // Convert params to dyn ToSql references for rusqlite
+        let mut param_refs: Vec<&dyn rusqlite::ToSql> = Vec::new();
+        for p in &params {
+            param_refs.push(p.as_ref());
+        }
+
+        let skill_iter = stmt.query_map(
+            rusqlite::params_from_iter(param_refs.iter()),
+            |row| {
+                Ok(MarketplaceSkill {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    author: row.get(2)?,
+                    description: row.get(3)?,
+                    github_url: row.get(4)?,
+                    stars: row.get(5)?,
+                    forks: row.get(6)?,
+                    updated_at: row.get(7)?,
+                    tags: row.get(8)?,
+                    security_score: row.get(9)?,
+                    compatibility: row.get(10)?,
+                    data: None,
+                })
+            }
+        )?;
 
         let mut results = Vec::new();
         for skill in skill_iter {
             let skill = skill?;
-            if min_stars.map_or(true, |min| skill.stars >= min) {
-                results.push(MarketplaceSkillDTO::from(skill));
-            }
+            results.push(MarketplaceSkillDTO::from(skill));
         }
 
         Ok(results)
