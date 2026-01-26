@@ -17,6 +17,47 @@ export const test = base.extend({
     await setupBeforeTest(page, testInfo);
 
     await page.addInitScript(() => {
+      // --- 1. Robust Tauri v2 Mock Initialization ---
+      const initTauriMock = () => {
+        // Initialize global objects
+        window.__TAURI__ = window.__TAURI__ || {};
+        window.__TAURI_INTERNALS__ = window.__TAURI_INTERNALS__ || {};
+        window.__TAURI_IPC__ = window.__TAURI_IPC__ || ((...args) => {
+          console.log('[Tauri Mock] IPC call:', args);
+        });
+
+        const internals = window.__TAURI_INTERNALS__;
+
+        // Metadata
+        internals.metadata = internals.metadata || {};
+        if (!internals.metadata.currentWindow) {
+          internals.metadata.currentWindow = { label: 'main', theme: 'light' };
+        }
+
+        // Transform Callback (Critical for plugins)
+        internals.transformCallback = internals.transformCallback || function(callback, once) {
+          const id = 'callback_' + Date.now() + '_' + Math.random();
+          if (!window.__TAURI_CALLBACKS__) {
+            window.__TAURI_CALLBACKS__ = {};
+          }
+          window.__TAURI_CALLBACKS__[id] = { callback, once };
+          return id;
+        };
+
+        // Stub invoke to prevent crashes before our logic is ready
+        if (!internals.invoke) {
+          internals.invoke = async () => { console.warn('Early invoke call'); return null; };
+        }
+
+        // Core compat
+        window.__TAURI__.core = window.__TAURI__.core || {
+          invoke: internals.invoke,
+          transformCallback: internals.transformCallback
+        };
+      };
+      initTauriMock();
+
+      // --- 2. State Management ---
       const loadState = () => {
         try {
           return JSON.parse(localStorage.getItem('e2e_tauri_state') || '{}');
@@ -145,16 +186,6 @@ export const test = base.extend({
 
       const persist = () => saveState(state);
 
-      const ensureTauri = () => {
-        const tauri = window.__TAURI__ ?? {};
-        tauri.core = tauri.core ?? {};
-        tauri.dialog = tauri.dialog ?? {};
-        tauri.shell = tauri.shell ?? {};
-        tauri.clipboard = tauri.clipboard ?? {};
-        window.__TAURI__ = tauri;
-        return tauri;
-      };
-
       const buildSecurityReport = (skillId, blocked) => ({
         skill_id: skillId,
         score: blocked ? 10 : 90,
@@ -202,37 +233,13 @@ export const test = base.extend({
         },
       });
 
-      const tauri = ensureTauri();
-
-      // Force initialize __TAURI_INTERNALS__ to ensure it has what we need
-      // @ts-ignore
-      window.__TAURI_INTERNALS__ = window.__TAURI_INTERNALS__ || {};
-      const tauriInternals = window.__TAURI_INTERNALS__;
-
-      // Ensure metadata exists for getCurrentWindow
-      if (!tauriInternals.metadata) {
-        tauriInternals.metadata = {};
-      }
-      if (!tauriInternals.metadata.currentWindow) {
-        tauriInternals.metadata.currentWindow = { label: 'main', theme: 'light' };
-      }
-
-      // Add transformCallback if missing
-      if (!tauriInternals.transformCallback) {
-        tauriInternals.transformCallback = (callback: Function, once: boolean = false) => {
-          const id = Date.now() + Math.random();
-          if (!window.__TAURI_CALLBACKS__) {
-            window.__TAURI_CALLBACKS__ = {};
-          }
-          window.__TAURI_CALLBACKS__[id] = { callback, once };
-          return id;
-        };
-      }
-
+      // --- 3. Business Logic Mock ---
       const mockInvoke = async (command, args) => {
           const request = args?.request ?? args;
+          console.log(`[e2e] mock invoke ${command}`, args);
 
           switch (command) {
+            // ... (keep existing cases)
             case 'get_project_paths':
               return state.projectPaths;
             case 'save_project_paths':
@@ -621,32 +628,35 @@ export const test = base.extend({
               return;
             }
             default:
-              console.log(`[e2e] mock invoke ${command}`);
+              // Handle Plugin commands generically to avoid errors
+              if (command.startsWith('plugin:')) {
+                if (command === 'plugin:event|listen') return async () => {};
+                if (command === 'plugin:window|set_background_color') return null;
+                return null;
+              }
+              console.log(`[e2e] mock invoke unhandled: ${command}`);
               return null;
           }
         };
 
-      tauri.core.invoke = mockInvoke;
-      tauriInternals.invoke = mockInvoke;
-      window.__TAURI_INTERNALS__ = tauriInternals;
+      // --- 4. Bind Mock to Global Objects ---
+      // Override the internals invoke with our business logic
+      window.__TAURI_INTERNALS__.invoke = mockInvoke;
+      window.__TAURI__.core.invoke = mockInvoke;
 
-      console.log('[e2e] __TAURI__ mock initialized');
+      // Ensure other namespaces exist
+      const tauri = window.__TAURI__;
+      tauri.dialog = tauri.dialog || {};
+      tauri.shell = tauri.shell || {};
+      tauri.clipboard = tauri.clipboard || {};
 
-      if (!tauri.dialog.open) {
-        tauri.dialog.open = async () => null;
-      }
-      if (!tauri.dialog.save) {
-        tauri.dialog.save = async () => null;
-      }
-      if (!tauri.shell.open) {
-        tauri.shell.open = async () => true;
-      }
-      if (!tauri.clipboard.writeText) {
-        tauri.clipboard.writeText = async () => {};
-      }
-      if (!tauri.clipboard.readText) {
-        tauri.clipboard.readText = async () => '';
-      }
+      if (!tauri.dialog.open) tauri.dialog.open = async () => null;
+      if (!tauri.dialog.save) tauri.dialog.save = async () => null;
+      if (!tauri.shell.open) tauri.shell.open = async () => true;
+      if (!tauri.clipboard.writeText) tauri.clipboard.writeText = async () => {};
+      if (!tauri.clipboard.readText) tauri.clipboard.readText = async () => '';
+
+      console.log('[e2e] __TAURI__ mock fully initialized');
     });
 
     console.log(`${prefix} start`);
