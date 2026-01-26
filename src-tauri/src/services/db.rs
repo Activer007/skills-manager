@@ -608,15 +608,17 @@ fn migrate_v9(conn: &Connection) -> Result<()> {
     // 3. Create Triggers to keep FTS in sync
 
     // Insert Trigger
+    // IMPORTANT: Explicitly sync rowid to ensure DELETE triggers work correctly
     conn.execute(
         "CREATE TRIGGER IF NOT EXISTS marketplace_skills_ai AFTER INSERT ON marketplace_skills BEGIN
-            INSERT INTO marketplace_skills_fts(name, description, author, tags, skill_id)
-            VALUES (new.name, new.description, new.author, new.tags, new.id);
+            INSERT INTO marketplace_skills_fts(rowid, name, description, author, tags, skill_id)
+            VALUES (new.rowid, new.name, new.description, new.author, new.tags, new.id);
         END",
         [],
     )?;
 
     // Delete Trigger
+    // Uses the External Content delete syntax
     conn.execute(
         "CREATE TRIGGER IF NOT EXISTS marketplace_skills_ad AFTER DELETE ON marketplace_skills BEGIN
             INSERT INTO marketplace_skills_fts(marketplace_skills_fts, rowid, name, description, author, tags, skill_id)
@@ -630,8 +632,8 @@ fn migrate_v9(conn: &Connection) -> Result<()> {
         "CREATE TRIGGER IF NOT EXISTS marketplace_skills_au AFTER UPDATE ON marketplace_skills BEGIN
             INSERT INTO marketplace_skills_fts(marketplace_skills_fts, rowid, name, description, author, tags, skill_id)
             VALUES('delete', old.rowid, old.name, old.description, old.author, old.tags, old.id);
-            INSERT INTO marketplace_skills_fts(name, description, author, tags, skill_id)
-            VALUES (new.name, new.description, new.author, new.tags, new.id);
+            INSERT INTO marketplace_skills_fts(rowid, name, description, author, tags, skill_id)
+            VALUES (new.rowid, new.name, new.description, new.author, new.tags, new.id);
         END",
         [],
     )?;
@@ -648,9 +650,9 @@ fn migrate_v9(conn: &Connection) -> Result<()> {
 
     // 5. Backfill FTS table if main table already has data
     conn.execute(
-        "INSERT INTO marketplace_skills_fts(name, description, author, tags, skill_id)
-         SELECT name, description, author, tags, id FROM marketplace_skills
-         WHERE id NOT IN (SELECT skill_id FROM marketplace_skills_fts)",
+        "INSERT INTO marketplace_skills_fts(rowid, name, description, author, tags, skill_id)
+         SELECT rowid, name, description, author, tags, id FROM marketplace_skills
+         WHERE rowid NOT IN (SELECT rowid FROM marketplace_skills_fts)",
         [],
     )?;
 

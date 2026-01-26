@@ -50,13 +50,20 @@ impl MarketplaceService {
         let conn = get_connection()?;
         let max_limit = limit_param.unwrap_or(50);
 
-        // Prepare FTS query string (append * for prefix matching)
-        // "rust" -> "rust*" to match "rust-lang"
-        let search_query = if query.trim().is_empty() {
+        // Prepare FTS query string
+        // Split by whitespace to support multiple terms (AND logic)
+        // "rust ui" -> "rust"* AND "ui"*
+        let terms: Vec<&str> = query.split_whitespace().collect();
+        let search_query = if terms.is_empty() {
             return Ok(vec![]);
         } else {
-            // Escape double quotes and wrap in quotes for phrase matching, append *
-            format!("\"{}\"*", query.replace("\"", "\"\""))
+            terms.iter()
+                .map(|term| {
+                    // Escape double quotes by doubling them, wrap in quotes, append * for prefix match
+                    format!("\"{}\"*", term.replace("\"", "\"\""))
+                })
+                .collect::<Vec<String>>()
+                .join(" AND ")
         };
 
         // Use FTS match query
