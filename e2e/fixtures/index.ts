@@ -203,20 +203,31 @@ export const test = base.extend({
       });
 
       const tauri = ensureTauri();
-      const tauriInternals = window.__TAURI_INTERNALS__ ?? {
-        metadata: {
-          currentWindow: { label: 'main' },
-        },
-        // 添加 transformCallback 以修复警告
-        transformCallback: (callback: Function, once: boolean = false) => {
+
+      // Force initialize __TAURI_INTERNALS__ to ensure it has what we need
+      // @ts-ignore
+      window.__TAURI_INTERNALS__ = window.__TAURI_INTERNALS__ || {};
+      const tauriInternals = window.__TAURI_INTERNALS__;
+
+      // Ensure metadata exists for getCurrentWindow
+      if (!tauriInternals.metadata) {
+        tauriInternals.metadata = {};
+      }
+      if (!tauriInternals.metadata.currentWindow) {
+        tauriInternals.metadata.currentWindow = { label: 'main', theme: 'light' };
+      }
+
+      // Add transformCallback if missing
+      if (!tauriInternals.transformCallback) {
+        tauriInternals.transformCallback = (callback: Function, once: boolean = false) => {
           const id = Date.now() + Math.random();
           if (!window.__TAURI_CALLBACKS__) {
             window.__TAURI_CALLBACKS__ = {};
           }
           window.__TAURI_CALLBACKS__[id] = { callback, once };
           return id;
-        },
-      };
+        };
+      }
 
       const mockInvoke = async (command, args) => {
           const request = args?.request ?? args;

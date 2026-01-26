@@ -175,14 +175,16 @@ export function getOSPath(unixPath: string, windowsPath: string): string {
 /**
  * Share Link 测试数据
  */
+const BASE_URL = process.env.MOCK_MODE === 'true' ? 'http://localhost:5175' : 'http://localhost:1420';
+
 export const testShareLinks = {
-  valid: 'http://localhost:1420/share/mock-share-001',
-  invalid: 'http://localhost:1420/share/non-existent-share',
-  expired: 'http://localhost:1420/share/expired-share',
-  safeSkill: 'http://localhost:1420/share/mock-share-safe-skill',
-  riskSkill: 'http://localhost:1420/share/mock-share-risk-skill',
-  blockedSkill: 'http://localhost:1420/share/mock-share-blocked-skill',
-  noSourceUrl: 'http://localhost:1420/share/mock-share-no-source',
+  valid: `${BASE_URL}/share/mock-share-001`,
+  invalid: `${BASE_URL}/share/non-existent-share`,
+  expired: `${BASE_URL}/share/expired-share`,
+  safeSkill: `${BASE_URL}/share/mock-share-safe-skill`,
+  riskSkill: `${BASE_URL}/share/mock-share-risk-skill`,
+  blockedSkill: `${BASE_URL}/share/mock-share-blocked-skill`,
+  noSourceUrl: `${BASE_URL}/share/mock-share-no-source`,
 } as const;
 
 /**
