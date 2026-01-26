@@ -57,8 +57,8 @@ export default defineConfig({
     // 仅在失败时截图
     screenshot: 'only-on-failure',
 
-    // 失败时保留视频
-    video: 'retain-on-failure',
+    // 失败时保留视频（禁用以避免 ffmpeg 依赖问题）
+    video: 'off',
 
     // 操作超时时间
     actionTimeout: 10 * 1000,

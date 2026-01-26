@@ -215,6 +215,11 @@ export async function setupBeforeTest(page: Page, testInfo: any) {
   console.log(`[test-cleanup] Setting up before test: ${testInfo.title}`);
 
   try {
+    // 0. 确保页面已加载（解决 localStorage 访问权限问题）
+    if (page.url() === 'about:blank') {
+      await page.goto('/');
+    }
+
     // 1. 重置测试状态到初始值
     await resetTestState(page);
 

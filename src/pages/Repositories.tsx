@@ -219,7 +219,7 @@ export default function RepositoriesPage() {
                   <div className="flex items-center flex-wrap gap-2 mb-1">
                     <h3 className="font-semibold text-lg truncate">{repo.name}</h3>
                     {repo.featured && (
-                      <Badge variant="secondary" size="sm">{t('repositories.featured')}</Badge>
+                      <Badge variant="secondary" size="sm">{t('repositories.featuredBadge')}</Badge>
                     )}
                     <Badge variant={getCategoryBadgeVariant(repo.category)} size="sm">
                       {repo.category}

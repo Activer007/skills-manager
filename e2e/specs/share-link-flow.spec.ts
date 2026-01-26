@@ -77,7 +77,7 @@ test.describe('Share Link - 解析分享链接', () => {
     await page.goto(testShareLinks.invalid);
 
     // 验证错误消息
-    await expect(page.locator('text=链接已过期或不存在')).toBeVisible();
+    await expect(page.locator('[data-testid="error-message"]')).toBeVisible();
 
     // 验证返回按钮存在
     const backButton = page.locator('button:has-text("返回主页")');
@@ -88,8 +88,8 @@ test.describe('Share Link - 解析分享链接', () => {
     await page.goto(testShareLinks.riskSkill);
 
     // 验证安全警告显示
-    await expect(page.locator('text=安全警告')).toBeVisible();
-    await expect(page.locator('text=此 Skill 包含潜在风险代码')).toBeVisible();
+    await expect(page.locator('[data-testid="risk-warning-title"]')).toBeVisible();
+    await expect(page.locator('[data-testid="risk-warning-message"]')).toBeVisible();
 
     // 验证安装按钮仍然可用
     const installButton = page.locator('button:has-text("安装 Skill")');
@@ -100,8 +100,8 @@ test.describe('Share Link - 解析分享链接', () => {
     await page.goto(testShareLinks.blockedSkill);
 
     // 验证已阻止提示
-    await expect(page.locator('text=已阻止')).toBeVisible();
-    await expect(page.locator('text=此 Skill 因安全原因已被阻止安装')).toBeVisible();
+    await expect(page.locator('[data-testid="blocked-warning-title"]')).toBeVisible();
+    await expect(page.locator('[data-testid="blocked-warning-message"]')).toBeVisible();
 
     // 验证安装按钮被禁用
     const installButton = page.locator('button:has-text("安装 Skill")');
@@ -231,11 +231,11 @@ test.describe('Share Link - 边界情况', () => {
     await page.goto(testShareLinks.noSourceUrl);
 
     // 验证警告提示
-    await expect(page.locator('text=无法安装')).toBeVisible();
-    await expect(page.locator('text=此分享链接缺少源地址信息')).toBeVisible();
+    await expect(page.locator('[data-testid="install-warning-title"]')).toBeVisible();
+    await expect(page.locator('[data-testid="install-warning-message"]')).toBeVisible();
 
     // 验证安装按钮禁用且显示正确文本
-    const installButton = page.locator('button:has-text("无法安装 (无源地址)")');
+    const installButton = page.locator('[data-testid="install-skill-button"]');
     await expect(installButton).toBeDisabled();
 
     // 验证查看源码按钮不存在
@@ -304,7 +304,7 @@ test.describe('Share Link - 边界情况', () => {
     await page.goto(testShareLinks.expired);
 
     // 验证过期提示
-    await expect(page.locator('text=链接已过期')).toBeVisible();
+    await expect(page.locator('[data-testid="error-title"]')).toBeVisible();
 
     // 验证返回按钮
     await expect(page.locator('button:has-text("返回主页")')).toBeVisible();

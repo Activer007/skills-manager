@@ -298,12 +298,12 @@ const SharePreview = () => {
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-error/10 flex items-center justify-center">
             <AlertTriangle className="w-8 h-8 text-error" />
           </div>
-          <h1 className="text-xl font-bold mb-2">
+          <h1 className="text-xl font-bold mb-2" data-testid="error-title">
             {status === 'expired'
               ? (locale === 'zh' ? '链接已过期' : 'Link Expired')
               : (locale === 'zh' ? '无效链接' : 'Invalid Link')}
           </h1>
-          <p className="text-base-content/70 mb-6">{error}</p>
+          <p className="text-base-content/70 mb-6" data-testid="error-message">{error}</p>
           <Button onClick={handleBack}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             {locale === 'zh' ? '返回主页' : 'Back to Home'}
@@ -456,13 +456,13 @@ const SharePreview = () => {
 
             {/* 安全提示 */}
             {skillData?.securityLevel === 'risk' && (
-              <div className="flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+              <div className="flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800" data-testid="risk-warning">
                 <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+                  <h3 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1" data-testid="risk-warning-title">
                     {locale === 'zh' ? '安全警告' : 'Security Warning'}
                   </h3>
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300" data-testid="risk-warning-message">
                     {locale === 'zh'
                       ? '此 Skill 包含潜在风险代码。请仅从可信来源安装。'
                       : 'This Skill contains potentially risky code. Only install from trusted sources.'}
@@ -473,13 +473,13 @@ const SharePreview = () => {
 
             {/* 已阻止提示 */}
             {skillData?.securityLevel === 'blocked' && (
-              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800" data-testid="blocked-warning">
                 <Shield className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="font-medium text-red-800 dark:text-red-200 mb-1">
+                  <h3 className="font-medium text-red-800 dark:text-red-200 mb-1" data-testid="blocked-warning-title">
                     {locale === 'zh' ? '已阻止' : 'Blocked'}
                   </h3>
-                  <p className="text-sm text-red-700 dark:text-red-300">
+                  <p className="text-sm text-red-700 dark:text-red-300" data-testid="blocked-warning-message">
                     {locale === 'zh'
                       ? '此 Skill 因安全原因已被阻止安装。'
                       : 'This Skill has been blocked for security reasons.'}
@@ -490,13 +490,13 @@ const SharePreview = () => {
 
             {/* 缺少源地址提示 */}
             {!skillData?.sourceUrl && (
-              <div className="flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+              <div className="flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800" data-testid="install-warning">
                 <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+                  <h3 className="font-medium text-yellow-800 dark:text-yellow-200 mb-1" data-testid="install-warning-title">
                     {locale === 'zh' ? '无法安装' : 'Cannot Install'}
                   </h3>
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300" data-testid="install-warning-message">
                     {locale === 'zh'
                       ? '此分享链接缺少源地址信息。请联系分享者更新链接，或者手动从 GitHub 导入。'
                       : 'This share link is missing source URL information. Please contact the sharer to update the link, or manually import from GitHub.'}
@@ -530,6 +530,7 @@ const SharePreview = () => {
               className="flex-1"
               onClick={handleInstallClick}
               disabled={skillData?.securityLevel === 'blocked' || !skillData?.sourceUrl}
+              data-testid="install-skill-button"
             >
               <Download className="w-4 h-4 mr-2" />
               {skillData?.sourceUrl 
