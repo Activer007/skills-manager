@@ -183,7 +183,9 @@ pub fn get_cached_report_by_path(skill_path: &str) -> Result<Option<(SecurityRep
         match serde_json::from_str(&report_json) {
             Ok(report) => Ok(Some((report, checksum, cached_at))),
             Err(e) => {
-                log::warn!("Failed to parse cached report for {}: {}", skill_path, e);
+                log::warn!("Failed to parse cached report for {}, cleaning up: {}", skill_path, e);
+                // Delete the corrupted cache entry to prevent repeated warnings
+                let _ = delete_cached_report(skill_path);
                 Ok(None)
             }
         }
@@ -519,35 +521,40 @@ fn migrate_v7(conn: &Connection) -> Result<()> {
 
 /// Migration v8: Create publish_history table
 fn migrate_v8(conn: &Connection) -> Result<()> {
-    // Create publish_history table
+    // Create publish_history table for tracking Skill publishing
     conn.execute(
         "CREATE TABLE IF NOT EXISTS publish_history (
             id TEXT PRIMARY KEY,
-            skill_name TEXT NOT NULL,
-            skill_version TEXT NOT NULL,
             skill_id TEXT NOT NULL,
-            listing_id TEXT NOT NULL,
-            author TEXT,
-            description TEXT,
-            tags TEXT NOT NULL,
+            skill_name TEXT NOT NULL,
+            version TEXT NOT NULL,
             published_at INTEGER NOT NULL,
             status TEXT NOT NULL,
-            error_message TEXT
+            error_message TEXT,
+            repository_url TEXT,
+            tag_name TEXT,
+            commit_sha TEXT,
+            release_url TEXT,
+            metadata TEXT
         )",
         [],
     )?;
 
-    // Create indexes
+    // Create indexes for better query performance
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_publish_history_skill_id ON publish_history(skill_id)",
         [],
     )?;
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_publish_history_published ON publish_history(published_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_publish_history_status ON publish_history(status)",
         [],
     )?;
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_publish_history_status ON publish_history(status)",
+        "CREATE INDEX IF NOT EXISTS idx_publish_history_published_at ON publish_history(published_at DESC)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_publish_history_repository_url ON publish_history(repository_url)",
         [],
     )?;
 

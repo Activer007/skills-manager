@@ -10,5 +10,6 @@ pub mod package;
 pub mod import;
 pub mod share;
 pub mod publish;
+pub mod marketplace;
 
 

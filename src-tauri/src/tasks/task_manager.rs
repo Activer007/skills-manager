@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use tauri::{AppHandle, Emitter};
 use once_cell::sync::Lazy;
@@ -14,7 +14,7 @@ pub static TASK_MANAGER: Lazy<TaskManager> = Lazy::new(TaskManager::new);
 
 pub struct TaskManager {
     tasks: Arc<RwLock<HashMap<String, BackgroundTask>>>,
-    cancellation_tokens: Arc<Mutex<HashMap<String, TaskCancellationToken>>>,
+    cancellation_tokens: Arc<RwLock<HashMap<String, TaskCancellationToken>>>,
     // Concurrency semaphores
     global_semaphore: Arc<tokio::sync::Semaphore>,
     download_semaphore: Arc<tokio::sync::Semaphore>,
@@ -24,7 +24,7 @@ impl TaskManager {
     pub fn new() -> Self {
         Self {
             tasks: Arc::new(RwLock::new(HashMap::new())),
-            cancellation_tokens: Arc::new(Mutex::new(HashMap::new())),
+            cancellation_tokens: Arc::new(RwLock::new(HashMap::new())),
             // Limit global concurrent tasks to 3
             global_semaphore: Arc::new(tokio::sync::Semaphore::new(3)),
             // Limit download tasks to 2
@@ -45,7 +45,10 @@ impl TaskManager {
 
         // Initialize cancellation token
         let token = TaskCancellationToken::new();
-        self.cancellation_tokens.lock().unwrap().insert(id.clone(), token);
+        {
+            let mut tokens = self.cancellation_tokens.write().await;
+            tokens.insert(id.clone(), token);
+        }
 
         // Add task to store
         let mut tasks = self.tasks.write().await;
@@ -94,7 +97,10 @@ impl TaskManager {
                 TaskStatus::Completed | TaskStatus::Failed | TaskStatus::Cancelled => {
                     task.completed_at = Some(Utc::now());
                     // Remove cancellation token when done
-                    self.cancellation_tokens.lock().unwrap().remove(task_id);
+                    {
+                        let mut tokens = self.cancellation_tokens.write().await;
+                        tokens.remove(task_id);
+                    }
                 },
                 _ => {}
             }
@@ -116,8 +122,8 @@ impl TaskManager {
         }
     }
 
-    pub fn cancel_task(&self, task_id: &str) -> bool {
-        let tokens = self.cancellation_tokens.lock().unwrap();
+    pub async fn cancel_task(&self, task_id: &str) -> bool {
+        let tokens = self.cancellation_tokens.read().await;
         if let Some(token) = tokens.get(task_id) {
             token.cancel();
             return true;
@@ -159,8 +165,8 @@ impl TaskManager {
         (global_permit, specific_permit)
     }
 
-    pub fn get_cancellation_token(&self, task_id: &str) -> Option<TaskCancellationToken> {
-        let tokens = self.cancellation_tokens.lock().unwrap();
+    pub async fn get_cancellation_token(&self, task_id: &str) -> Option<TaskCancellationToken> {
+        let tokens = self.cancellation_tokens.read().await;
         tokens.get(task_id).cloned()
     }
 }

@@ -15,7 +15,7 @@ pub async fn get_task(task_id: String) -> Result<Option<BackgroundTask>, String>
 
 #[command]
 pub async fn cancel_task(app: AppHandle, task_id: String) -> Result<(), String> {
-    if TASK_MANAGER.cancel_task(&task_id) {
+    if TASK_MANAGER.cancel_task(&task_id).await {
         // We also manually update status to Cancelled immediately for UI responsiveness
         // The actual task loop should detect cancellation and stop
         TASK_MANAGER.update_status(&app, &task_id, super::task::TaskStatus::Cancelled).await;
