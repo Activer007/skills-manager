@@ -163,6 +163,7 @@ export interface ListMarketplaceParams {
   minStars?: number;
   limit?: number;
   offset?: number;
+  searchQuery?: string;
 }
 
 /**

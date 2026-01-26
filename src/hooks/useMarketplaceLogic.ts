@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useMarketplaceSkills } from './useSkills';
 import type { SecurityFilter, CompatibilityFilter } from '../components/FilterPanel';
 import type { SortOption } from '../components/SortDropdown';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
+import type { ListMarketplaceParams } from '../types';
 
 // Types and constants
 export type FilterType = 'all' | 'top-rated' | 'productivity' | 'coding' | 'security' | 'data' | 'design';
@@ -20,20 +21,42 @@ const CATEGORY_KEYWORDS: Record<Exclude<FilterType, 'all' | 'top-rated'>, string
 const GITHUB_URL_REGEX = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/tree\/[\w.-]+(\/.*)?)?$/;
 
 export function useMarketplaceLogic() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [sortOption, setSortOption] = useState<SortOption>('stars');
+  const [securityFilter, setSecurityFilter] = useState<SecurityFilter>('all');
+  const [compatibilityFilter, setCompatibilityFilter] = useState<CompatibilityFilter>('all');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Debounce search term to avoid excessive backend calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Construct query parameters for the backend
+  const queryParams = useMemo<ListMarketplaceParams>(() => {
+    const params: ListMarketplaceParams = { limit: 100 }; // Default limit to reduce memory usage
+
+    if (debouncedSearchTerm) {
+      params.searchQuery = debouncedSearchTerm;
+    } else if (filter === 'top-rated') {
+      params.minStars = TOP_RATED_THRESHOLD;
+    }
+
+    return params;
+  }, [debouncedSearchTerm, filter]);
+
   const {
     data: marketplaceSkills = [],
     isLoading: isLoadingMarketplace,
     isError: isMarketplaceError,
     error: marketplaceError,
     refetch: refetchMarketplace,
-  } = useMarketplaceSkills({ limit: 1000 }); // Load more data by default
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [sortOption, setSortOption] = useState<SortOption>('stars');
-  const [securityFilter, setSecurityFilter] = useState<SecurityFilter>('all');
-  const [compatibilityFilter, setCompatibilityFilter] = useState<CompatibilityFilter>('all');
-  const [showFilters, setShowFilters] = useState(false);
+  } = useMarketplaceSkills(queryParams);
 
   const isGithubUrl = useMemo(() => {
     return GITHUB_URL_REGEX.test(searchTerm);
@@ -41,9 +64,13 @@ export function useMarketplaceLogic() {
 
   const filteredAndSortedSkills = useMemo(() => {
     const result = marketplaceSkills.filter(skill => {
+      // If we used backend search, the results are already filtered by the query.
+      // However, we still perform a client-side check to ensure the UI is consistent
+      // during the debounce delay or if the user refines the search locally.
       const name = skill.name ?? '';
       const description = skill.description ?? '';
       const author = skill.author ?? '';
+
       const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         author.toLowerCase().includes(searchTerm.toLowerCase());

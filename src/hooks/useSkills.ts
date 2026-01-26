@@ -213,7 +213,33 @@ export function useMarketplaceSkills(params?: ListMarketplaceParams) {
   return useQuery({
     queryKey: ['marketplace-skills', params],
     queryFn: async () => {
-      // Call backend API instead of loading JSON
+      // If search query is provided, use search endpoint
+      if (params?.searchQuery) {
+        const data = await invoke<MarketplaceSkillDTO[]>('search_marketplace_skills', {
+          query: params.searchQuery,
+          limit: params.limit || 100,
+        });
+
+        return data.map(dto => ({
+          id: dto.id,
+          name: dto.name,
+          author: dto.author || 'Unknown',
+          authorAvatar: '',
+          description: dto.description || '',
+          githubUrl: dto.github_url || '',
+          stars: dto.stars,
+          forks: dto.forks,
+          updatedAt: dto.updated_at,
+          hasMarketplace: false,
+          path: 'SKILL.md',
+          branch: 'main',
+          tags: dto.tags,
+          securityScore: dto.security_score,
+          compatibility: dto.compatibility,
+        })) as MarketplaceSkill[];
+      }
+
+      // Otherwise use list endpoint with filters
       const data = await invoke<MarketplaceSkillDTO[]>('list_marketplace_skills', {
         tagFilter: params?.tagFilter,
         minStars: params?.minStars,
