@@ -119,7 +119,7 @@ export function FeaturedRepositories({
                       <h4 className="font-medium truncate">{repo.name}</h4>
                       {repo.featured && (
                         <Badge variant="neutral" size="sm" className="text-[10px] h-4 px-1">
-                          {t('repositories.featured')}
+                          {t('repositories.featuredBadge')}
                         </Badge>
                       )}
                     </div>
