@@ -26,7 +26,7 @@ export function useMarketplaceLogic() {
     isError: isMarketplaceError,
     error: marketplaceError,
     refetch: refetchMarketplace,
-  } = useMarketplaceSkills();
+  } = useMarketplaceSkills({ limit: 1000 }); // Load more data by default
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
