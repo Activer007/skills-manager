@@ -146,7 +146,8 @@ pub fn run() {
             commands::marketplace::upsert_marketplace_skill,
             commands::marketplace::delete_marketplace_skill,
             commands::marketplace::get_marketplace_stats,
-            commands::marketplace::clear_marketplace_skills
+            commands::marketplace::clear_marketplace_skills,
+            commands::marketplace::import_marketplace_from_json
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

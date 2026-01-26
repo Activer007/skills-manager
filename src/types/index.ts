@@ -132,3 +132,54 @@ export interface FeaturedRepositoriesConfig {
   last_updated: string;
   categories: FeaturedCategory[];
 }
+
+// ============================================
+// Marketplace Database Types (Backend API)
+// ============================================
+
+/**
+ * Marketplace skill DTO returned from backend API
+ * Corresponds to Rust's MarketplaceSkillDTO
+ */
+export interface MarketplaceSkillDTO {
+  id: string;
+  name: string;
+  author?: string;
+  description?: string;
+  github_url?: string;
+  stars: number;
+  forks: number;
+  updated_at: number;
+  tags: string[];
+  security_score?: number;
+  compatibility?: CompatibilityInfo;
+}
+
+/**
+ * Parameters for listing marketplace skills
+ */
+export interface ListMarketplaceParams {
+  tagFilter?: string;
+  minStars?: number;
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Result of marketplace import operation
+ */
+export interface MarketplaceImportResult {
+  total_count: number;
+  success_count: number;
+  error_count: number;
+  skipped_count: number;
+}
+
+/**
+ * Marketplace statistics
+ */
+export interface MarketplaceStats {
+  total_skills: number;
+  total_stars: number;
+  last_updated: number;
+}

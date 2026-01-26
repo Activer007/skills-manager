@@ -73,8 +73,8 @@ const Cell = memo(({ columnIndex, rowIndex, style, data }: CellProps) => {
                 skill={{...skill, description: getLocalizedDescription(skill, language)}}
                 viewMode="grid"
                 isInstalled={isInstalled(skill)}
-                onInstall={() => handleInstall(skill)}
-                onUninstall={isInstalled(skill) ? () => handleUninstall(skill) : undefined}
+                onInstall={async () => handleInstall(skill)}
+                onUninstall={isInstalled(skill) ? async () => handleUninstall(skill) : undefined}
                 onViewDetails={() => {
                     setSelectedSkill(skill);
                     setShowDrawer(true);
@@ -146,6 +146,7 @@ const Marketplace = () => {
   const handleInstall = useCallback(async (skill: MarketplaceSkill) => {
     if (installMutation.isPending) return;
     setPendingInstall(skill);
+    return Promise.resolve();
   }, [installMutation.isPending]);
 
   const startInstallProgress = useCallback(() => {
@@ -180,14 +181,15 @@ const Marketplace = () => {
     return !!resolveInstalledSkill(skill);
   }, [resolveInstalledSkill]);
 
-  const handleUninstall = useCallback((skill: MarketplaceSkill) => {
+  const handleUninstall = useCallback(async (skill: MarketplaceSkill) => {
     if (uninstallMutation.isPending) return;
     const installed = resolveInstalledSkill(skill);
     if (!installed) {
       toast.error(i18n.language === 'zh' ? '未找到已安装的 Skill' : 'Installed skill not found');
-      return;
+      return Promise.resolve();
     }
     setPendingUninstall(installed);
+    return Promise.resolve();
   }, [resolveInstalledSkill, uninstallMutation.isPending, i18n.language]);
 
   const confirmInstall = async () => {

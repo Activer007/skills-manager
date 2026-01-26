@@ -6,6 +6,7 @@ import { PageLoader } from './components/ui/PageLoader';
 // Lazy load pages for code splitting
 const MySkills = lazy(() => import('./pages/MySkills'));
 const Marketplace = lazy(() => import('./pages/Marketplace'));
+const MarketplaceDataManagement = lazy(() => import('./pages/MarketplaceDataManagement'));
 const Repositories = lazy(() => import('./pages/Repositories'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Collections = lazy(() => import('./pages/Collections'));
@@ -53,6 +54,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <Marketplace />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'marketplace/data-management',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <MarketplaceDataManagement />
           </Suspense>
         ),
       },
