@@ -337,7 +337,9 @@ pub async fn import_github_skill_with_progress(
 
         let (_permit, _dl_permit) = TASK_MANAGER.acquire_permit(&TaskType::ImportSkill).await;
 
-        if let Some(token) = TASK_MANAGER.get_cancellation_token(&task_id) {
+        // Get cancellation token before entering blocking context
+        let cancel_token = TASK_MANAGER.get_cancellation_token(&task_id).await;
+        if let Some(ref token) = cancel_token {
             if token.is_cancelled() {
                 TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Cancelled).await;
                 let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Cancelled, "Cancelled", 0));

@@ -46,7 +46,8 @@ pub async fn scan_skills_with_progress(
         let (_permit, _) = TASK_MANAGER.acquire_permit(&TaskType::ScanSkill).await;
 
         // Check cancellation
-        if let Some(token) = TASK_MANAGER.get_cancellation_token(&task_id) {
+        let cancel_token = TASK_MANAGER.get_cancellation_token(&task_id).await;
+        if let Some(ref token) = cancel_token {
             if token.is_cancelled() {
                 TASK_MANAGER.update_status(&app_handle, &task_id, TaskStatus::Cancelled).await;
                 let _ = channel.send(ProgressEvent::new(&task_id, ProgressStage::Cancelled, "Cancelled", 0));

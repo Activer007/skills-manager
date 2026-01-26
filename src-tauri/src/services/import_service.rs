@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::Duration;
 use walkdir::WalkDir;
 use crate::services::utils::{copy_dir_all, sanitize_filename};
 use crate::models::import::{ImportResult, OriginRecord};
@@ -27,6 +28,54 @@ pub struct LocalImportOutcome {
 }
 
 pub struct ImportService;
+
+/// Git clone timeout in seconds
+const GIT_CLONE_TIMEOUT_SECS: u64 = 300; // 5 minutes
+/// Git checkout timeout in seconds
+const GIT_CHECKOUT_TIMEOUT_SECS: u64 = 60; // 1 minute
+
+/// Execute a git command with a timeout
+fn exec_git_with_timeout(args: &[&str], current_dir: Option<&PathBuf>, timeout_secs: u64) -> Result<std::process::Output, String> {
+    let timeout = Duration::from_secs(timeout_secs);
+
+    // Spawn the git command in a separate thread
+    let (sender, receiver) = std::sync::mpsc::channel::<Result<std::process::Output, String>>();
+
+    let args_owned: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+    let current_dir_owned = current_dir.map(|p| p.clone());
+
+    let handle = std::thread::spawn(move || {
+        let mut cmd = Command::new("git");
+        cmd.args(&args_owned);
+
+        if let Some(dir) = current_dir_owned {
+            cmd.current_dir(dir);
+        }
+
+        // Set Git-specific timeouts via environment variables
+        // These help Git itself enforce timeouts on network operations
+        cmd.env("GIT_HTTP_LOW_SPEED_LIMIT", "1000") // 1 KB/s
+           .env("GIT_HTTP_LOW_SPEED_TIME", &timeout_secs.to_string());
+
+        cmd.output()
+    });
+
+    // Wait for the command with timeout
+    let result = receiver.recv_timeout(timeout);
+
+    match result {
+        Ok(Ok(output)) => Ok(output),
+        Ok(Err(e)) => Err(format!("Git command failed: {}", e)),
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            // Try to kill the git process by starting a new git command with --git-dir
+            // Note: This is a best-effort attempt; the thread may still be running
+            Err(format!("Git command timed out after {} seconds", timeout_secs))
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+            Err("Git command thread panicked".to_string())
+        }
+    }
+}
 
 impl ImportService {
     pub fn normalize_repo_url(url: &str) -> String {
@@ -67,31 +116,39 @@ impl ImportService {
             let temp_dir = install_dir.join(".temp_clone");
             let _ = fs::remove_dir_all(&temp_dir);
 
-            let output = Command::new("git")
-                .arg("clone")
-                .arg("--depth")
-                .arg("1")
-                .arg("--filter=blob:none")
-                .arg("--sparse")
-                .arg(&repo_base)
-                .arg(&temp_dir)
-                .output();
+            // Clone with timeout
+            let output = exec_git_with_timeout(
+                &["clone", "--depth", "1", "--filter=blob:none", "--sparse", &repo_base, &temp_dir.to_string_lossy()],
+                None,
+                GIT_CLONE_TIMEOUT_SECS
+            )?;
 
-            match output {
-                Err(e) => return Err(format!("Git command failed: {}", e)),
-                Ok(o) if !o.status.success() => return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&o.stderr))),
-                _ => {}
+            if !output.status.success() {
+                let _ = fs::remove_dir_all(&temp_dir);
+                return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&output.stderr)));
             }
 
-            let _ = Command::new("git")
-                .current_dir(&temp_dir)
-                .args(["sparse-checkout", "set", &subpath])
-                .output();
+            // Sparse checkout with timeout
+            let output = exec_git_with_timeout(
+                &["sparse-checkout", "set", &subpath],
+                Some(&temp_dir),
+                GIT_CHECKOUT_TIMEOUT_SECS
+            );
+            if let Err(e) = output {
+                let _ = fs::remove_dir_all(&temp_dir);
+                return Err(format!("Git sparse-checkout failed: {}", e));
+            }
 
-            let _ = Command::new("git")
-                .current_dir(&temp_dir)
-                .args(["checkout", branch])
-                .output();
+            // Checkout branch with timeout
+            let output = exec_git_with_timeout(
+                &["checkout", branch],
+                Some(&temp_dir),
+                GIT_CHECKOUT_TIMEOUT_SECS
+            );
+            if let Err(e) = output {
+                let _ = fs::remove_dir_all(&temp_dir);
+                return Err(format!("Git checkout failed: {}", e));
+            }
 
             detected_branch = Some(branch.to_string());
 
@@ -111,18 +168,15 @@ impl ImportService {
         } else {
             let _ = fs::remove_dir_all(&target_dir);
 
-            let output = Command::new("git")
-                .arg("clone")
-                .arg("--depth")
-                .arg("1")
-                .arg(repo_url)
-                .arg(&target_dir)
-                .output();
+            // Simple clone with timeout
+            let output = exec_git_with_timeout(
+                &["clone", "--depth", "1", repo_url, &target_dir.to_string_lossy()],
+                None,
+                GIT_CLONE_TIMEOUT_SECS
+            )?;
 
-            match output {
-                Err(e) => return Err(format!("Git command failed: {}", e)),
-                Ok(o) if !o.status.success() => return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&o.stderr))),
-                _ => {}
+            if !output.status.success() {
+                return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&output.stderr)));
             }
 
             detected_branch = Self::detect_git_branch(&target_dir);

@@ -137,7 +137,16 @@ pub fn run() {
             // Share commands
             commands::share::generate_share_link,
             commands::share::resolve_share_link,
-            commands::share::get_git_remote_url
+            commands::share::get_git_remote_url,
+
+            // Marketplace commands
+            commands::marketplace::search_marketplace_skills,
+            commands::marketplace::list_marketplace_skills,
+            commands::marketplace::get_marketplace_skill,
+            commands::marketplace::upsert_marketplace_skill,
+            commands::marketplace::delete_marketplace_skill,
+            commands::marketplace::get_marketplace_stats,
+            commands::marketplace::clear_marketplace_skills
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
