@@ -4,6 +4,66 @@
 
 use crate::services::marketplace_service::{MarketplaceService, MarketplaceStats};
 use crate::models::marketplace::{MarketplaceSkill, MarketplaceSkillDTO};
+use std::fs;
+use std::path::PathBuf;
+
+/// Raw marketplace skill JSON structure
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct RawMarketplaceSkill {
+    id: String,
+    name: String,
+    author: Option<String>,
+    #[serde(default)]
+    author_avatar: Option<String>,
+    description: Option<String>,
+    #[serde(rename = "githubUrl")]
+    github_url: Option<String>,
+    stars: i64,
+    forks: i64,
+    #[serde(rename = "updatedAt")]
+    updated_at: i64,
+    #[serde(default)]
+    has_marketplace: Option<bool>,
+    #[serde(default)]
+    path: Option<String>,
+    #[serde(default)]
+    branch: Option<String>,
+    #[serde(default)]
+    description_hash: Option<String>,
+    #[serde(default)]
+    deleted: Option<bool>,
+    #[serde(rename = "description_cn")]
+    #[serde(default)]
+    description_cn: Option<String>,
+    #[serde(default)]
+    tags: Option<Vec<String>>,
+    #[serde(default)]
+    security_score: Option<i32>,
+    #[serde(default)]
+    compatibility: Option<serde_json::Value>,
+}
+
+impl From<RawMarketplaceSkill> for MarketplaceSkill {
+    fn from(raw: RawMarketplaceSkill) -> Self {
+        // Serialize the entire raw structure first
+        let data = serde_json::to_string(&raw).ok();
+
+        MarketplaceSkill {
+            id: raw.id,
+            name: raw.name,
+            author: raw.author,
+            description: raw.description,
+            github_url: raw.github_url,
+            stars: raw.stars,
+            forks: raw.forks,
+            updated_at: raw.updated_at,
+            tags: raw.tags.as_ref().and_then(|t| serde_json::to_string(t).ok()),
+            security_score: raw.security_score,
+            compatibility: raw.compatibility.as_ref().and_then(|c| serde_json::to_string(c).ok()),
+            data,
+        }
+    }
+}
 
 /// Search marketplace Skills by query
 #[tauri::command]
@@ -75,4 +135,93 @@ pub async fn clear_marketplace_skills() -> Result<(), String> {
     let service = MarketplaceService::new();
     service.clear_all()
         .map_err(|e| e.to_string())
+}
+
+/// Import marketplace skills from JSON file
+///
+/// This command reads the marketplace.json file and imports all skills into the database.
+/// It performs a batch upsert operation, so it can be run multiple times safely.
+#[tauri::command]
+pub async fn import_marketplace_from_json(
+    json_path: Option<String>
+) -> Result<ImportResult, String> {
+    // Determine JSON file path
+    let json_file = if let Some(path) = json_path {
+        PathBuf::from(path)
+    } else {
+        // Try multiple possible paths for the marketplace.json file
+        let candidates = vec![
+            "public/data/marketplace.json",           // From project root
+            "../public/data/marketplace.json",       // From src-tauri (dev mode)
+            "../../public/data/marketplace.json",    // From deeper directory
+            "dist/data/marketplace.json",            // Production build
+            "../dist/data/marketplace.json",         // Production from src-tauri
+        ];
+
+        let mut found_path = None;
+        for candidate in &candidates {
+            let path = PathBuf::from(candidate);
+            if path.exists() {
+                found_path = Some(path);
+                break;
+            }
+        }
+
+        found_path.ok_or_else(|| {
+            format!(
+                "Cannot find marketplace.json. Tried: {:?}",
+                candidates
+            )
+        })?
+    };
+
+    log::info!("Importing marketplace skills from: {:?}", json_file);
+
+    // Read JSON file
+    let json_content = fs::read_to_string(&json_file)
+        .map_err(|e| format!("Failed to read JSON file: {}", e))?;
+
+    // Parse JSON
+    let raw_skills: Vec<RawMarketplaceSkill> = serde_json::from_str(&json_content)
+        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+
+    let total_count = raw_skills.len();
+    log::info!("Found {} skills in JSON file", total_count);
+
+    // Import to database
+    let service = MarketplaceService::new();
+    let mut success_count = 0;
+    let mut error_count = 0;
+    let skipped_count = 0;
+
+    for raw_skill in raw_skills {
+        let skill: MarketplaceSkill = raw_skill.into();
+
+        match service.upsert_skill(&skill) {
+            Ok(_) => success_count += 1,
+            Err(e) => {
+                log::error!("Failed to import skill {}: {}", skill.id, e);
+                error_count += 1;
+            }
+        }
+    }
+
+    log::info!("Import completed: {} success, {} errors, {} skipped",
+        success_count, error_count, skipped_count);
+
+    Ok(ImportResult {
+        total_count: total_count as i64,
+        success_count,
+        error_count,
+        skipped_count,
+    })
+}
+
+/// Result of marketplace import operation
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ImportResult {
+    pub total_count: i64,
+    pub success_count: i64,
+    pub error_count: i64,
+    pub skipped_count: i64,
 }

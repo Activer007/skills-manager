@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
-import type { InstalledSkill, MarketplaceSkill } from '../types';
+import type { InstalledSkill, MarketplaceSkill, MarketplaceSkillDTO, ListMarketplaceParams } from '../types';
 import { fetchMarketplaceData } from '../utils/marketplace';
 import type { SecurityReport } from '../types/security';
 
@@ -204,17 +204,87 @@ export function useImportPackageSkill() {
 }
 
 /**
- * Hook for fetching marketplace skills
+ * Hook for fetching marketplace skills from backend database
+ *
+ * @param params - Query parameters for filtering and pagination
+ * @returns React Query result with MarketplaceSkillDTO array
  */
-export function useMarketplaceSkills() {
+export function useMarketplaceSkills(params?: ListMarketplaceParams) {
   return useQuery({
-    queryKey: ['marketplace-skills'],
+    queryKey: ['marketplace-skills', params],
+    queryFn: async () => {
+      // If search query is provided, use search endpoint
+      if (params?.searchQuery) {
+        const data = await invoke<MarketplaceSkillDTO[]>('search_marketplace_skills', {
+          query: params.searchQuery,
+          limit: params.limit || 100,
+        });
+
+        return data.map(dto => ({
+          id: dto.id,
+          name: dto.name,
+          author: dto.author || 'Unknown',
+          authorAvatar: '',
+          description: dto.description || '',
+          githubUrl: dto.github_url || '',
+          stars: dto.stars,
+          forks: dto.forks,
+          updatedAt: dto.updated_at,
+          hasMarketplace: false,
+          path: 'SKILL.md',
+          branch: 'main',
+          tags: dto.tags,
+          securityScore: dto.security_score,
+          compatibility: dto.compatibility,
+        })) as MarketplaceSkill[];
+      }
+
+      // Otherwise use list endpoint with filters
+      const data = await invoke<MarketplaceSkillDTO[]>('list_marketplace_skills', {
+        tagFilter: params?.tagFilter,
+        minStars: params?.minStars,
+        limit: params?.limit || 100,
+      });
+
+      // Convert DTO to MarketplaceSkill format for compatibility
+      return data.map(dto => ({
+        id: dto.id,
+        name: dto.name,
+        author: dto.author || 'Unknown',
+        authorAvatar: '',  // Not in database yet, can be added later
+        description: dto.description || '',
+        githubUrl: dto.github_url || '',
+        stars: dto.stars,
+        forks: dto.forks,
+        updatedAt: dto.updated_at,
+        hasMarketplace: false,
+        path: 'SKILL.md',
+        branch: 'main',
+        tags: dto.tags,
+        securityScore: dto.security_score,
+        compatibility: dto.compatibility,
+      })) as MarketplaceSkill[];
+    },
+    staleTime: 1000 * 60 * 10, // 10 minutes (marketplace data changes less frequently)
+    gcTime: 1000 * 60 * 30, // 30 minutes
+  });
+}
+
+/**
+ * Hook for fetching marketplace skills from JSON file (fallback)
+ * This is kept for backward compatibility and testing
+ *
+ * @deprecated Use useMarketplaceSkills with backend API instead
+ */
+export function useMarketplaceSkillsFromJSON() {
+  return useQuery({
+    queryKey: ['marketplace-skills-json'],
     queryFn: async () => {
       const data = await fetchMarketplaceData();
       return data as MarketplaceSkill[];
     },
-    staleTime: 1000 * 60 * 10, // 10 minutes (marketplace data changes less frequently)
-    gcTime: 1000 * 60 * 30, // 30 minutes
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
   });
 }
 

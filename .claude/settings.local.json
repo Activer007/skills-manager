@@ -36,7 +36,8 @@
       "Bash(powershell -Command \"Get-Content test-run-output.log -Tail 50\")",
       "Bash(Select-String -Pattern '^\\\\s+\\(ok|x|-\\)\\\\s+\\\\d+\\\\s+\\\\[chromium\\\\]')",
       "Bash(Select-Object -Last 30 \")",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(cargo run:*)"
     ]
   }
 }

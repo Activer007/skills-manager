@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useLayoutEffect, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useSkills, useInstallSkill, useUninstallSkill } from '../hooks/useSkills';
 import { useMarketplaceLogic } from '../hooks/useMarketplaceLogic';
 import type { MarketplaceSkill, InstalledSkill } from '../types';
@@ -73,8 +74,8 @@ const Cell = memo(({ columnIndex, rowIndex, style, data }: CellProps) => {
                 skill={{...skill, description: getLocalizedDescription(skill, language)}}
                 viewMode="grid"
                 isInstalled={isInstalled(skill)}
-                onInstall={() => handleInstall(skill)}
-                onUninstall={isInstalled(skill) ? () => handleUninstall(skill) : undefined}
+                onInstall={async () => handleInstall(skill)}
+                onUninstall={isInstalled(skill) ? async () => handleUninstall(skill) : undefined}
                 onViewDetails={() => {
                     setSelectedSkill(skill);
                     setShowDrawer(true);
@@ -87,6 +88,7 @@ const Cell = memo(({ columnIndex, rowIndex, style, data }: CellProps) => {
 
 const Marketplace = () => {
   const { i18n } = useTranslation();
+  const navigate = useNavigate();
 
   // Use custom hook for logic
   const {
@@ -107,7 +109,8 @@ const Marketplace = () => {
     showFilters,
     setShowFilters,
     isGithubUrl,
-    filteredAndSortedSkills
+    filteredAndSortedSkills,
+    marketplaceSkills // Expose to check if database is empty
   } = useMarketplaceLogic();
 
   const { data: installedSkills = [] } = useSkills();
@@ -146,6 +149,7 @@ const Marketplace = () => {
   const handleInstall = useCallback(async (skill: MarketplaceSkill) => {
     if (installMutation.isPending) return;
     setPendingInstall(skill);
+    return Promise.resolve();
   }, [installMutation.isPending]);
 
   const startInstallProgress = useCallback(() => {
@@ -180,14 +184,15 @@ const Marketplace = () => {
     return !!resolveInstalledSkill(skill);
   }, [resolveInstalledSkill]);
 
-  const handleUninstall = useCallback((skill: MarketplaceSkill) => {
+  const handleUninstall = useCallback(async (skill: MarketplaceSkill) => {
     if (uninstallMutation.isPending) return;
     const installed = resolveInstalledSkill(skill);
     if (!installed) {
       toast.error(i18n.language === 'zh' ? '未找到已安装的 Skill' : 'Installed skill not found');
-      return;
+      return Promise.resolve();
     }
     setPendingUninstall(installed);
+    return Promise.resolve();
   }, [resolveInstalledSkill, uninstallMutation.isPending, i18n.language]);
 
   const confirmInstall = async () => {
@@ -418,21 +423,34 @@ const Marketplace = () => {
             </div>
           </div>
         ) : filteredAndSortedSkills.length === 0 ? (
-          // Empty State Component - Using new EmptyState
+          // Empty State Component - Check if database is empty or just no search results
           <div className="flex h-full items-center justify-center">
             <EmptyState
               variant="minimal"
               icon={<Search />}
               title={i18n.language === 'zh' ? '未找到相关 Skill' : 'No skills found'}
-              description={i18n.language === 'zh'
-                ? '尝试使用不同的关键词，或者直接导入 GitHub 仓库。'
-                : 'Try searching with different keywords, or import directly from GitHub.'
+              description={
+                marketplaceSkills.length === 0
+                  ? (i18n.language === 'zh'
+                      ? 'Marketplace 数据库为空。请先导入数据，或直接导入 GitHub 仓库。'
+                      : 'Marketplace database is empty. Please import data first, or import directly from GitHub.')
+                  : (i18n.language === 'zh'
+                      ? '尝试使用不同的关键词，或者直接导入 GitHub 仓库。'
+                      : 'Try searching with different keywords, or import directly from GitHub.')
               }
-              action={{
-                label: i18n.language === 'zh' ? '从 GitHub 导入' : 'Import from GitHub',
-                onClick: () => setShowImportModal(true),
-                variant: 'primary',
-              }}
+              action={
+                marketplaceSkills.length === 0
+                  ? {
+                      label: i18n.language === 'zh' ? '导入数据' : 'Import Data',
+                      onClick: () => navigate('/marketplace/data-management'),
+                      variant: 'primary',
+                    }
+                  : {
+                      label: i18n.language === 'zh' ? '从 GitHub 导入' : 'Import from GitHub',
+                      onClick: () => setShowImportModal(true),
+                      variant: 'primary',
+                    }
+              }
               data-testid="empty-state"
             />
           </div>

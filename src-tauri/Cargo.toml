@@ -6,6 +6,7 @@ authors = ["you"]
 license = ""
 repository = ""
 edition = "2021"
+default-run = "skill-master"
 
 [lib]
 name = "skill_master_lib"
@@ -62,3 +63,11 @@ codegen-units = 1
 lto = true
 opt-level = "s"
 strip = true
+
+[[bin]]
+name = "import_marketplace"
+path = "src/bin/import_marketplace.rs"
+
+[[bin]]
+name = "init_db"
+path = "src/bin/init_db.rs"
