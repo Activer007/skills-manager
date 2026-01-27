@@ -149,9 +149,9 @@ export const SharePackagePanel: React.FC<SharePanelProps> = ({
                 </p>
               </div>
               <Button
-                variant="outline"
+                variant="primary"
                 size="sm"
-                className="mt-3"
+                className="mt-3 bg-success border-success text-success-content hover:bg-success/80 hover:border-success/80 hover:shadow-lg"
                 onClick={handleOpenFolder}
               >
                 <FolderOpen className="w-4 h-4 mr-2" />
