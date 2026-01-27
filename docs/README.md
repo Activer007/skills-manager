@@ -29,6 +29,7 @@
 - **[CLAUDE.md](../CLAUDE.md)** - 开发规范和 API 文档
 - **[DESIGN-SYSTEM.md](../DESIGN-SYSTEM.md)** - 设计系统规范
 - **[README.md](../README.md)** - 项目说明和快速开始
+- **[BUTTON_IMPROVEMENTS.md](./BUTTON_IMPROVEMENTS.md)** ⭐ - 按钮组件改进报告（v2.6.1）
 
 ---
 
