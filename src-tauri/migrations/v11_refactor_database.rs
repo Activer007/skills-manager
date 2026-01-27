@@ -1,56 +1,54 @@
-//! Database Migration v11: Repository-Marketplace Unification
-//!
-//! This migration implements the "Repository-Marketplace Unified Architecture" (v2.1)
-//! which establishes a clear separation between repositories (sources) and marketplace skills (discoverable content).
-//!
-//! ## Key Changes:
-//! 1. **Enhanced repositories table**:
-//!    - Add `source_type` ('featured' | 'user') to replace the `featured` boolean
-//!    - Add `priority` (featured=10, user=100) for primary source queries
-//!    - Add `scan_status` ('pending' | 'scanning' | 'success' | 'failed') for scan state tracking
-//!    - Add `etag` for GitHub API caching
-//!
-//! 2. **Rebuild marketplace_skills table**:
-//!    - New ID format: `{repository_id}_{skill_path_hash}`
-//!    - Add `repository_id` foreign key (CASCADE DELETE)
-//!    - Add `skill_path` for uniqueness constraint within repository
-//!    - Add `author` field for namespace deduplication
-//!    - Add `discovered_at` and `synced_at` timestamps
-//!    - Migrate existing data from old table structure
-//!
-//! 3. **Create installed_skills table**:
-//!    - New table to track installed skills with snapshot pattern
-//!    - Add `marketplace_skill_id` foreign key (SET NULL)
-//!    - Add snapshot fields: `original_repository_*` to ensure data independence
-//!    - Initialize data by scanning filesystem
-//!
-//! 4. **Create views for primary source queries**:
-//!    - `v_marketplace_skills_with_source`: Join skills with repository info
-//!    - `v_primary_marketplace_skills`: Primary source query with ROW_NUMBER() CTE
-//!
-//! ## Migration Strategy:
-//! - Step 1: Add new fields to repositories table
-//! - Step 2: Create new marketplace_skills_v11 table structure
-//! - Step 3: Migrate data from old marketplace_skills to new table
-//! - Step 4: Create installed_skills table and scan filesystem
-//! - Step 5: Replace old tables with new ones
-//! - Step 6: Rebuild FTS5 indexes
-//! - Step 7: Create views for optimized queries
-//!
-//! ## Backwards Compatibility:
-//! - Old `featured` field is migrated to `source_type='featured'` with `priority=10`
-//! - Old marketplace_skills table is backed up as `marketplace_skills_v10_backup`
-//! - All existing data is preserved through migration
+// Database Migration v11: Repository-Marketplace Unification
+//
+// This migration implements the "Repository-Marketplace Unified Architecture" (v2.1)
+// which establishes a clear separation between repositories (sources) and marketplace skills (discoverable content).
+//
+// ## Key Changes:
+// 1. **Enhanced repositories table**:
+//    - Add `source_type` ('featured' | 'user') to replace the `featured` boolean
+//    - Add `priority` (featured=10, user=100) for primary source queries
+//    - Add `scan_status` ('pending' | 'scanning' | 'success' | 'failed') for scan state tracking
+//    - Add `etag` for GitHub API caching
+//
+// 2. **Rebuild marketplace_skills table**:
+//    - New ID format: `{repository_id}_{skill_path_hash}`
+//    - Add `repository_id` foreign key (CASCADE DELETE)
+//    - Add `skill_path` for uniqueness constraint within repository
+//    - Add `author` field for namespace deduplication
+//    - Add `discovered_at` and `synced_at` timestamps
+//    - Migrate existing data from old table structure
+//
+// 3. **Create installed_skills table**:
+//    - New table to track installed skills with snapshot pattern
+//    - Add `marketplace_skill_id` foreign key (SET NULL)
+//    - Add snapshot fields: `original_repository_*` to ensure data independence
+//    - Initialize data by scanning filesystem
+//
+// 4. **Create views for primary source queries**:
+//    - `v_marketplace_skills_with_source`: Join skills with repository info
+//    - `v_primary_marketplace_skills`: Primary source query with ROW_NUMBER() CTE
+//
+// ## Migration Strategy:
+// - Step 1: Add new fields to repositories table
+// - Step 2: Create new marketplace_skills_v11 table structure
+// - Step 3: Migrate data from old marketplace_skills to new table
+// - Step 4: Create installed_skills table and scan filesystem
+// - Step 5: Replace old tables with new ones
+// - Step 6: Rebuild FTS5 indexes
+// - Step 7: Create views for optimized queries
+//
+// ## Backwards Compatibility:
+// - Old `featured` field is migrated to `source_type='featured'` with `priority=10`
+// - Old marketplace_skills table is backed up as `marketplace_skills_v10_backup`
+// - All existing data is preserved through migration
 
-use anyhow::Result;
-use rusqlite::Connection;
-use log::{info, warn, error};
+use log::{info, warn};
 
-/// Execute v11 database migration
-///
-/// This function performs a complete refactoring of the database schema to support
-/// the unified repository-marketplace architecture.
-pub fn migrate_v11(conn: &Connection) -> Result<()> {
+// Execute v11 database migration
+//
+// This function performs a complete refactoring of the database schema to support
+// the unified repository-marketplace architecture.
+pub fn migrate_v11(conn: &Connection) -> anyhow::Result<()> {
     info!("Starting database migration v11: Repository-Marketplace Unification");
     let start = std::time::Instant::now();
 
@@ -88,8 +86,8 @@ pub fn migrate_v11(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Step 1: Enhance repositories table with new fields
-fn migrate_v11_enhance_repositories(conn: &Connection) -> Result<()> {
+// Step 1: Enhance repositories table with new fields
+fn migrate_v11_enhance_repositories(conn: &Connection) -> anyhow::Result<()> {
     // Add source_type column (default 'user')
     conn.execute(
         "ALTER TABLE repositories ADD COLUMN source_type TEXT DEFAULT 'user'",
@@ -145,8 +143,8 @@ fn migrate_v11_enhance_repositories(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Step 2: Create new marketplace_skills table structure
-fn migrate_v11_create_marketplace_skills_table(conn: &Connection) -> Result<()> {
+// Step 2: Create new marketplace_skills table structure
+fn migrate_v11_create_marketplace_skills_table(conn: &Connection) -> anyhow::Result<()> {
     conn.execute(
         "CREATE TABLE marketplace_skills_v11 (
             id TEXT PRIMARY KEY,
@@ -195,9 +193,9 @@ fn migrate_v11_create_marketplace_skills_table(conn: &Connection) -> Result<()> 
     Ok(())
 }
 
-/// Step 3: Migrate marketplace_skills data to new table structure
-fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> Result<()> {
-    use sha2::{Sha256, Digest};
+// Step 3: Migrate marketplace_skills data to new table structure
+fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Result<()> {
+    use sha2::Digest;
     use regex::Regex;
 
     // Build regex for extracting repository info from GitHub URLs
@@ -230,7 +228,7 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> Result<()> 
     let mut unknown_repo_count = 0;
 
     for skill_result in skill_iter {
-        let (old_id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, compatibility, data) = skill_result?;
+        let (_old_id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, _compatibility, _data) = skill_result?;
 
         // Extract repository info from github_url
         let (repo_url, repo_name) = match &github_url {
@@ -290,8 +288,8 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> Result<()> 
     Ok(())
 }
 
-/// Step 4: Create installed_skills table and scan filesystem
-fn migrate_v11_create_installed_skills_table(conn: &Connection) -> Result<()> {
+// Step 4: Create installed_skills table and scan filesystem
+fn migrate_v11_create_installed_skills_table(conn: &Connection) -> anyhow::Result<()> {
     // Create installed_skills table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS installed_skills (
@@ -331,8 +329,8 @@ fn migrate_v11_create_installed_skills_table(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Step 5: Replace old tables with new ones
-fn migrate_v11_replace_tables(conn: &Connection) -> Result<()> {
+// Step 5: Replace old tables with new ones
+fn migrate_v11_replace_tables(conn: &Connection) -> anyhow::Result<()> {
     // Backup old marketplace_skills table
     conn.execute(
         "ALTER TABLE marketplace_skills RENAME TO marketplace_skills_v10_backup",
@@ -349,8 +347,8 @@ fn migrate_v11_replace_tables(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Step 6: Rebuild FTS5 full-text search indexes
-fn migrate_v11_rebuild_fts5(conn: &Connection) -> Result<()> {
+// Step 6: Rebuild FTS5 full-text search indexes
+fn migrate_v11_rebuild_fts5(conn: &Connection) -> anyhow::Result<()> {
     // Drop old FTS5 table
     conn.execute("DROP TABLE IF EXISTS marketplace_skills_fts", [])?;
 
@@ -410,8 +408,8 @@ fn migrate_v11_rebuild_fts5(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Step 7: Create views for optimized queries
-fn migrate_v11_create_views(conn: &Connection) -> Result<()> {
+// Step 7: Create views for optimized queries
+fn migrate_v11_create_views(conn: &Connection) -> anyhow::Result<()> {
     // View: marketplace skills with source information
     conn.execute(
         "CREATE VIEW IF NOT EXISTS v_marketplace_skills_with_source AS
@@ -469,7 +467,7 @@ fn migrate_v11_create_views(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Helper: Extract repository URL and name from GitHub URL
+// Helper: Extract repository URL and name from GitHub URL
 fn extract_repository_from_url(re: &regex::Regex, url: &str) -> Option<(String, String)> {
     let caps = re.captures(url)?;
     let owner = caps.get(1)?.as_str();
@@ -481,7 +479,7 @@ fn extract_repository_from_url(re: &regex::Regex, url: &str) -> Option<(String, 
     Some((repo_url, repo_name))
 }
 
-/// Helper: Find or create repository by URL
+// Helper: Find or create repository by URL
 fn find_or_create_repository(conn: &Connection, url: &str, name: &str) -> Result<String> {
     // Try to find existing repository
     let mut stmt = conn.prepare("SELECT id FROM repositories WHERE url = ?1")?;
@@ -505,14 +503,15 @@ fn find_or_create_repository(conn: &Connection, url: &str, name: &str) -> Result
     Ok(new_id)
 }
 
-/// Helper: Calculate SHA-256 hash (first 8 chars)
+// Helper: Calculate SHA-256 hash (first 8 chars)
 fn sha256_hash(input: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(input.as_bytes());
+    use sha2::Digest;
+    let mut hasher = sha2::Sha256::new();
+    Digest::update(&mut hasher, input.as_bytes());
     format!("{:x}", hasher.finalize())[..8].to_string()
 }
 
-/// Helper: Slugify a string for use in paths
+// Helper: Slugify a string for use in paths
 fn slugify(input: &str) -> String {
     input
         .to_lowercase()
