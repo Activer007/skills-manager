@@ -79,20 +79,19 @@ impl MarketplaceService {
         let skill_iter = stmt.query_map(
             params![search_query, max_limit as i64],
             |row| {
-                Ok(MarketplaceSkill {
-                    id: row.get(0)?,
-                    name: row.get(1)?,
-                    author: row.get(2)?,
-                    description: row.get(3)?,
-                    github_url: row.get(4)?,
-                    stars: row.get(5)?,
-                    forks: row.get(6)?,
-                    updated_at: row.get(7)?,
-                    tags: row.get(8)?,
-                    security_score: row.get(9)?,
-                    compatibility: row.get(10)?,
-                    data: None, // data field not needed for search results
-                })
+                Ok(MarketplaceSkill::from_row_legacy(
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                    row.get(6)?,
+                    row.get(7)?,
+                    row.get(8)?,
+                    row.get(9)?,
+                    row.get(10)?,
+                ))
             },
         )?;
 
@@ -150,20 +149,19 @@ impl MarketplaceService {
         let skill_iter = stmt.query_map(
             rusqlite::params_from_iter(param_refs.iter()),
             |row| {
-                Ok(MarketplaceSkill {
-                    id: row.get(0)?,
-                    name: row.get(1)?,
-                    author: row.get(2)?,
-                    description: row.get(3)?,
-                    github_url: row.get(4)?,
-                    stars: row.get(5)?,
-                    forks: row.get(6)?,
-                    updated_at: row.get(7)?,
-                    tags: row.get(8)?,
-                    security_score: row.get(9)?,
-                    compatibility: row.get(10)?,
-                    data: None,
-                })
+                Ok(MarketplaceSkill::from_row_legacy(
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                    row.get(6)?,
+                    row.get(7)?,
+                    row.get(8)?,
+                    row.get(9)?,
+                    row.get(10)?,
+                ))
             }
         )?;
 
@@ -187,20 +185,19 @@ impl MarketplaceService {
         )?;
 
         let result = stmt.query_row(params![id], |row| {
-            Ok(MarketplaceSkill {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                author: row.get(2)?,
-                description: row.get(3)?,
-                github_url: row.get(4)?,
-                stars: row.get(5)?,
-                forks: row.get(6)?,
-                updated_at: row.get(7)?,
-                tags: row.get(8)?,
-                security_score: row.get(9)?,
-                compatibility: row.get(10)?,
-                data: None,
-            })
+            Ok(MarketplaceSkill::from_row_legacy(
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+                row.get(6)?,
+                row.get(7)?,
+                row.get(8)?,
+                row.get(9)?,
+                row.get(10)?,
+            ))
         });
 
         match result {
