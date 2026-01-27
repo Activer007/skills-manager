@@ -6,6 +6,9 @@ use anyhow::Result;
 use once_cell::sync::OnceCell;
 use crate::models::security::SecurityReport;
 
+// Include v11 migration module
+include!("../../migrations/v11_refactor_database.rs");
+
 pub type DbPool = Pool<SqliteConnectionManager>;
 
 /// Global database connection pool.
@@ -53,7 +56,7 @@ fn get_db_path() -> Result<PathBuf> {
 }
 
 /// Current database schema version
-const CURRENT_DB_VERSION: i32 = 10;
+const CURRENT_DB_VERSION: i32 = 11;
 
 /// Run database migrations to ensure schema is up to date.
 /// This function creates a schema_migrations table to track version.
@@ -165,6 +168,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             migrate_v10(conn)?;
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (10, ?)",
+                [chrono::Utc::now().timestamp_millis()],
+            )?;
+        }
+
+        // Migration v11: Repository-Marketplace Unified Architecture
+        if current_version < 11 {
+            migrate_v11(conn)?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (11, ?)",
                 [chrono::Utc::now().timestamp_millis()],
             )?;
         }
