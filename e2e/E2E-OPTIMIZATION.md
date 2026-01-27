@@ -193,8 +193,8 @@ npm run e2e:debug
 ### CI/CD 环境
 
 #### 自动触发
-- Push 到 `master`, `main`, `feature/**`, `fix/**` 分支
-- 创建 Pull Request 到 `master` 或 `main`
+- Push 到 `main`, `feature/**`, `fix/**` 分支
+- 创建 Pull Request 到 `main`
 
 #### 手动触发
 在 GitHub Actions 页面点击 "Run workflow"
