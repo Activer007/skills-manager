@@ -90,6 +90,20 @@ pub struct Repository {
     pub name: String,
     /// Optional description
     pub description: Option<String>,
+
+    // New fields (v2.1)
+    /// Source type: 'featured' | 'user'
+    #[serde(rename = "sourceType")]
+    pub source_type: String,
+    /// Priority for primary source queries (featured=10, user=100)
+    pub priority: i32,
+    /// Scan status: 'pending' | 'scanning' | 'success' | 'failed'
+    #[serde(rename = "scanStatus")]
+    pub scan_status: String,
+    /// GitHub API ETag for caching
+    pub etag: Option<String>,
+
+    // Existing fields
     /// Whether this repository is enabled for scanning
     pub enabled: bool,
     /// Whether to scan subdirectories for skills
@@ -102,8 +116,11 @@ pub struct Repository {
     pub cache_path: Option<String>,
     /// Cached commit SHA for change detection
     pub cached_commit_sha: Option<String>,
-    /// Whether this is a featured repository
+
+    // Legacy field (for backwards compatibility, maps to source_type)
+    #[serde(skip)]
     pub featured: bool,
+
     /// Repository category (official, community, custom)
     pub category: RepositoryCategory,
 }
@@ -116,6 +133,10 @@ impl Repository {
             url,
             name,
             description: None,
+            source_type: "user".to_string(),
+            priority: 100,
+            scan_status: "pending".to_string(),
+            etag: None,
             enabled: true,
             scan_subdirs: false,
             added_at: Utc::now(),
@@ -129,7 +150,7 @@ impl Repository {
 
     /// Create a new featured repository
     pub fn new_featured(url: String, name: String, description: String, category: RepositoryCategory) -> Self {
-        Self {
+        let mut repo = Self {
             id: uuid::Uuid::new_v4().to_string(),
             url,
             name,
@@ -140,8 +161,29 @@ impl Repository {
             last_scanned: None,
             cache_path: None,
             cached_commit_sha: None,
-            featured: true,
             category,
+            featured: true,
+            source_type: "user".to_string(),
+            priority: 100,
+            scan_status: "pending".to_string(),
+            etag: None,
+        };
+
+        // Set featured-specific fields
+        repo.source_type = "featured".to_string();
+        repo.priority = 10;
+
+        repo
+    }
+
+    /// Infer source_type from featured field (for backwards compatibility)
+    pub fn infer_source_type(&mut self) {
+        if self.featured {
+            self.source_type = "featured".to_string();
+            self.priority = 10;
+        } else {
+            self.source_type = "user".to_string();
+            self.priority = 100;
         }
     }
 
@@ -294,6 +336,9 @@ mod tests {
         assert!(repo.enabled);
         assert!(!repo.featured);
         assert_eq!(repo.category, RepositoryCategory::Custom);
+        assert_eq!(repo.source_type, "user");
+        assert_eq!(repo.priority, 100);
+        assert_eq!(repo.scan_status, "pending");
     }
 
     #[test]
@@ -309,5 +354,27 @@ mod tests {
         assert!(repo.scan_subdirs);
         assert_eq!(repo.category, RepositoryCategory::Official);
         assert!(repo.description.is_some());
+        assert_eq!(repo.source_type, "featured");
+        assert_eq!(repo.priority, 10);
+    }
+
+    #[test]
+    fn test_infer_source_type() {
+        let mut repo = Repository::new(
+            "https://github.com/test/repo".to_string(),
+            "test-repo".to_string(),
+        );
+
+        // Test user repository
+        repo.featured = false;
+        repo.infer_source_type();
+        assert_eq!(repo.source_type, "user");
+        assert_eq!(repo.priority, 100);
+
+        // Test featured repository
+        repo.featured = true;
+        repo.infer_source_type();
+        assert_eq!(repo.source_type, "featured");
+        assert_eq!(repo.priority, 10);
     }
 }

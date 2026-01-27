@@ -44,7 +44,7 @@ pub fn initialize_default_repositories() -> Result<bool> {
 
     // Add default repositories
     for (url, name, description, scan_subdirs) in DEFAULT_REPOSITORIES {
-        let repo = Repository {
+        let mut repo = Repository {
             id: uuid::Uuid::new_v4().to_string(),
             url: url.to_string(),
             name: name.to_string(),
@@ -57,6 +57,10 @@ pub fn initialize_default_repositories() -> Result<bool> {
             cached_commit_sha: None,
             featured: true,
             category: RepositoryCategory::Official,
+            source_type: "featured".to_string(),
+            priority: 10,
+            scan_status: "pending".to_string(),
+            etag: None,
         };
 
         match service.add_repository(&repo) {
@@ -125,6 +129,10 @@ pub fn initialize_from_featured_config() -> Result<bool> {
                 cached_commit_sha: None,
                 featured: true,
                 category: repo_category.clone(),
+                source_type: "featured".to_string(),
+                priority: 10,
+                scan_status: "pending".to_string(),
+                etag: None,
             };
 
             match service.add_repository(&repo) {
