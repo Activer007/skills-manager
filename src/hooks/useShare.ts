@@ -312,8 +312,10 @@ export const useShare = (
           file_size?: number;
           error?: string;
         }>('export_skill_package', {
-          skillPath: skill.localPath,
-          outputDir,
+          request: {
+            skillPath: skill.localPath,
+            outputDir,
+          }
         });
 
         const exportRes: ExportResult = {

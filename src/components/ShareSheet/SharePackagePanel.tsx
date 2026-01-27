@@ -37,7 +37,9 @@ export const SharePackagePanel: React.FC<SharePanelProps> = ({
         file_size?: number;
         error?: string;
       }>('export_skill_package', {
-        skillPath: skill.localPath,
+        request: {
+          skillPath: skill.localPath,
+        }
       });
 
       const exportRes: ExportResult = {
