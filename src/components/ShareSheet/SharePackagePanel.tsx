@@ -32,20 +32,24 @@ export const SharePackagePanel: React.FC<SharePanelProps> = ({
     try {
       const result = await invoke<{
         success: boolean;
-        file_path?: string;
-        file_name?: string;
-        file_size?: number;
-        error?: string;
+        message: string;
+        filePath?: string;
       }>('export_skill_package', {
-        skillPath: skill.localPath,
+        request: {
+          skillPath: skill.localPath,
+        }
       });
+
+      const filePath = result.filePath;
+      // Extract filename from path
+      const fileName = filePath ? filePath.split(/[/\\]/).pop() : undefined;
 
       const exportRes: ExportResult = {
         success: result.success,
-        filePath: result.file_path,
-        fileName: result.file_name,
-        fileSize: result.file_size,
-        error: result.error,
+        filePath: filePath,
+        fileName: fileName,
+        fileSize: undefined,
+        error: !result.success ? result.message : undefined,
       };
 
       setExportResult(exportRes);
@@ -75,8 +79,11 @@ export const SharePackagePanel: React.FC<SharePanelProps> = ({
     if (!exportResult?.filePath) return;
 
     try {
-      // 获取目录路径
-      const dirPath = exportResult.filePath.substring(0, exportResult.filePath.lastIndexOf('/'));
+      // 获取目录路径 - 兼容 Windows (\) 和 Unix (/)
+      const path = exportResult.filePath;
+      const lastSlashIndex = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+      const dirPath = lastSlashIndex !== -1 ? path.substring(0, lastSlashIndex) : path;
+
       await invoke('open_url', { url: `file://${dirPath}` });
     } catch (error) {
       console.error('Failed to open folder:', error);
@@ -145,9 +152,9 @@ export const SharePackagePanel: React.FC<SharePanelProps> = ({
                 </p>
               </div>
               <Button
-                variant="outline"
+                variant="primary"
                 size="sm"
-                className="mt-3"
+                className="mt-3 bg-success border-success text-success-content hover:bg-success/80 hover:border-success/80 hover:shadow-lg"
                 onClick={handleOpenFolder}
               >
                 <FolderOpen className="w-4 h-4 mr-2" />

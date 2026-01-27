@@ -307,21 +307,25 @@ export const useShare = (
       try {
         const result = await invoke<{
           success: boolean;
-          file_path?: string;
-          file_name?: string;
-          file_size?: number;
-          error?: string;
+          message: string;
+          filePath?: string;
         }>('export_skill_package', {
-          skillPath: skill.localPath,
-          outputDir,
+          request: {
+            skillPath: skill.localPath,
+            outputDir,
+          }
         });
+
+        const filePath = result.filePath;
+        // Extract filename from path (handle both / and \ separators)
+        const fileName = filePath ? filePath.split(/[/\\]/).pop() : undefined;
 
         const exportRes: ExportResult = {
           success: result.success,
-          filePath: result.file_path,
-          fileName: result.file_name,
-          fileSize: result.file_size,
-          error: result.error,
+          filePath: filePath,
+          fileName: fileName,
+          fileSize: undefined, // Backend doesn't return size
+          error: !result.success ? result.message : undefined,
         };
 
         setExportResult(exportRes);
