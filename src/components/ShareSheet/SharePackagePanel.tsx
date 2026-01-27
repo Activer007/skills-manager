@@ -79,8 +79,11 @@ export const SharePackagePanel: React.FC<SharePanelProps> = ({
     if (!exportResult?.filePath) return;
 
     try {
-      // 获取目录路径
-      const dirPath = exportResult.filePath.substring(0, exportResult.filePath.lastIndexOf('/'));
+      // 获取目录路径 - 兼容 Windows (\) 和 Unix (/)
+      const path = exportResult.filePath;
+      const lastSlashIndex = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+      const dirPath = lastSlashIndex !== -1 ? path.substring(0, lastSlashIndex) : path;
+
       await invoke('open_url', { url: `file://${dirPath}` });
     } catch (error) {
       console.error('Failed to open folder:', error);
