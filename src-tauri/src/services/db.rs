@@ -53,7 +53,7 @@ fn get_db_path() -> Result<PathBuf> {
 }
 
 /// Current database schema version
-const CURRENT_DB_VERSION: i32 = 9;
+const CURRENT_DB_VERSION: i32 = 10;
 
 /// Run database migrations to ensure schema is up to date.
 /// This function creates a schema_migrations table to track version.
@@ -156,6 +156,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             migrate_v9(conn)?;
             conn.execute(
                 "INSERT INTO schema_migrations (version, applied_at) VALUES (9, ?)",
+                [chrono::Utc::now().timestamp_millis()],
+            )?;
+        }
+
+        // Migration v10: Create collections and collection_items tables
+        if current_version < 10 {
+            migrate_v10(conn)?;
+            conn.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (10, ?)",
                 [chrono::Utc::now().timestamp_millis()],
             )?;
         }
@@ -657,5 +666,58 @@ fn migrate_v9(conn: &Connection) -> Result<()> {
     )?;
 
     log::info!("Created marketplace_skills table and FTS optimization");
+    Ok(())
+}
+
+/// Migration v10: Create collections and collection_items tables
+fn migrate_v10(conn: &Connection) -> Result<()> {
+    // Create collections table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS collections (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            author TEXT,
+            icon TEXT,
+            color TEXT,
+            is_public BOOLEAN DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+
+    // Create collection_items table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS collection_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            collection_id TEXT NOT NULL,
+            skill_id TEXT NOT NULL,
+            skill_name TEXT NOT NULL,
+            skill_path TEXT,
+            skill_identifier TEXT,
+            added_at INTEGER NOT NULL,
+            note TEXT,
+            sort_order INTEGER DEFAULT 0,
+            FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
+
+    // Create indexes for better query performance
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_collections_created ON collections(created_at DESC)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_collection_items_coll_id ON collection_items(collection_id)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_collection_items_skill_id ON collection_items(skill_id)",
+        [],
+    )?;
+
+    log::info!("Created collections and collection_items tables");
     Ok(())
 }
