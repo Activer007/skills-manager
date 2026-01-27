@@ -27,12 +27,15 @@ export const CollectionDetail = () => {
   const fetchCollection = async () => {
     if (!id) return;
     try {
-      const data = await invoke<Collection | null>('get_collection', { id });
-      if (data) {
-        setCollection(data);
-        if (data.items) {
-          setItems(data.items);
-        }
+      // 并行调用两个命令
+      const [collection, itemsData] = await Promise.all([
+        invoke<Collection | null>('get_collection', { id }),
+        invoke<CollectionItem[]>('get_collection_items', { id })
+      ]);
+
+      if (collection) {
+        setCollection(collection);
+        setItems(itemsData);  // ✅ 使用 get_collection_items 的返回值
       } else {
         toast.error(isZh ? '合集不存在' : 'Collection not found');
         navigate('/collections');
