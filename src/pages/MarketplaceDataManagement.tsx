@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { invoke } from '@tauri-apps/api/core';
+import { useSkillStore } from '../store/useSkillStore';
 import { toast } from '../store/useToastStore';
 import { Button } from '../components/ui/Button';
-import type { MarketplaceImportResult, MarketplaceStats } from '../types';
 
 /**
  * Marketplace Data Management Page
@@ -15,22 +14,21 @@ import type { MarketplaceImportResult, MarketplaceStats } from '../types';
  */
 const MarketplaceDataManagement = () => {
   const { i18n } = useTranslation();
-  const [isImporting, setIsImporting] = useState(false);
-  const [importResult, setImportResult] = useState<MarketplaceImportResult | null>(null);
-  const [stats, setStats] = useState<MarketplaceStats | null>(null);
+
+  const {
+    isImportingMarketplace: isImporting,
+    marketplaceImportResult: importResult,
+    marketplaceStats: stats,
+    importMarketplaceData,
+    fetchMarketplaceStats,
+    clearMarketplaceData
+  } = useSkillStore();
 
   const handleImport = async () => {
     if (isImporting) return;
 
-    setIsImporting(true);
-    setImportResult(null);
-
     try {
-      const result = await invoke<MarketplaceImportResult>('import_marketplace_from_json', {
-        jsonPath: null, // Use default path
-      });
-
-      setImportResult(result);
+      const result = await importMarketplaceData();
 
       // Show success message
       if (i18n.language === 'zh') {
@@ -38,9 +36,6 @@ const MarketplaceDataManagement = () => {
       } else {
         toast.success(`Import completed! Success: ${result.success_count}, Failed: ${result.error_count}`);
       }
-
-      // Refresh stats
-      await loadStats();
     } catch (error) {
       console.error('Import failed:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -50,17 +45,6 @@ const MarketplaceDataManagement = () => {
       } else {
         toast.error(`Import failed: ${errorMessage}`);
       }
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
-  const loadStats = async () => {
-    try {
-      const statsData = await invoke<MarketplaceStats>('get_marketplace_stats');
-      setStats(statsData);
-    } catch (error) {
-      console.error('Failed to load stats:', error);
     }
   };
 
@@ -76,9 +60,7 @@ const MarketplaceDataManagement = () => {
     }
 
     try {
-      await invoke('clear_marketplace_skills');
-      setStats(null);
-      setImportResult(null);
+      await clearMarketplaceData();
 
       if (i18n.language === 'zh') {
         toast.success('Marketplace 数据已清除');
@@ -98,9 +80,9 @@ const MarketplaceDataManagement = () => {
   };
 
   // Load stats on mount
-  useState(() => {
-    loadStats();
-  });
+  useEffect(() => {
+    fetchMarketplaceStats();
+  }, [fetchMarketplaceStats]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -198,7 +180,7 @@ const MarketplaceDataManagement = () => {
 
           <Button
             variant="outline"
-            onClick={loadStats}
+            onClick={fetchMarketplaceStats}
           >
             {i18n.language === 'zh' ? '刷新统计' : 'Refresh Stats'}
           </Button>
