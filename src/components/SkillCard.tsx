@@ -86,9 +86,8 @@ export const SkillCard = ({
     const [showShareSheet, setShowShareSheet] = useState(false);
     const isZh = i18n.language === 'zh';
 
-    // 处理分享按钮点击 - 打开 ShareSheet
-    const handleShare = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    // 处理分享按钮点击 - 不在这里阻止冒泡，让调用者决定
+    const handleShare = () => {
         if (onShare) {
             onShare();
         } else {
@@ -96,18 +95,15 @@ export const SkillCard = ({
         }
     };
 
-    const handleFork = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleFork = () => {
         onFork?.();
     };
 
-    const handleAddToCollection = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleAddToCollection = () => {
         onAddToCollection?.();
     };
 
-    const handleInstall = async (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleInstall = async () => {
         if (onInstall) {
             setIsLoading(true);
             try {
@@ -278,6 +274,7 @@ export const SkillCard = ({
                                 className="h-8 w-8 p-0 hover:bg-base-200"
                                 onClick={(e) => { e.stopPropagation(); onConfigure?.(); }}
                                 title={isZh ? '设置' : 'Settings'}
+                                data-testid="settings-button"
                              >
                                 <Settings size={16} />
                              </Button>
@@ -285,7 +282,7 @@ export const SkillCard = ({
                                 size="sm"
                                 variant="ghost"
                                 className="h-8 w-8 p-0 hover:bg-base-200"
-                                onClick={handleShare}
+                                onClick={(e) => { e.stopPropagation(); handleShare(); }}
                                 title={isZh ? '分享' : 'Share'}
                                 data-testid="share-button"
                              >
@@ -295,7 +292,7 @@ export const SkillCard = ({
                                 size="sm"
                                 variant="ghost"
                                 className="h-8 w-8 p-0 hover:bg-base-200"
-                                onClick={handleAddToCollection}
+                                onClick={(e) => { e.stopPropagation(); handleAddToCollection(); }}
                                 title={isZh ? '添加到合集' : 'Add to Collection'}
                                 data-testid="add-to-collection-button"
                              >
@@ -305,7 +302,7 @@ export const SkillCard = ({
                                 size="sm"
                                 variant="ghost"
                                 className="h-8 w-8 p-0 hover:bg-base-200"
-                                onClick={handleFork}
+                                onClick={(e) => { e.stopPropagation(); handleFork(); }}
                                 title={isZh ? 'Fork/Remix' : 'Fork/Remix'}
                                 data-testid="fork-button"
                              >
@@ -313,8 +310,8 @@ export const SkillCard = ({
                              </Button>
                              <Button
                                 size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0 text-error hover:bg-error/10"
+                                variant="error"
+                                className="h-8 w-8 p-0"
                                 onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}
                                 title={isZh ? '卸载' : 'Uninstall'}
                                 data-testid="uninstall-button"
@@ -407,7 +404,7 @@ export const SkillCard = ({
                                     size="sm"
                                     variant="ghost"
                                     className="rounded-full h-8 min-h-0 px-3 text-xs"
-                                    onClick={handleAddToCollection}
+                                    onClick={(e) => { e.stopPropagation(); handleAddToCollection(); }}
                                     title={isZh ? '添加到合集' : 'Add to Collection'}
                                     data-testid="add-to-collection-button"
                                 >
@@ -417,7 +414,7 @@ export const SkillCard = ({
                                     size="sm"
                                     variant="ghost"
                                     className="rounded-full h-8 min-h-0 px-3 text-xs"
-                                    onClick={handleFork}
+                                    onClick={(e) => { e.stopPropagation(); handleFork(); }}
                                     title={isZh ? 'Fork/Remix' : 'Fork/Remix'}
                                     data-testid="fork-button"
                                 >
@@ -427,7 +424,7 @@ export const SkillCard = ({
                                     size="sm"
                                     variant="ghost"
                                     className="rounded-full h-8 min-h-0 px-3 text-xs"
-                                    onClick={handleShare}
+                                    onClick={(e) => { e.stopPropagation(); handleShare(); }}
                                     title={isZh ? '分享' : 'Share'}
                                     data-testid="share-button"
                                 >
@@ -439,15 +436,23 @@ export const SkillCard = ({
                             onUninstall ? (
                                 <Button
                                     size="sm"
-                                    variant="ghost"
-                                    className="rounded-full h-8 min-h-0 px-4 text-xs border border-error text-error hover:bg-error/10"
+                                    variant="error"
+                                    className="rounded-full h-8 min-h-0 px-4 text-xs"
                                     onClick={(e) => { e.stopPropagation(); onUninstall?.(); }}
+                                    title={isZh ? '卸载' : 'Uninstall'}
                                     data-testid="uninstall-button"
                                 >
                                     Uninstall
                                 </Button>
                             ) : (
-                                <Button size="sm" variant="outline" className="h-8 min-h-0 text-xs" onClick={(e) => { e.stopPropagation(); onViewDetails?.(); }}>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 min-h-0 text-xs"
+                                    onClick={(e) => { e.stopPropagation(); onViewDetails?.(); }}
+                                    title={isZh ? '查看详情' : 'View details'}
+                                    data-testid="open-button"
+                                >
                                     Open
                                 </Button>
                             )
@@ -456,8 +461,9 @@ export const SkillCard = ({
                                 size="sm"
                                 variant="primary"
                                 className="rounded-full h-8 min-h-0 px-4 text-xs shadow-primary/20 hover:shadow-primary/40 hover:shadow-lg"
-                                onClick={handleInstall}
+                                onClick={(e) => { e.stopPropagation(); handleInstall(); }}
                                 isLoading={isLoading}
+                                title={isZh ? '安装 Skill' : 'Install skill'}
                                 data-testid="install-button"
                             >
                                 Get

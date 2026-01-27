@@ -195,7 +195,13 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
       title={t('importGithubSkill', { defaultValue: i18n.language === 'zh' ? '导入 GitHub Skill' : 'Import GitHub Skill' })}
       footer={
         <>
-          <Button variant="ghost" onClick={onClose} disabled={installMutation.isPending || isInstalling}>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            disabled={installMutation.isPending || isInstalling}
+            title={t('cancel', { defaultValue: i18n.language === 'zh' ? '取消' : 'Cancel' })}
+            data-testid="import-cancel-button"
+          >
             {t('cancel', { defaultValue: i18n.language === 'zh' ? '取消' : 'Cancel' })}
           </Button>
           <Button
@@ -203,6 +209,11 @@ export const ImportSkillModal = ({ isOpen, onClose, initialUrl }: ImportSkillMod
             onClick={handleInstall}
             isLoading={installMutation.isPending}
             disabled={!url || !!error || isInstalling}
+            title={!url || !!error
+              ? (i18n.language === 'zh' ? '请输入有效的 GitHub URL' : 'Please enter a valid GitHub URL')
+              : (i18n.language === 'zh' ? '导入并安装此 Skill' : 'Import and install this skill')
+            }
+            data-testid="import-confirm-button"
           >
             <Download size={16} className="mr-2" />
             {t('importAndInstall', { defaultValue: i18n.language === 'zh' ? '导入并安装' : 'Import & Install' })}

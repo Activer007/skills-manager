@@ -856,16 +856,11 @@ const MySkills = () => {
                       : !isPackagePathValid)
                 }
                 isLoading={importGithubMutation.isPending || importLocalMutation.isPending || importPackageMutation.isPending}
+                title={i18n.language === 'zh' ? '确认导入 Skill' : 'Confirm skill import'}
                 data-testid="import-confirm-button"
               >
-                {(importGithubMutation.isPending || importLocalMutation.isPending || importPackageMutation.isPending) ? (
-                  t('importing')
-                ) : (
-                  <>
-                    <Plus size={18} className="mr-2" />
-                    {i18n.language === 'zh' ? '确认导入' : 'Confirm Import'}
-                  </>
-                )}
+                <Plus size={18} className="mr-2" />
+                {i18n.language === 'zh' ? '确认导入' : 'Confirm Import'}
               </Button>
             </div>
           )
@@ -877,13 +872,14 @@ const MySkills = () => {
               {i18n.language === 'zh' ? '选择导入方式：' : 'Select import method:'}
             </p>
 
-            <button
-              type="button"
-              className="w-full text-left card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
+            <Button
+              variant="outline"
+              className="w-full text-left justify-start h-auto p-4"
               onClick={() => setImportType('github')}
+              title={i18n.language === 'zh' ? '从 GitHub 导入 Skill' : 'Import skill from GitHub'}
               data-testid="import-from-github"
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 w-full">
                 <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
                   <Github size={24} />
                 </div>
@@ -896,15 +892,16 @@ const MySkills = () => {
                   </div>
                 </div>
               </div>
-            </button>
+            </Button>
 
-            <button
-              type="button"
-              className="w-full text-left card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
+            <Button
+              variant="outline"
+              className="w-full text-left justify-start h-auto p-4"
               onClick={() => setImportType('local')}
+              title={i18n.language === 'zh' ? '从本地文件夹导入 Skill' : 'Import skill from local folder'}
               data-testid="import-from-local"
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 w-full">
                 <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
                   <HardDrive size={24} />
                 </div>
@@ -917,15 +914,16 @@ const MySkills = () => {
                   </div>
                 </div>
               </div>
-            </button>
+            </Button>
 
-            <button
-              type="button"
-              className="w-full text-left card bg-slate-50 dark:bg-base-200 hover:bg-slate-100 dark:hover:bg-base-300 cursor-pointer transition-colors p-4 border border-gray-100 dark:border-base-300"
+            <Button
+              variant="outline"
+              className="w-full text-left justify-start h-auto p-4"
               onClick={() => setImportType('package')}
+              title={i18n.language === 'zh' ? '从 Skill 包文件导入' : 'Import from skill package file'}
               data-testid="import-from-package"
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 w-full">
                 <div className="w-12 h-12 rounded-lg bg-white dark:bg-base-100 flex items-center justify-center shrink-0 border border-gray-100 dark:border-base-200">
                   <Package size={24} />
                 </div>
@@ -940,7 +938,7 @@ const MySkills = () => {
                   </div>
                 </div>
               </div>
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="space-y-6">

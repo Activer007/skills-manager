@@ -2,6 +2,7 @@ import { AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
+import { Button } from '../ui/Button';
 
 export type ModalType = 'confirm' | 'success' | 'error' | 'info';
 
@@ -88,31 +89,29 @@ export default function ModalDialog({
 
                     <div className="flex gap-3 w-full">
                         {showCancel && (
-                            <button
-                                className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-base-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-base-300 disabled:opacity-50"
+                            <Button
+                                variant="secondary"
+                                className="flex-1"
                                 onClick={onCancel}
                                 disabled={isLoading}
+                                title={finalCancelText}
+                                data-testid="modal-cancel-button"
                             >
                                 {finalCancelText}
-                            </button>
+                            </Button>
                         )}
                         {onConfirm && (
-                             <button
-                                className={cn(
-                                    "flex-1 px-4 py-2.5 text-white font-medium rounded-xl shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center",
-                                    isDestructive && type === 'confirm'
-                                        ? 'bg-red-500 hover:bg-red-600 focus:ring-red-500 shadow-red-100 dark:shadow-red-900/30'
-                                        : 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500 shadow-blue-100 dark:shadow-blue-900/30'
-                                )}
+                             <Button
+                                variant={isDestructive && type === 'confirm' ? "error" : "primary"}
+                                className="flex-1"
                                 onClick={onConfirm}
+                                isLoading={isLoading}
                                 disabled={isLoading}
+                                title={finalConfirmText}
+                                data-testid="modal-confirm-button"
                             >
-                                {isLoading ? (
-                                    <span className="loading loading-spinner loading-sm"></span>
-                                ) : (
-                                    finalConfirmText
-                                )}
-                            </button>
+                                {finalConfirmText}
+                            </Button>
                         )}
                     </div>
                 </div>
