@@ -44,7 +44,13 @@ fn exec_git_with_timeout(args: &[&str], current_dir: Option<&PathBuf>, timeout_s
     let args_owned: Vec<String> = args.iter().map(|s| s.to_string()).collect();
     let current_dir_owned = current_dir.map(|p| p.clone());
 
-    let handle = std::thread::spawn(move || {
+    // Log the command execution
+    println!("DEBUG: [Git] Executing command: git {} (dir: {:?}, timeout: {}s)",
+             args.join(" "),
+             current_dir,
+             timeout_secs);
+
+    let _handle = std::thread::spawn(move || {
         let mut cmd = Command::new("git");
         cmd.args(&args_owned);
 
@@ -55,9 +61,13 @@ fn exec_git_with_timeout(args: &[&str], current_dir: Option<&PathBuf>, timeout_s
         // Set Git-specific timeouts via environment variables
         // These help Git itself enforce timeouts on network operations
         cmd.env("GIT_HTTP_LOW_SPEED_LIMIT", "1000") // 1 KB/s
-           .env("GIT_HTTP_LOW_SPEED_TIME", &timeout_secs.to_string());
+           .env("GIT_HTTP_LOW_SPEED_TIME", &timeout_secs.to_string())
+           // CRITICAL: Disable interactive prompts to prevent hanging on authentication
+           .env("GIT_TERMINAL_PROMPT", "0");
 
-        cmd.output()
+        // CRITICAL FIX: Execute the command and send result to channel
+        let result = cmd.output().map_err(|e| e.to_string());
+        let _ = sender.send(result);
     });
 
     // Wait for the command with timeout
@@ -113,12 +123,18 @@ impl ImportService {
             let branch = parts.get(6).unwrap_or(&"main");
             let subpath = parts[7..].join("/");
 
+            println!("DEBUG: [ImportService] Processing tree URL. Repo: {}, Branch: {}, Subpath: '{}'", repo_base, branch, subpath);
+
             let temp_dir = install_dir.join(".temp_clone");
             let _ = fs::remove_dir_all(&temp_dir);
 
-            // Clone with timeout
+            // CHANGED: Use standard shallow clone instead of sparse-checkout
+            // Sparse checkout with partial clones (--filter=blob:none) causes hangs on some networks/git versions.
+            // Standard shallow clone (--depth 1) is more robust.
+            println!("DEBUG: [ImportService] Performing standard shallow clone for stability...");
+
             let output = exec_git_with_timeout(
-                &["clone", "--depth", "1", "--filter=blob:none", "--sparse", &repo_base, &temp_dir.to_string_lossy()],
+                &["clone", "--depth", "1", "--branch", branch, &repo_base, &temp_dir.to_string_lossy()],
                 None,
                 GIT_CLONE_TIMEOUT_SECS
             )?;
@@ -128,43 +144,84 @@ impl ImportService {
                 return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&output.stderr)));
             }
 
-            // Sparse checkout with timeout
-            let output = exec_git_with_timeout(
-                &["sparse-checkout", "set", &subpath],
-                Some(&temp_dir),
-                GIT_CHECKOUT_TIMEOUT_SECS
-            );
-            if let Err(e) = output {
-                let _ = fs::remove_dir_all(&temp_dir);
-                return Err(format!("Git sparse-checkout failed: {}", e));
-            }
-
-            // Checkout branch with timeout
-            let output = exec_git_with_timeout(
-                &["checkout", branch],
-                Some(&temp_dir),
-                GIT_CHECKOUT_TIMEOUT_SECS
-            );
-            if let Err(e) = output {
-                let _ = fs::remove_dir_all(&temp_dir);
-                return Err(format!("Git checkout failed: {}", e));
-            }
-
+            println!("DEBUG: [ImportService] Git clone completed successfully");
             detected_branch = Some(branch.to_string());
 
-            let source = temp_dir.join(&subpath);
+            // Move the specific subpath to the target directory
+            let source = if subpath.trim().is_empty() {
+                println!("DEBUG: [ImportService] No subpath specified, using root of cloned repository");
+                temp_dir.clone()
+            } else {
+                println!("DEBUG: [ImportService] Using subpath: '{}'", subpath);
+                temp_dir.join(&subpath)
+            };
+
+            println!("DEBUG: [ImportService] Source path: {}", source.display());
+            println!("DEBUG: [ImportService] Target path: {}", target_dir.display());
+            println!("DEBUG: [ImportService] Checking if source exists...");
+
             if source.exists() {
+                println!("DEBUG: [ImportService] Source exists, preparing to move files");
                 let _ = fs::remove_dir_all(&target_dir);
-                if let Err(e) = fs::rename(&source, &target_dir) {
-                    let _ = fs::remove_dir_all(&temp_dir);
-                    return Err(format!("Failed to move skill: {}", e));
+                println!("DEBUG: [ImportService] Cleaned target directory");
+
+                // If source is the temp_dir itself (root import), we need to move its contents or rename it
+                // But rename might fail if target_dir's parent is different (though here they are related).
+                // Simplest approach: If subpath is empty, we just rename temp_dir to target_dir (after checking/creating parent).
+                // If subpath is not empty, we move that subdir to target_dir.
+
+                if subpath.trim().is_empty() {
+                    println!("DEBUG: [ImportService] Moving entire cloned repository");
+                    // Moving the whole cloned dir
+                    // We need to be careful not to keep .git folder if we want it to look like a "skill" not a repo?
+                    // But standard behavior for "import" usually keeps it clean.
+                    // Let's remove .git to match behavior of "export" usually, but here we just want the files.
+                    let git_dir = source.join(".git");
+                    println!("DEBUG: [ImportService] Removing .git directory: {}", git_dir.display());
+
+                    if let Err(e) = fs::remove_dir_all(&git_dir) {
+                        println!("DEBUG: [ImportService] Warning: Failed to remove .git: {}", e);
+                    }
+
+                    println!("DEBUG: [ImportService] Attempting to rename {} to {}", source.display(), target_dir.display());
+
+                    if let Err(e) = fs::rename(&source, &target_dir) {
+                        println!("DEBUG: [ImportService] Rename failed: {}, trying copy fallback", e);
+                        // If rename fails (e.g. cross-device), copy
+                        if let Err(copy_err) = copy_dir_all(&source, &target_dir) {
+                            println!("DEBUG: [ImportService] Copy also failed: {}", copy_err);
+                             let _ = fs::remove_dir_all(&temp_dir);
+                             return Err(format!("Failed to move skill files: {} / {}", e, copy_err));
+                        }
+                        println!("DEBUG: [ImportService] Copy fallback succeeded");
+                    } else {
+                        println!("DEBUG: [ImportService] Rename succeeded");
+                    }
+                } else {
+                    println!("DEBUG: [ImportService] Moving subdirectory");
+                    // Moving a subdirectory
+                    if let Err(e) = fs::rename(&source, &target_dir) {
+                        println!("DEBUG: [ImportService] Subdirectory rename failed: {}, trying copy", e);
+                        // Fallback to copy
+                         if let Err(copy_err) = copy_dir_all(&source, &target_dir) {
+                            println!("DEBUG: [ImportService] Subdirectory copy also failed: {}", copy_err);
+                             let _ = fs::remove_dir_all(&temp_dir);
+                             return Err(format!("Failed to move skill subfolder: {} / {}", e, copy_err));
+                        }
+                        println!("DEBUG: [ImportService] Subdirectory copy succeeded");
+                    } else {
+                        println!("DEBUG: [ImportService] Subdirectory rename succeeded");
+                    }
                 }
             } else {
+                println!("DEBUG: [ImportService] ERROR: Source path does not exist!");
                  let _ = fs::remove_dir_all(&temp_dir);
                  return Err(format!("Source path '{}' not found in repository", subpath));
             }
 
+            println!("DEBUG: [ImportService] Cleaning up temporary directory...");
             let _ = fs::remove_dir_all(&temp_dir);
+            println!("DEBUG: [ImportService] Temporary directory cleaned up successfully");
         } else {
             let _ = fs::remove_dir_all(&target_dir);
 
@@ -279,14 +336,19 @@ impl ImportService {
     }
 
     pub fn collect_skill_dirs(root: &std::path::Path) -> Vec<PathBuf> {
+        println!("DEBUG: [ImportService] collect_skill_dirs called with root: {}", root.display());
+
         let root_skill = root.join("SKILL.md");
         if root_skill.exists() {
+            println!("DEBUG: [ImportService] Found SKILL.md at root, returning root directory");
             return vec![root.to_path_buf()];
         }
 
+        println!("DEBUG: [ImportService] No SKILL.md at root, walking directory tree (max depth: 6)...");
         let mut skill_dirs = Vec::new();
         let _seen = std::collections::HashSet::<PathBuf>::new(); // Type hint for empty set if we were using it, but original code used one.
 
+        let mut entry_count = 0;
         let walker = WalkDir::new(root)
             .max_depth(6)
             .into_iter()
@@ -296,13 +358,21 @@ impl ImportService {
             });
 
         for entry in walker.flatten() {
+            entry_count += 1;
+            if entry_count % 100 == 0 {
+                println!("DEBUG: [ImportService] Walked {} entries...", entry_count);
+            }
+
             let path = entry.path();
             if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
                 if let Some(parent) = path.parent() {
+                    println!("DEBUG: [ImportService] Found SKILL.md at: {}", parent.display());
                     skill_dirs.push(parent.to_path_buf());
                 }
             }
         }
+
+        println!("DEBUG: [ImportService] Directory walk completed. Total entries: {}, Skills found: {}", entry_count, skill_dirs.len());
         // Deduplicate: if a parent is already a skill, we shouldn't include its children if they are also valid skills?
         // Original implementation didn't have specific dedupe logic beyond finding SKILL.md.
         // Actually, original implementation in `collect_skill_dirs` (lines 1806-1836 in lib.rs) did a check.
@@ -319,38 +389,58 @@ impl ImportService {
     }
 
     pub fn extract_skill_dirs(target_dir: &std::path::Path, install_dir: &std::path::Path) -> Result<Vec<PathBuf>, String> {
+        println!("DEBUG: [ImportService] extract_skill_dirs called");
+        println!("DEBUG: [ImportService] target_dir: {}", target_dir.display());
+        println!("DEBUG: [ImportService] install_dir: {}", install_dir.display());
+
         let skill_dirs = Self::collect_skill_dirs(target_dir);
+        println!("DEBUG: [ImportService] Found {} skill directories", skill_dirs.len());
 
         if skill_dirs.is_empty() || (skill_dirs.len() == 1 && skill_dirs[0] == *target_dir) {
+            println!("DEBUG: [ImportService] Single skill or root import, using target_dir directly");
             return Ok(vec![target_dir.to_path_buf()]);
         }
 
+        println!("DEBUG: [ImportService] Multi-skill repository detected, extracting individual skills");
         let mut installed = Vec::new();
         let mut deferred_moves: Vec<(PathBuf, PathBuf)> = Vec::new();
 
-        for skill_dir in skill_dirs {
+        for (idx, skill_dir) in skill_dirs.iter().enumerate() {
             let name = skill_dir
                 .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("skill")
                 .to_string();
+
+            println!("DEBUG: [ImportService] Processing skill {}/{}: '{}'", idx + 1, skill_dirs.len(), name);
+            println!("DEBUG: [ImportService]   Skill path: {}", skill_dir.display());
+
             let final_dest = install_dir.join(&name);
             let (move_dest, deferred) = if final_dest == *target_dir {
                 let temp_dest = install_dir.join(format!(".temp_extract_{}", name));
+                println!("DEBUG: [ImportService]   Deferred move needed (temp: {})", temp_dest.display());
                 (temp_dest, Some(final_dest))
             } else {
+                println!("DEBUG: [ImportService]   Direct move to: {}", final_dest.display());
                 (final_dest.clone(), None)
             };
 
+            println!("DEBUG: [ImportService]   Removing destination if exists...");
             let _ = fs::remove_dir_all(&move_dest);
 
+            println!("DEBUG: [ImportService]   Moving skill to destination...");
             if let Err(e) = fs::rename(&skill_dir, &move_dest) {
-                copy_dir_all(&skill_dir, &move_dest).map_err(|err| err.to_string())?;
+                println!("DEBUG: [ImportService]   Rename failed: {}, trying copy", e);
+                copy_dir_all(&skill_dir, &move_dest).map_err(|err| {
+                    println!("DEBUG: [ImportService]   Copy failed: {}", err);
+                    err.to_string()
+                })?;
                 let _ = fs::remove_dir_all(&skill_dir);
                 if !move_dest.exists() {
                     return Err(format!("Failed to move skill {}: {}", name, e));
                 }
             }
+            println!("DEBUG: [ImportService]   Skill moved successfully");
 
             if let Some(destination) = deferred {
                 deferred_moves.push((move_dest, destination));
@@ -359,20 +449,26 @@ impl ImportService {
             }
         }
 
+        println!("DEBUG: [ImportService] Removing original target_dir...");
         let _ = fs::remove_dir_all(target_dir);
 
-        for (temp_dest, final_dest) in deferred_moves {
+        println!("DEBUG: [ImportService] Processing {} deferred moves...", deferred_moves.len());
+        for (idx, (temp_dest, final_dest)) in deferred_moves.iter().enumerate() {
+            println!("DEBUG: [ImportService] Deferred move {}/{}: {} -> {}", idx + 1, deferred_moves.len(), temp_dest.display(), final_dest.display());
             let _ = fs::remove_dir_all(&final_dest);
             if let Err(e) = fs::rename(&temp_dest, &final_dest) {
+                println!("DEBUG: [ImportService] Deferred rename failed: {}, trying copy", e);
                 copy_dir_all(&temp_dest, &final_dest).map_err(|err| err.to_string())?;
                 let _ = fs::remove_dir_all(&temp_dest);
                 if !final_dest.exists() {
                     return Err(format!("Failed to finalize move: {}", e));
                 }
             }
-            installed.push(final_dest);
+            installed.push(final_dest.clone());
+            println!("DEBUG: [ImportService] Deferred move completed");
         }
 
+        println!("DEBUG: [ImportService] extract_skill_dirs completed, extracted {} skills", installed.len());
         Ok(installed)
     }
 }

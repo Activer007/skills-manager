@@ -34,7 +34,13 @@ fn process_imported_skills(
     progress_channel: Option<&Channel<ProgressEvent>>,
     task_id: Option<&String>,
 ) -> Result<ImportOutcome, String> {
+    println!("DEBUG: [process_imported_skills] Starting import processing");
+    println!("DEBUG: [process_imported_skills] install_dir: {}", install_dir.display());
+    println!("DEBUG: [process_imported_skills] target_dir: {}", target_dir.display());
+    println!("DEBUG: [process_imported_skills] skip_security_check: {}", skip_security_check);
+
     let report = |stage: ProgressStage, msg: &str, pct: u8| {
+        println!("DEBUG: [process_imported_skills] Progress: {:?} - {}% - {}", stage, pct, msg);
         if let (Some(ch), Some(tid)) = (progress_channel, task_id) {
             let _ = ch.send(ProgressEvent::new(tid, stage, msg, pct));
         }
@@ -43,16 +49,23 @@ fn process_imported_skills(
     report(ProgressStage::Preparing, "Analyzing repository structure...", 30);
 
     let skill_subpaths = if let Some(info) = github_info {
+        println!("DEBUG: [process_imported_skills] Building skill subpath map, base_subpath: '{}'", info.base_subpath);
         ImportService::build_skill_subpath_map(target_dir, &info.base_subpath)
     } else {
+        println!("DEBUG: [process_imported_skills] No GitHub info, using empty subpath map");
         std::collections::HashMap::new()
     };
 
     report(ProgressStage::Installing, "Extracting skills...", 40);
 
+    println!("DEBUG: [process_imported_skills] Calling extract_skill_dirs...");
     let installed_dirs = match ImportService::extract_skill_dirs(target_dir, install_dir) {
-        Ok(dirs) => dirs,
+        Ok(dirs) => {
+            println!("DEBUG: [process_imported_skills] extract_skill_dirs succeeded, found {} skill directories", dirs.len());
+            dirs
+        },
         Err(e) => {
+            println!("DEBUG: [process_imported_skills] extract_skill_dirs failed: {}", e);
             return Ok(ImportOutcome {
                 result: ImportResult {
                     success: false,
@@ -71,9 +84,11 @@ fn process_imported_skills(
     let mut warnings = Vec::new();
 
     let total_skills = installed_dirs.len();
+    println!("DEBUG: [process_imported_skills] Total skills to process: {}", total_skills);
     report(ProgressStage::Scanning, &format!("Scanning {} skills...", total_skills), 50);
 
     if !skip_security_check {
+        println!("DEBUG: [process_imported_skills] Starting security scanning...");
         use crate::security::{SecurityScanner, ScanMode};
         use crate::services::whitelist_service::WhitelistService;
 
@@ -82,6 +97,8 @@ fn process_imported_skills(
             .as_ref()
             .and_then(|service| service.get_whitelisted_rules().ok())
             .unwrap_or_default();
+
+        println!("DEBUG: [process_imported_skills] Whitelisted rules count: {}", whitelisted_rules.len());
 
         let scanner = SecurityScanner::new();
         let scan_mode = ScanMode::Standard;
@@ -93,6 +110,8 @@ fn process_imported_skills(
                 .unwrap_or("skill")
                 .to_string();
 
+            println!("DEBUG: [process_imported_skills] Scanning skill {}/{}: {}", idx + 1, total_skills, skill_name);
+
             let progress_pct = 50 + ((idx as f32 / total_skills as f32) * 40.0) as u8;
             report(ProgressStage::Scanning, &format!("Scanning {}...", skill_name), progress_pct);
 
@@ -102,13 +121,17 @@ fn process_imported_skills(
                 .unwrap_or(false);
 
             if is_whitelisted {
+                println!("DEBUG: [process_imported_skills]   Skill '{}' is whitelisted, skipping scan", skill_name);
                 installed.push((skill_name, dir.clone()));
                 continue;
             }
 
+            println!("DEBUG: [process_imported_skills]   Calling scanner.scan_directory...");
             match scanner.scan_directory(&dir.to_string_lossy(), &skill_name, "en", scan_mode, &whitelisted_rules) {
                 Ok(report) => {
+                    println!("DEBUG: [process_imported_skills]   Scan completed for '{}': score={}, blocked={}", skill_name, report.score, report.blocked);
                     if report.blocked {
+                        println!("DEBUG: [process_imported_skills]   Removing blocked skill directory");
                         if let Err(e) = fs::remove_dir_all(dir) {
                             eprintln!("Failed to remove blocked skill directory {}: {}", dir.display(), e);
                         }
@@ -122,11 +145,14 @@ fn process_imported_skills(
                     installed.push((skill_name, dir.clone()));
                 }
                 Err(e) => {
+                    println!("DEBUG: [process_imported_skills]   Security scan failed for '{}': {}", skill_name, e);
                     eprintln!("Security scan failed for {}: {}", skill_name, e);
                 }
             }
         }
+        println!("DEBUG: [process_imported_skills] Security scanning completed");
     } else {
+        println!("DEBUG: [process_imported_skills] Skipping security check");
         for dir in installed_dirs.iter() {
             let skill_name = dir
                 .file_name()
@@ -139,12 +165,15 @@ fn process_imported_skills(
 
     report(ProgressStage::Finalizing, "Finalizing installation...", 90);
 
+    println!("DEBUG: [process_imported_skills] Installed: {}, Blocked: {}, Warnings: {}", installed.len(), blocked.len(), warnings.len());
+
     if installed.is_empty() {
         let message = if blocked.is_empty() {
             "No SKILL.md found in the imported repository".to_string()
         } else {
             format!("Security check blocked installation. Blocked skills: {}", blocked.join(", "))
         };
+        println!("DEBUG: [process_imported_skills] No skills installed, returning error: {}", message);
         return Ok(ImportOutcome {
             result: ImportResult {
                 success: false,
@@ -170,6 +199,7 @@ fn process_imported_skills(
         message = format!("{}; warnings: low security score for {}", message, warnings.join(", "));
     }
 
+    println!("DEBUG: [process_imported_skills] Building origin records...");
     let mut origins = Vec::new();
     let first_skill = installed.first().map(|(n, p)| (n.clone(), p.clone()));
     let installed_at = now_millis();
@@ -214,6 +244,7 @@ fn process_imported_skills(
         }
     }
 
+    println!("DEBUG: [process_imported_skills] Import processing completed successfully");
     Ok(ImportOutcome {
         result: ImportResult {
             success: true,
