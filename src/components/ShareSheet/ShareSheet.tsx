@@ -4,6 +4,7 @@ import { Share2, Link2, FileText, ImageIcon, Package, AlertTriangle, Code } from
 import type { ShareSheetProps, SharePanelType } from '../../types/share';
 import { useShare } from '../../hooks/useShare';
 import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import { ShareTextPanel } from './ShareTextPanel';
 import { ShareImagePanel } from './ShareImagePanel';
@@ -157,10 +158,11 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
       {/* 分享选项卡片 */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         {shareOptions.map((option) => (
-          <button
+          <Button
             key={option.type}
+            variant="outline"
             className={cn(
-              'p-4 rounded-lg border-2 text-left transition-all',
+              'p-4 h-auto text-left justify-start transition-all',
               'hover:border-primary hover:bg-primary/5',
               activePanel === option.type
                 ? 'border-primary bg-primary/10'
@@ -175,6 +177,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
                 setActivePanel(option.type as SharePanelType);
               }
             }}
+            title={option.description}
             data-testid={
               // 向后兼容：为text/image/package面板添加tab别名
               option.type === 'text' ? 'share-text-tab' :
@@ -184,7 +187,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
               `share-option-${option.type}`
             }
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-full">
               <div className={cn(
                 'p-2 rounded-lg',
                 activePanel === option.type
@@ -193,7 +196,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
               )}>
                 {option.icon}
               </div>
-              <div>
+              <div className="flex-1">
                 <div className="font-medium flex items-center gap-2">
                   {option.label}
                   {option.type === 'link' && linkCopied && (
@@ -203,7 +206,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
                 <div className="text-xs text-base-content/60">{option.description}</div>
               </div>
             </div>
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -219,20 +222,23 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
               className="text-sm text-base-content/70 truncate flex-1 bg-transparent border-none outline-none"
               data-testid="share-link-input"
             />
-            <button
+            <Button
+              size="sm"
+              variant={linkCopied ? "ghost" : "primary"}
               className={cn(
-                'text-xs px-2 py-1 rounded',
+                'text-xs px-2 py-1 h-auto',
                 linkCopied
-                  ? 'bg-success/20 text-success'
-                  : 'bg-primary/20 text-primary hover:bg-primary/30'
+                  ? 'bg-success/20 text-success hover:bg-success/30'
+                  : 'bg-primary/20 hover:bg-primary/30'
               )}
               onClick={copyLink}
+              title={locale === 'zh' ? '复制链接' : 'Copy link'}
               data-testid="copy-link-button"
             >
               {linkCopied
                 ? (locale === 'zh' ? '已复制' : 'Copied')
                 : (locale === 'zh' ? '复制' : 'Copy')}
-            </button>
+            </Button>
           </div>
         </div>
       )}

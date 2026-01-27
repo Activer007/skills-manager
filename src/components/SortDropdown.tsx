@@ -58,6 +58,10 @@ export const SortDropdown = ({ value, onChange }: SortDropdownProps) => {
         variant="outline"
         className="flex items-center gap-2 min-w-[160px] justify-between bg-white dark:bg-base-100"
         onClick={() => setIsOpen(!isOpen)}
+        title={i18n.language === 'zh' ? '选择排序方式' : 'Select sort option'}
+        data-testid="sort-dropdown-button"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
       >
         <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
           {selectedOption.icon}
@@ -66,7 +70,11 @@ export const SortDropdown = ({ value, onChange }: SortDropdownProps) => {
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-base-100 rounded-xl shadow-xl border border-gray-100 dark:border-base-300 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div
+          className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-base-100 rounded-xl shadow-xl border border-gray-100 dark:border-base-300 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+          role="listbox"
+          data-testid="sort-dropdown-menu"
+        >
           <div className="p-1">
             {options.map((option) => (
               <button
@@ -81,6 +89,10 @@ export const SortDropdown = ({ value, onChange }: SortDropdownProps) => {
                   onChange(option.value);
                   setIsOpen(false);
                 }}
+                title={option.label}
+                role="option"
+                aria-selected={value === option.value}
+                data-testid={`sort-option-${option.value}`}
               >
                 <span className={cn(
                     "flex items-center justify-center w-5 h-5",

@@ -91,6 +91,8 @@ export const FilterPanel = ({
           <button
             onClick={onReset}
             className="text-xs text-slate-500 hover:text-primary flex items-center gap-1 transition-colors"
+            title={i18n.language === 'zh' ? '重置所有筛选' : 'Reset all filters'}
+            data-testid="reset-filters-button"
           >
             <X size={12} />
             {i18n.language === 'zh' ? '重置' : 'Reset'}
@@ -104,7 +106,7 @@ export const FilterPanel = ({
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
             {i18n.language === 'zh' ? '安全等级' : 'Security Level'}
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label={i18n.language === 'zh' ? '安全等级筛选' : 'Security level filter'}>
             {securityOptions.map((option) => (
               <button
                 key={option.value}
@@ -115,6 +117,9 @@ export const FilterPanel = ({
                     ? "bg-primary/10 border-primary/20 text-primary"
                     : "bg-slate-50 dark:bg-base-200 border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-base-300"
                 )}
+                title={option.label}
+                aria-pressed={securityFilter === option.value}
+                data-testid={`security-filter-${option.value}`}
               >
                 {option.icon}
                 {option.label}
@@ -128,7 +133,7 @@ export const FilterPanel = ({
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
             {i18n.language === 'zh' ? '兼容性' : 'Compatibility'}
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label={i18n.language === 'zh' ? '兼容性筛选' : 'Compatibility filter'}>
             {compatibilityOptions.map((option) => (
               <button
                 key={option.value}
@@ -139,6 +144,9 @@ export const FilterPanel = ({
                     ? "bg-primary/10 border-primary/20 text-primary"
                     : "bg-slate-50 dark:bg-base-200 border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-base-300"
                 )}
+                title={option.label}
+                aria-pressed={compatibilityFilter === option.value}
+                data-testid={`compatibility-filter-${option.value}`}
               >
                 {option.icon}
                 {option.label}

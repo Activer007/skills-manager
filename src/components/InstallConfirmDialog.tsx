@@ -120,7 +120,13 @@ export const InstallConfirmDialog = ({
       size="md"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose} disabled={isInstalling}>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            disabled={isInstalling}
+            title={i18n.language === 'zh' ? '取消安装' : 'Cancel installation'}
+            data-testid="install-cancel-button"
+          >
             {i18n.language === 'zh' ? '取消' : 'Cancel'}
           </Button>
           <Button
@@ -128,6 +134,11 @@ export const InstallConfirmDialog = ({
             onClick={handleConfirm}
             isLoading={isInstalling}
             disabled={skill.securityLevel === 'blocked' || (target === 'project' && !selectedProject)}
+            title={skill.securityLevel === 'blocked'
+              ? (i18n.language === 'zh' ? '此 Skill 已被阻止，无法安装' : 'This skill is blocked and cannot be installed')
+              : (i18n.language === 'zh' ? '确认安装 Skill' : 'Confirm skill installation')
+            }
+            data-testid="install-confirm-button"
           >
             {i18n.language === 'zh' ? '确认安装' : 'Confirm Install'}
           </Button>
