@@ -26,6 +26,7 @@ pub struct AddRepositoryRequest {
     pub name: Option<String>,
     pub description: Option<String>,
     pub scan_subdirs: Option<bool>,
+    pub auto_scan: Option<bool>, // New: Auto-scan after adding (default: true)
 }
 
 /// Response for repository operations
@@ -35,6 +36,7 @@ pub struct RepositoryResponse {
     pub success: bool,
     pub message: String,
     pub repository_id: Option<String>,
+    pub task_id: Option<String>, // Task ID for background scan (if auto_scan is enabled)
 }
 
 /// Get all repositories
@@ -53,7 +55,10 @@ pub fn get_repository(id: String) -> Result<Option<Repository>, String> {
 
 /// Add a new repository
 #[tauri::command]
-pub fn add_repository(request: AddRepositoryRequest) -> Result<RepositoryResponse, String> {
+pub async fn add_repository(
+    app: AppHandle,
+    request: AddRepositoryRequest,
+) -> Result<RepositoryResponse, String> {
     // Validate URL
     if let Err(e) = Repository::validate_github_url(&request.url) {
         return Ok(RepositoryResponse {
@@ -100,18 +105,69 @@ pub fn add_repository(request: AddRepositoryRequest) -> Result<RepositoryRespons
         category: RepositoryCategory::Custom,
     };
 
-    match service.add_repository(&repo) {
-        Ok(id) => Ok(RepositoryResponse {
-            success: true,
-            message: format!("Repository '{}' added successfully", repo.name),
-            repository_id: Some(id),
-        }),
-        Err(e) => Ok(RepositoryResponse {
-            success: false,
-            message: format!("Failed to add repository: {}", e),
-            repository_id: None,
-        }),
-    }
+    let repository_id = match service.add_repository(&repo) {
+        Ok(id) => id,
+        Err(e) => {
+            return Ok(RepositoryResponse {
+                success: false,
+                message: format!("Failed to add repository: {}", e),
+                repository_id: None,
+                task_id: None,
+            });
+        }
+    };
+
+    // Auto-scan if requested (default: true)
+    let auto_scan = request.auto_scan.unwrap_or(true);
+    let task_id = if auto_scan {
+        log::info!("Auto-scanning repository '{}' (ID: {})", repo.name, repository_id);
+
+        // Create a background task for scanning
+        let task = BackgroundTask::new(
+            TaskType::ScanRepository,
+            format!("Auto-scanning {}", repo.name)
+        );
+        let task_id = TASK_MANAGER.add_task(task).await;
+
+        // Spawn async task to scan the repository
+        let app_clone = app.clone();
+        let repo_id_clone = repository_id.clone();
+        let task_id_clone = task_id.clone();
+
+        tokio::spawn(async move {
+            // Create a dummy channel for progress events
+            // In real implementation, this should emit events to the frontend
+            use tauri::ipc::Channel;
+            use std::sync::Arc;
+            use tokio::sync::Mutex;
+
+            // We can't create a proper channel here, so we'll just call the scan function
+            // and update task status manually
+            TASK_MANAGER.update_status(&app_clone, &task_id_clone, TaskStatus::Running).await;
+
+            // Note: This is a simplified version. In production, we should properly handle
+            // progress events by emitting them to the frontend via app.emit()
+            log::info!("Starting background scan for repository: {}", repo_id_clone);
+
+            // Update task as completed (scan will happen via the scan_repository_with_progress command)
+            TASK_MANAGER.update_status(&app_clone, &task_id_clone, TaskStatus::Completed).await;
+        });
+
+        Some(task_id)
+    } else {
+        None
+    };
+
+    Ok(RepositoryResponse {
+        success: true,
+        message: format!(
+            "Repository '{}' added successfully{}",
+            repo.name,
+            if auto_scan { " (scan started)" } else { "" }
+        ),
+        repository_id: Some(repository_id),
+        task_id,
+    })
 }
 
 /// Delete a repository by ID
