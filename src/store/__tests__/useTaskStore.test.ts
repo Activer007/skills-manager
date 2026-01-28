@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTaskStore } from '../useTaskStore';
-import { Task, TaskStatus, TaskType } from '../../types/task';
+import { TaskStatus } from '../../types/task';
+import type { Task, TaskType } from '../../types/task';
 
 describe('useTaskStore', () => {
   beforeEach(() => {

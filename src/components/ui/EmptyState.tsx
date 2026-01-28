@@ -14,7 +14,7 @@ interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
     onClick: () => void;
     icon?: React.ReactNode;
     variant?: 'primary' | 'secondary' | 'outline';
-  };
+  } | React.ReactNode;
   variant?: 'centered' | 'minimal';
   size?: 'sm' | 'md' | 'lg';
 }
@@ -101,22 +101,24 @@ export const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
 
           {/* Action Button */}
           {action && (
-            <button
-              onClick={action.onClick}
-              className={cn(
-                'mt-6 inline-flex items-center gap-2',
-                'px-4 py-2 rounded-lg text-sm font-medium',
-                'transition-all duration-normal',
-                'focus:outline-none focus:ring-2 focus:ring-primary/20',
-                // Variant styles
-                action.variant === 'primary' && 'bg-primary text-primary-content hover:bg-primary-hover shadow-sm hover:shadow-md',
-                action.variant === 'secondary' && 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700',
-                (!action.variant || action.variant === 'outline') && 'border border-gray-200 dark:border-base-300 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-base-200'
-              )}
-            >
-              {action.icon}
-              {action.label}
-            </button>
+            React.isValidElement(action) ? action : (
+              <button
+                onClick={(action as any).onClick}
+                className={cn(
+                  'mt-6 inline-flex items-center gap-2',
+                  'px-4 py-2 rounded-lg text-sm font-medium',
+                  'transition-all duration-normal',
+                  'focus:outline-none focus:ring-2 focus:ring-primary/20',
+                  // Variant styles
+                  (action as any).variant === 'primary' && 'bg-primary text-primary-content hover:bg-primary-hover shadow-sm hover:shadow-md',
+                  (action as any).variant === 'secondary' && 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700',
+                  (!(action as any).variant || (action as any).variant === 'outline') && 'border border-gray-200 dark:border-base-300 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-base-200'
+                )}
+              >
+                {(action as any).icon}
+                {(action as any).label}
+              </button>
+            )
           )}
         </div>
       );
@@ -154,22 +156,24 @@ export const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
 
         {/* Action Button */}
         {action && (
-          <button
-            onClick={action.onClick}
-            className={cn(
-              'mt-6 inline-flex items-center gap-2',
-              'px-4 py-2 rounded-lg text-sm font-medium',
-              'transition-all duration-normal',
-              'focus:outline-none focus:ring-2 focus:ring-primary/20',
-              // Variant styles
-              action.variant === 'primary' && 'bg-primary text-primary-content hover:bg-primary-hover shadow-sm hover:shadow-md',
-              action.variant === 'secondary' && 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700',
-              (!action.variant || action.variant === 'outline') && 'border border-gray-200 dark:border-base-300 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-base-200'
-            )}
-          >
-            {action.icon}
-            {action.label}
-          </button>
+          React.isValidElement(action) ? action : (
+            <button
+              onClick={(action as any).onClick}
+              className={cn(
+                'mt-6 inline-flex items-center gap-2',
+                'px-4 py-2 rounded-lg text-sm font-medium',
+                'transition-all duration-normal',
+                'focus:outline-none focus:ring-2 focus:ring-primary/20',
+                // Variant styles
+                (action as any).variant === 'primary' && 'bg-primary text-primary-content hover:bg-primary-hover shadow-sm hover:shadow-md',
+                (action as any).variant === 'secondary' && 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700',
+                (!(action as any).variant || (action as any).variant === 'outline') && 'border border-gray-200 dark:border-base-300 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-base-200'
+              )}
+            >
+              {(action as any).icon}
+              {(action as any).label}
+            </button>
+          )
         )}
       </div>
     );

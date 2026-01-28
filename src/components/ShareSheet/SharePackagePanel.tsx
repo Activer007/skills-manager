@@ -3,7 +3,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { Package, Download, FolderOpen, Loader2, CheckCircle, AlertCircle, FileArchive } from 'lucide-react';
 import type { SharePanelProps, ExportResult, ExportStatus } from '../../types/share';
 import { Button } from '../ui/Button';
-import { cn } from '../../utils/cn';
 import { toast } from '../../store/useToastStore';
 
 /**
@@ -58,11 +57,11 @@ export const SharePackagePanel: React.FC<SharePanelProps> = ({
       if (result.success) {
         toast.success(
           locale === 'zh'
-            ? `已导出到 ${result.file_name}`
-            : `Exported to ${result.file_name}`
+            ? `已导出到 ${fileName}`
+            : `Exported to ${fileName}`
         );
       } else {
-        toast.error(result.error || (locale === 'zh' ? '导出失败' : 'Export failed'));
+        toast.error(result.message || (locale === 'zh' ? '导出失败' : 'Export failed'));
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -186,7 +185,6 @@ export const SharePackagePanel: React.FC<SharePanelProps> = ({
         <div className="flex justify-end mt-4">
           <Button
             onClick={handleExport}
-            disabled={exportStatus === 'exporting'}
             data-testid="export-package"
           >
             <Download className="w-4 h-4 mr-2" />

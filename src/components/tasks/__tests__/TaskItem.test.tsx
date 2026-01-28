@@ -1,8 +1,8 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TaskItem } from '../TaskItem';
-import { Task, TaskStatus, TaskType } from '../../../types/task';
+import { TaskStatus } from '../../../types/task';
+import type { Task, TaskType } from '../../../types/task';
 import { invoke } from '@tauri-apps/api/core';
 
 // Mock tauri invoke

@@ -453,12 +453,12 @@ const MySkills = () => {
       // Determine derivedFrom URL (priority: githubUrl > localPath)
       const derivedFrom = skillToFork.githubUrl || skillToFork.localPath;
 
-      const result: ImportResult = await forkSkillMutation.mutateAsync({
+      const result = await forkSkillMutation.mutateAsync({
         originalSkillPath: skillToFork.localPath,
         newSkillName: newName,
         forkType,
         derivedFromUrl: derivedFrom,
-      });
+      }) as unknown as ImportResult;
 
       if (result.success) {
         toast.success(i18n.language === 'zh'
