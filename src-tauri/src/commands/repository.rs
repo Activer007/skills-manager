@@ -368,10 +368,69 @@ pub async fn scan_repository_with_progress(
 
             let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Scanning, "Scanning for skills...", 50));
 
+            // Scan for SKILL.md files in the repository
+            use crate::analyzer::skill_document::SkillDocument;
+            use crate::services::repository_service::DiscoveredSkill;
+            use walkdir::WalkDir;
+
+            let mut discovered_skills: Vec<DiscoveredSkill> = Vec::new();
+            let max_depth = 6; // Same as SKILL_SCAN_DEPTH
+
+            for entry in WalkDir::new(&repo_dir).max_depth(max_depth).into_iter().flatten() {
+                if check_cancelled() { return Ok(()); }
+
+                let path = entry.path();
+                if path.file_name().map(|n| n == "SKILL.md").unwrap_or(false) {
+                    // Parse SKILL.md file
+                    if let Ok(doc) = SkillDocument::from_file(path) {
+                        let skill_name = if !doc.metadata.name.is_empty() {
+                            doc.metadata.name.clone()
+                        } else {
+                            path.parent()
+                                .and_then(|p| p.file_name())
+                                .map(|n| n.to_string_lossy().to_string())
+                                .unwrap_or_else(|| "unknown".to_string())
+                        };
+
+                        // Calculate relative path from repo root
+                        let relative_path = path.parent()
+                            .and_then(|p| p.strip_prefix(&repo_dir).ok())
+                            .map(|p| p.to_string_lossy().to_string())
+                            .unwrap_or_else(|| ".".to_string());
+
+                        discovered_skills.push(DiscoveredSkill {
+                            name: skill_name,
+                            description: doc.metadata.description.clone(),
+                            author: doc.metadata.author.clone(),
+                            version: doc.metadata.version.clone(),
+                            path: relative_path,
+                            tags: doc.metadata.tags.clone(),
+                        });
+                    }
+                }
+            }
+
+            let _ = channel.send(ProgressEvent::new(
+                &task_id_for_blocking,
+                ProgressStage::Syncing,
+                &format!("Syncing {} skills to marketplace...", discovered_skills.len()),
+                70
+            ));
+
+            // Sync discovered skills to marketplace
+            let service = RepositoryService::new();
+            let sync_result = service.sync_skills_to_marketplace(&repo_id_clone, discovered_skills)
+                .map_err(|e| format!("Failed to sync skills to marketplace: {}", e))?;
+
+            log::info!(
+                "Repository scan completed: {} skills found, {} synced, {} failed",
+                sync_result.total_found,
+                sync_result.synced_count,
+                sync_result.failed_count
+            );
+
             let _ = channel.send(ProgressEvent::new(&task_id_for_blocking, ProgressStage::Finalizing, "Updating database...", 90));
 
-            // Update DB
-            let service = RepositoryService::new();
             // Get HEAD commit
             let output = Command::new("git")
                 .current_dir(&repo_dir)
@@ -389,9 +448,6 @@ pub async fn scan_repository_with_progress(
             ) {
                 return Err(format!("Failed to update database: {}", e));
             }
-
-            // Also update the scan queue if there was a pending task there?
-            // For now, we just update the repository table.
 
             Ok(())
         }).await;

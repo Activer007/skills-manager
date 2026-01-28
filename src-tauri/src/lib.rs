@@ -7,6 +7,7 @@ use crate::services::config_service::ConfigService;
 // Import modules
 pub mod analyzer;
 pub mod commands;
+pub mod errors;
 pub mod i18n;
 pub mod models;
 pub mod constants;

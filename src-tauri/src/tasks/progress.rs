@@ -6,6 +6,7 @@ pub enum ProgressStage {
     Preparing,
     Downloading,
     Scanning,
+    Syncing,      // New: Syncing to marketplace
     Installing,
     Finalizing,
     Completed,
