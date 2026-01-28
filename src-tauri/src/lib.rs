@@ -128,6 +128,7 @@ pub fn run() {
             commands::repository::refresh_featured_repositories,
             commands::repository::get_unscanned_repositories,
             commands::repository::get_repository_stats,
+            commands::repository::scan_repository_with_progress,  // ✅ 新增：扫描仓库命令
 
             // Analyzer commands
             commands::analyzer::analyze_skill_quality,
@@ -159,6 +160,7 @@ pub fn run() {
             // Marketplace commands
             commands::marketplace::search_marketplace_skills,
             commands::marketplace::list_marketplace_skills,
+            commands::marketplace::list_marketplace_skills_by_source,  // ✅ 新增：按来源筛选市场 Skills
             commands::marketplace::get_marketplace_skill,
             commands::marketplace::upsert_marketplace_skill,
             commands::marketplace::delete_marketplace_skill,
