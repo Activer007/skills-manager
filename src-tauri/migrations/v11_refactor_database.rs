@@ -270,8 +270,8 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
             github_url.as_deref()
         );
 
-        // Timestamps
-        let now = chrono::Utc::now().timestamp();
+        // Timestamps (统一使用毫秒时间戳)
+        let now = chrono::Utc::now().timestamp_millis();
         let discovered_at = updated_at;
         let synced_at = now;
 
