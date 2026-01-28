@@ -121,6 +121,7 @@ export interface AddRepositoryPayload {
   name?: string;
   description?: string;
   scanSubdirs?: boolean;
+  autoScan?: boolean; // ✅ 新增：是否自动扫描（默认 true）
 }
 
 // 对应 Rust 的 RepositoryResponse
@@ -128,6 +129,52 @@ export interface RepositoryResponse {
   success: boolean;
   message: string;
   repositoryId?: string;
+  taskId?: string; // ✅ 新增：后台扫描任务 ID（如果启用了 autoScan）
+}
+
+// ✅ 新增：删除仓库的详细结果
+export interface DeleteRepositoryResult {
+  success: boolean;
+  message: string;
+  repositoryId?: string;
+  deletedSkillsCount: number;
+  retainedInstalledSkillsCount: number;
+}
+
+// ✅ 新增：市场筛选参数
+export interface MarketplaceFilter {
+  sourceType?: 'featured' | 'user' | 'all';
+  minQuality?: number;
+  minStars?: number;
+  tags?: string[];
+  searchQuery?: string;
+  limit?: number;
+  offset?: number;
+}
+
+// ✅ 新增：API 错误响应
+export interface ApiErrorResponse {
+  code: string;
+  message: string;
+  helpUrl?: string;
+}
+
+// ✅ 新增：扫描结果（对应 Rust 的 ScanResult）
+export interface ScanResult {
+  repositoryId: string;
+  totalFound: number;
+  syncedCount: number;
+  failedCount: number;
+  syncedSkills: string[];
+  errors: SkillSyncError[];
+  durationMs: number;
+}
+
+// ✅ 新增：Skill 同步错误
+export interface SkillSyncError {
+  skillIdentifier: string;
+  message: string;
+  code?: string;
 }
 
 // 精选仓库相关接口
