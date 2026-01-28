@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
-import { Copy, Check, Twitter, MessageCircle, Link2, Share2 } from 'lucide-react';
+import { Copy, Check, Twitter, MessageCircle, Link2 } from 'lucide-react';
 import type { InstalledSkill } from '../types';
 import { generatePlatformShareText, copyToClipboard } from '../utils/shareTextGenerator';
 import { resolveSkillLink } from '../utils/shareLink';
@@ -122,12 +122,7 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={
-        <div className="flex items-center gap-2">
-          <Share2 className="w-5 h-5" />
-          {i18n.language === 'zh' ? '分享 Skill' : 'Share Skill'}
-        </div>
-      }
+      title={i18n.language === 'zh' ? '分享 Skill' : 'Share Skill'}
       size="xl"
       data-testid="share-text-dialog"
     >
@@ -140,6 +135,7 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
               'px-2 py-1 rounded text-xs font-medium',
               normalizedStatus === 'safe' && 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
               normalizedStatus === 'risk' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+              // @ts-ignore
               normalizedStatus === 'blocked' && 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
               normalizedStatus === 'unknown' && 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
             )}
@@ -149,6 +145,7 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
                   ? '安全'
                   : normalizedStatus === 'risk'
                     ? '有风险'
+                    // @ts-ignore
                     : normalizedStatus === 'blocked'
                       ? '已阻止'
                       : '未知')

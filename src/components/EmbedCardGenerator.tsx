@@ -45,12 +45,19 @@ export function EmbedCardGenerator({ skill, onClose }: EmbedCardGeneratorProps) 
   const embedData: EmbedCardData = useMemo(
     () => {
       const normalizedLevel = normalizeSecurityLevel(skill);
+
+      // Map security level to embed card type
+      let securityLevel: 'safe' | 'warning' | 'danger' | undefined;
+      if (normalizedLevel === 'safe') securityLevel = 'safe';
+      else if (normalizedLevel === 'risk') securityLevel = 'warning';
+      else if (normalizedLevel === 'blocked') securityLevel = 'danger';
+
       return {
         name: skill.name,
         description: skill.description || '',
         author: skill.author,
         version: skill.version,
-        securityLevel: normalizedLevel,
+        securityLevel,
         rating: getQualityScore(skill),
         tags: skill.tags || [],
         installUrl: skill.githubUrl,

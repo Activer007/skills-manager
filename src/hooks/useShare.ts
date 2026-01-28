@@ -14,7 +14,6 @@ import type {
 import { resolveSkillLink } from '../utils/shareLink';
 import { generatePlatformShareText, copyToClipboard } from '../utils/shareTextGenerator';
 import { generateShareCard } from '../utils/shareCardGenerator';
-import { getQualityScore } from '../utils/skillNormalizers';
 import { toast } from '../store/useToastStore';
 
 /**
@@ -175,7 +174,8 @@ export const useShare = (
     let link = shareLink;
 
     if (!link) {
-      link = await generateLink();
+      const generated = await generateLink();
+      link = generated || undefined;
     }
 
     if (!link) {
@@ -241,7 +241,6 @@ export const useShare = (
            link = await generateLink();
         }
 
-        // We need to pass the shareLink to the card generator
         const blob = await generateShareCard(skill, theme, { shareLink: link || undefined });
         cardBlobRef.current = blob;
 
@@ -334,11 +333,11 @@ export const useShare = (
         if (result.success) {
           toast.success(
             locale === 'zh'
-              ? `已导出到 ${result.file_name}`
-              : `Exported to ${result.file_name}`
+              ? `已导出到 ${fileName}`
+              : `Exported to ${fileName}`
           );
         } else {
-          toast.error(result.error || (locale === 'zh' ? '导出失败' : 'Export failed'));
+          toast.error(result.message || (locale === 'zh' ? '导出失败' : 'Export failed'));
         }
 
         return exportRes;
@@ -389,7 +388,7 @@ export const useShare = (
   return {
     // 状态
     shareLink,
-    isLoadingLink: false, // exposed property if needed, but not in original interface.
+    isLoadingLink, // exposed property
     isModified,
     isCheckingModified,
 

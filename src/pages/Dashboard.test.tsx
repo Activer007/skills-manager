@@ -74,7 +74,7 @@ vi.mock('recharts', () => ({
   CartesianGrid: () => <div data-testid="cartesian-grid" />,
   XAxis: () => <div data-testid="x-axis" />,
   YAxis: () => <div data-testid="y-axis" />,
-  Tooltip: ({ contentStyle }: any) => <div data-testid="tooltip" />,
+  Tooltip: () => <div data-testid="tooltip" />,
   PieChart: ({ children }: any) => (
     <div data-testid="pie-chart">{children}</div>
   ),

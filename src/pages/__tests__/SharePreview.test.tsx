@@ -37,7 +37,7 @@ vi.mock('../../store/useToastStore', () => ({
 }));
 
 // Mock store
-const { mockTasks, mockSetTasks, mockUseTaskStore } = vi.hoisted(() => {
+const { mockTasks, mockUseTaskStore } = vi.hoisted(() => {
     const tasks: any[] = [];
     const setTasks = vi.fn();
     const useTaskStore = vi.fn((selector) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Share2, Link2, FileText, ImageIcon, Package, AlertTriangle, Code } from 'lucide-react';
+import { Link2, FileText, ImageIcon, Package, Code, Globe, AlertTriangle } from 'lucide-react';
 import type { ShareSheetProps, SharePanelType } from '../../types/share';
 import { useShare } from '../../hooks/useShare';
 import { Modal } from '../ui/Modal';
@@ -11,7 +11,6 @@ import { ShareImagePanel } from './ShareImagePanel';
 import { SharePackagePanel } from './SharePackagePanel';
 import { ShareEmbedPanel } from './ShareEmbedPanel';
 import { PublishWizard } from '../PublishWizard';
-import { Globe } from 'lucide-react';
 
 /**
  * 统一分享入口组件 (ShareSheet)
@@ -125,6 +124,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
               'px-2 py-1 rounded text-xs font-medium',
               normalizedStatus === 'safe' && 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
               normalizedStatus === 'risk' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+              // @ts-ignore - blocked is not in the inferred type but can exist in runtime
               normalizedStatus === 'blocked' && 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
               normalizedStatus === 'unknown' && 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
             )}
@@ -134,6 +134,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
                   ? '安全'
                   : normalizedStatus === 'risk'
                     ? '有风险'
+                    // @ts-ignore
                     : normalizedStatus === 'blocked'
                       ? '已阻止'
                       : '未知')

@@ -129,7 +129,7 @@ export const ShareImagePanel: React.FC<SharePanelProps> = ({
             <Button
               key={t}
               size="sm"
-              variant={theme === t ? 'default' : 'outline'}
+              variant={theme === t ? 'primary' : 'outline'}
               onClick={() => setTheme(t)}
               data-testid={`theme-${t}`}
             >

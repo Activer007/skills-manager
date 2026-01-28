@@ -1,9 +1,25 @@
 import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import type { InstalledSkill } from '../types';
-import type { ShareCardConfig, ShareCardTheme, ShareImageData } from '../types/share';
+import type { ShareCardConfig, ShareCardTheme } from '../types/share';
 import { resolveSkillLink } from './shareLink';
 import { getQualityScore } from './skillNormalizers';
+
+/**
+ * 分享图片中的数据结构（嵌入二维码）
+ */
+export interface ShareImageData {
+  version: string;
+  type: 'skill';
+  data: {
+    id: string;
+    name: string;
+    sourceUrl?: string;
+    installUrl?: string;
+    description: string;
+  };
+  timestamp: number;
+}
 
 /**
  * 分享卡片主题预设
