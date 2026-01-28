@@ -44,6 +44,9 @@
 
 use log::{info, warn};
 
+// Import author fallback utilities
+use crate::services::author_utils::resolve_author_fallback;
+
 // Execute v11 database migration
 //
 // This function performs a complete refactoring of the database schema to support
@@ -261,6 +264,12 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
         let path_hash = sha256_hash(&skill_path);
         let new_id = format!("{}_{}", repo_id, path_hash);
 
+        // Apply author fallback strategy
+        let resolved_author = resolve_author_fallback(
+            author.as_deref(),
+            github_url.as_deref()
+        );
+
         // Timestamps
         let now = chrono::Utc::now().timestamp();
         let discovered_at = updated_at;
@@ -275,7 +284,7 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
         )?;
 
         insert_stmt.execute((
-            &new_id, &name, &author, &description, &skill_path, &repo_id,
+            &new_id, &name, &resolved_author, &description, &skill_path, &repo_id,
             &version, stars, forks, updated_at, &tags, &security_score, discovered_at, synced_at
         ))?;
 
