@@ -18,6 +18,9 @@ pub mod marketplace_service;
 pub mod author_utils;
 pub mod utils;
 
+#[cfg(test)]
+pub mod test_helper;
+
 pub use repository_initializer::initialize_default_repositories;
 pub use featured_repository_seeder::seed_featured_repositories;
 

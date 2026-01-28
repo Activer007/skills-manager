@@ -5,20 +5,8 @@ mod tests {
     use crate::models::marketplace::MarketplaceSkill;
     use crate::services::marketplace_service::MarketplaceService;
     use crate::services::repository_service::RepositoryService;
-    use crate::services::db::init_db;
+    use crate::services::test_helper::setup_test_db;
     use chrono::Utc;
-    use std::sync::Once;
-
-    static INIT: Once = Once::new();
-
-    fn setup_db() {
-        INIT.call_once(|| {
-            // Initialize in-memory DB or test file for testing
-            // For now, we assume init_db handles environment correctly or we are running in a test env
-            // In a real scenario, we might want to use a temporary DB file
-            let _ = init_db();
-        });
-    }
 
     // Helper to create a test repository
     fn create_test_repo(id: &str, name: &str, source_type: &str, priority: i32) -> Repository {
@@ -44,7 +32,9 @@ mod tests {
 
     #[test]
     fn test_upsert_and_list_by_source() {
-        setup_db();
+        // Setup isolated test database
+        let _db_guard = setup_test_db().expect("Failed to setup test database");
+
         let market_service = MarketplaceService::new();
         let repo_service = RepositoryService::new();
 
@@ -52,10 +42,10 @@ mod tests {
         let featured_repo = create_test_repo("featured-repo-1", "Featured Repo", "featured", 10);
         let user_repo = create_test_repo("user-repo-1", "User Repo", "user", 100);
 
-        let _ = repo_service.add_repository(&featured_repo);
-        let _ = repo_service.add_repository(&user_repo);
+        repo_service.add_repository(&featured_repo).expect("Failed to add featured repo");
+        repo_service.add_repository(&user_repo).expect("Failed to add user repo");
 
-        // 2. Create Skills (Same name, different authors/repos)
+        // 2. Create Skills (Same name, same author - priority deduplication test)
 
         // Skill A from Featured Repo
         let skill_a_featured = MarketplaceSkill {
@@ -79,8 +69,7 @@ mod tests {
             data: None,
         };
 
-        // Skill A from User Repo (Same name, different author - Should show both if authors differ?)
-        // Let's test Same Name + Same Author collision first (Priority check)
+        // Skill A from User Repo (Same name, same author - Priority check)
         let skill_a_user = MarketplaceSkill {
             id: "user-repo-1_skill_a_hash".to_string(),
             name: "Weather Tool".to_string(),
@@ -108,39 +97,47 @@ mod tests {
         // 3. Test Filtering
 
         // Case A: List All - Should prioritize Featured (Priority 10) over User (Priority 100) due to same Name+Author
-        let all_skills = market_service.list_skills_by_source(SourceFilter::All, None).unwrap();
+        let all_skills = market_service.list_skills_by_source(SourceFilter::All, None)
+            .expect("Failed to list all skills");
         let weather_tool = all_skills.iter().find(|s| s.name == "Weather Tool");
 
         // Note: The logic is: ROW_NUMBER() OVER (PARTITION BY name, author ORDER BY priority ASC)
         // Featured (10) < User (100), so Featured should be rn=1
-
         assert!(weather_tool.is_some(), "Weather Tool should be found");
-        // We can't easily assert exactly which one without clearing DB first,
-        // but assuming clean state or unique IDs:
-        // Let's check repository_id if possible, or verify logic in a controlled env.
+        assert_eq!(
+            weather_tool.unwrap().repository_id,
+            featured_repo.id,
+            "All filter should prioritize Featured repository (lower priority number)"
+        );
 
         // Case B: Filter by Featured
-        let featured_skills = market_service.list_skills_by_source(SourceFilter::Featured, None).unwrap();
+        let featured_skills = market_service.list_skills_by_source(SourceFilter::Featured, None)
+            .expect("Failed to list featured skills");
         let featured_weather = featured_skills.iter().find(|s| s.name == "Weather Tool");
-        assert!(featured_weather.is_some());
+        assert!(featured_weather.is_some(), "Weather Tool should be found in Featured filter");
         assert_eq!(featured_weather.unwrap().repository_id, featured_repo.id);
 
         // Case C: Filter by User
-        let user_skills = market_service.list_skills_by_source(SourceFilter::User, None).unwrap();
+        let user_skills = market_service.list_skills_by_source(SourceFilter::User, None)
+            .expect("Failed to list user skills");
         let user_weather = user_skills.iter().find(|s| s.name == "Weather Tool");
-        assert!(user_weather.is_some());
+        assert!(user_weather.is_some(), "Weather Tool should be found in User filter");
         assert_eq!(user_weather.unwrap().repository_id, user_repo.id);
+
+        // Database automatically cleaned up when _db_guard is dropped
     }
 
     #[test]
     fn test_sync_skills_to_marketplace() {
-        setup_db();
+        // Setup isolated test database
+        let _db_guard = setup_test_db().expect("Failed to setup test database");
+
         let repo_service = RepositoryService::new();
         let market_service = MarketplaceService::new();
 
         // 1. Create Repo
         let repo = create_test_repo("sync-test-repo", "Sync Test", "user", 100);
-        let _ = repo_service.add_repository(&repo);
+        repo_service.add_repository(&repo).expect("Failed to add repository");
 
         // 2. Prepare Discovered Skills
         let discovered = vec![
@@ -163,20 +160,116 @@ mod tests {
         ];
 
         // 3. Run Sync
-        let result = repo_service.sync_skills_to_marketplace(&repo.id, discovered).unwrap();
+        let result = repo_service.sync_skills_to_marketplace(&repo.id, discovered)
+            .expect("Failed to sync skills to marketplace");
 
         // 4. Validate Result
-        assert_eq!(result.total_found, 2);
-        assert_eq!(result.synced_count, 2);
-        assert_eq!(result.failed_count, 0);
-        assert!(result.is_success());
+        assert_eq!(result.total_found, 2, "Should find 2 skills");
+        assert_eq!(result.synced_count, 2, "Should sync 2 skills");
+        assert_eq!(result.failed_count, 0, "Should have 0 failures");
+        assert!(result.is_success(), "Sync should be successful");
+        assert!(!result.has_errors(), "Should have no errors");
 
         // 5. Verify in Marketplace
-        let skills = market_service.search_skills("Sync Skill", None).unwrap();
-        assert!(skills.len() >= 2);
+        let skills = market_service.search_skills("Sync Skill", None)
+            .expect("Failed to search skills");
+        assert!(skills.len() >= 2, "Should find at least 2 skills");
 
-        let skill_1 = skills.iter().find(|s| s.name == "Sync Skill 1").unwrap();
-        assert_eq!(skill_1.repository_id, repo.id);
-        assert_eq!(skill_1.skill_path, "skills/skill-1");
+        let skill_1 = skills.iter()
+            .find(|s| s.name == "Sync Skill 1")
+            .expect("Should find Sync Skill 1");
+        assert_eq!(skill_1.repository_id, repo.id, "Skill should belong to test repo");
+        assert_eq!(skill_1.skill_path, "skills/skill-1", "Skill path should match");
+
+        // Database automatically cleaned up when _db_guard is dropped
+    }
+
+    #[test]
+    fn test_empty_database() {
+        // Setup isolated test database
+        let _db_guard = setup_test_db().expect("Failed to setup test database");
+
+        let market_service = MarketplaceService::new();
+
+        // Test empty results
+        let all_skills = market_service.list_skills_by_source(SourceFilter::All, None)
+            .expect("Failed to list skills");
+        assert_eq!(all_skills.len(), 0, "Should have no skills in empty database");
+
+        let search_results = market_service.search_skills("nonexistent", None)
+            .expect("Failed to search skills");
+        assert_eq!(search_results.len(), 0, "Should find no skills for nonexistent query");
+
+        // Database automatically cleaned up when _db_guard is dropped
+    }
+
+    #[test]
+    fn test_multiple_authors_no_dedup() {
+        // Setup isolated test database
+        let _db_guard = setup_test_db().expect("Failed to setup test database");
+
+        let market_service = MarketplaceService::new();
+        let repo_service = RepositoryService::new();
+
+        // Create repository
+        let repo = create_test_repo("multi-author-repo", "Multi Author Repo", "featured", 10);
+        repo_service.add_repository(&repo).expect("Failed to add repository");
+
+        // Create skills with same name but different authors (should NOT be deduplicated)
+        let skill_1 = MarketplaceSkill {
+            id: "skill_1_hash".to_string(),
+            name: "Common Name".to_string(),
+            author: Some("Alice".to_string()),
+            description: Some("By Alice".to_string()),
+            skill_path: "skills/alice-common".to_string(),
+            repository_id: repo.id.clone(),
+            github_url: None,
+            version: Some("1.0.0".to_string()),
+            stars: 50,
+            forks: 5,
+            updated_at: Utc::now().timestamp_millis(),
+            tags: None,
+            security_score: None,
+            compatibility: None,
+            config_schema: None,
+            discovered_at: Utc::now().timestamp_millis(),
+            synced_at: Utc::now().timestamp_millis(),
+            data: None,
+        };
+
+        let skill_2 = MarketplaceSkill {
+            id: "skill_2_hash".to_string(),
+            name: "Common Name".to_string(),
+            author: Some("Bob".to_string()), // Different author
+            description: Some("By Bob".to_string()),
+            skill_path: "skills/bob-common".to_string(),
+            repository_id: repo.id.clone(),
+            github_url: None,
+            version: Some("1.0.0".to_string()),
+            stars: 30,
+            forks: 3,
+            updated_at: Utc::now().timestamp_millis(),
+            tags: None,
+            security_score: None,
+            compatibility: None,
+            config_schema: None,
+            discovered_at: Utc::now().timestamp_millis(),
+            synced_at: Utc::now().timestamp_millis(),
+            data: None,
+        };
+
+        market_service.upsert_skill(&skill_1).expect("Failed to upsert skill 1");
+        market_service.upsert_skill(&skill_2).expect("Failed to upsert skill 2");
+
+        // Both skills should appear (different authors)
+        let all_skills = market_service.list_skills_by_source(SourceFilter::All, None)
+            .expect("Failed to list skills");
+        let common_skills: Vec<_> = all_skills.iter()
+            .filter(|s| s.name == "Common Name")
+            .collect();
+
+        assert_eq!(common_skills.len(), 2, "Both skills should appear (different authors)");
+
+        // Database automatically cleaned up when _db_guard is dropped
     }
 }

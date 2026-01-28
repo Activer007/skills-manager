@@ -1,0 +1,5 @@
+# Repository service error messages (English)
+
+# Repository deletion errors
+delete_repository_failed_installed_skills: "Cannot delete repository: It has %{count} installed skill(s).\nPlease uninstall these skills from 'My Skills' page first."
+delete_repository_failed_unknown: "Failed to delete repository: %{error}"

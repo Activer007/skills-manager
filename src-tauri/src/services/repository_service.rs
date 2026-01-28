@@ -13,6 +13,7 @@ use crate::models::source::{ScanResult, SkillSyncError, SourceFilter};
 use crate::models::marketplace::MarketplaceSkill;
 use crate::services::db::get_connection;
 use crate::services::marketplace_service::MarketplaceService;
+use crate::i18n::t;
 
 /// Service for managing repositories in the database
 pub struct RepositoryService;
@@ -212,12 +213,7 @@ impl RepositoryService {
                 id, installed_count
             );
             return Err(anyhow::anyhow!(
-                "Cannot delete repository: It has {} installed skill(s).\n\
-                 Please uninstall these skills from「My Skills」page first.\n\
-                 \n\
-                 无法删除仓库：该仓库有 {} 个已安装的 Skills。\n\
-                 请先在「我的 Skills」页面卸载这些 Skills，然后再删除仓库。",
-                installed_count, installed_count
+                t!("repository.delete_repository_failed_installed_skills", "count" => installed_count.to_string())
             ));
         }
 

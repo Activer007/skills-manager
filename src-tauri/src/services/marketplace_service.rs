@@ -134,6 +134,20 @@ impl MarketplaceService {
                 let compatibility: Option<serde_json::Value> = row.get::<_, Option<String>>(11)?
                     .and_then(|c| serde_json::from_str(&c).ok());
 
+                // Safely get repository_id with fallback and warning
+                let repository_id: Result<String, _> = row.get(16);
+                let repository_id = match repository_id {
+                    Ok(id) if !id.is_empty() => id,
+                    Ok(_) => {
+                        log::warn!("Marketplace skill '{}' has empty repository_id, using empty string", row.get::<_, String>(1).unwrap_or_default());
+                        String::new()
+                    },
+                    Err(e) => {
+                        log::warn!("Failed to get repository_id for skill '{}': {}, using empty string", row.get::<_, String>(1).unwrap_or_default(), e);
+                        String::new()
+                    }
+                };
+
                 Ok(MarketplaceSkillDTO {
                     id: row.get(0)?,
                     name: row.get(1)?,
@@ -151,7 +165,7 @@ impl MarketplaceService {
                     source_type: row.get(13)?,
                     priority: row.get(14)?,
                     skill_path: row.get(15)?,
-                    repository_id: row.get(16).unwrap_or_default(),
+                    repository_id,
                     discovered_at: 0,
                     synced_at: 0,
                 })
