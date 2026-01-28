@@ -66,33 +66,76 @@ impl MarketplaceService {
                 .join(" AND ")
         };
 
-        // Use FTS match query
-        let mut stmt = conn.prepare(
-            "SELECT m.id, m.name, m.author, m.description, m.github_url, m.version, m.stars, m.forks, m.updated_at, m.tags, m.security_score, m.compatibility
-             FROM marketplace_skills m
-             JOIN marketplace_skills_fts f ON m.id = f.skill_id
-             WHERE f.marketplace_skills_fts MATCH ?1
-             ORDER BY m.stars DESC, m.updated_at DESC
-             LIMIT ?2"
-        )?;
+        // Use FTS match query with primary source deduplication
+        let fts_query = format!(
+            "WITH ranked_skills AS (
+                SELECT
+                    ms.id,
+                    ms.name,
+                    ms.author,
+                    ms.description,
+                    ms.github_url,
+                    ms.version,
+                    ms.stars,
+                    ms.forks,
+                    ms.updated_at,
+                    ms.tags,
+                    ms.security_score,
+                    ms.compatibility,
+                    r.name as repository_name,
+                    r.source_type,
+                    r.priority,
+                    ms.skill_path,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY ms.name,
+                        COALESCE(ms.author, '')
+                        ORDER BY r.priority ASC, ms.discovered_at ASC
+                    ) as rn
+                FROM marketplace_skills ms
+                JOIN marketplace_skills_fts f ON ms.id = f.skill_id
+                JOIN repositories r ON ms.repository_id = r.id
+                WHERE f.marketplace_skills_fts MATCH ?1
+                AND r.enabled = 1
+            )
+            SELECT * FROM ranked_skills WHERE rn = 1
+            ORDER BY stars DESC, updated_at DESC
+            LIMIT ?2"
+        );
+
+        let mut stmt = conn.prepare(&fts_query)?;
 
         let skill_iter = stmt.query_map(
             params![search_query, max_limit as i64],
             |row| {
-                Ok(MarketplaceSkill::from_row_legacy(
-                    row.get(0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                    row.get(5)?,
-                    row.get(6)?,
-                    row.get(7)?,
-                    row.get(8)?,
-                    row.get(9)?,
-                    row.get(10)?,
-                    row.get(11)?,
-                ))
+                // Parse tags and compatibility
+                let tags: Vec<String> = row.get::<_, Option<String>>(10)?
+                    .and_then(|t| serde_json::from_str(&t).ok())
+                    .unwrap_or_default();
+
+                let compatibility: Option<serde_json::Value> = row.get::<_, Option<String>>(11)?
+                    .and_then(|c| serde_json::from_str(&c).ok());
+
+                Ok(MarketplaceSkillDTO {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    author: row.get(2)?,
+                    description: row.get(3)?,
+                    github_url: row.get(4)?,
+                    version: row.get(5)?,
+                    stars: row.get(6)?,
+                    forks: row.get(7)?,
+                    updated_at: row.get(8)?,
+                    tags,
+                    security_score: row.get(9)?,
+                    compatibility,
+                    repository_id: String::new(),
+                    repository_name: row.get(13)?,
+                    source_type: row.get(14)?,
+                    priority: row.get(15)?,
+                    skill_path: row.get(16)?,
+                    discovered_at: 0,
+                    synced_at: 0,
+                })
             },
         )?;
 
@@ -106,6 +149,7 @@ impl MarketplaceService {
     }
 
     /// Get all marketplace Skills with optional filtering
+    /// Uses primary source query (ROW_NUMBER CTE) for deduplication
     pub fn list_skills(
         &self,
         tag_filter: Option<&str>,
@@ -115,24 +159,52 @@ impl MarketplaceService {
         let conn = get_connection()?;
         let max_limit = limit.unwrap_or(100);
 
-        // Build dynamic query
+        // Build primary source query with ROW_NUMBER() for deduplication
         let mut query = String::from(
-            "SELECT id, name, author, description, github_url, version, stars, forks, updated_at, tags, security_score, compatibility
-             FROM marketplace_skills WHERE 1=1"
+            "WITH ranked_skills AS (
+                SELECT
+                    ms.id,
+                    ms.name,
+                    ms.author,
+                    ms.description,
+                    ms.github_url,
+                    ms.version,
+                    ms.stars,
+                    ms.forks,
+                    ms.updated_at,
+                    ms.tags,
+                    ms.security_score,
+                    ms.compatibility,
+                    r.name as repository_name,
+                    r.source_type,
+                    r.priority,
+                    ms.skill_path,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY ms.name,
+                        COALESCE(ms.author, '')  -- Treat NULL author as empty string
+                        ORDER BY r.priority ASC, ms.discovered_at ASC
+                    ) as rn
+                FROM marketplace_skills ms
+                JOIN repositories r ON ms.repository_id = r.id
+                WHERE r.enabled = 1"
         );
+
         let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
         // Add Tag Filter
         if let Some(tag) = tag_filter {
-            query.push_str(" AND tags LIKE ?");
+            query.push_str(" AND ms.tags LIKE ?");
             params.push(Box::new(format!("%{}%", tag)));
         }
 
         // Add Min Stars Filter
         if let Some(stars) = min_stars {
-            query.push_str(" AND stars >= ?");
+            query.push_str(" AND ms.stars >= ?");
             params.push(Box::new(stars));
         }
+
+        // Close CTE and filter for primary sources
+        query.push_str(")\nSELECT * FROM ranked_skills WHERE rn = 1");
 
         // Add Ordering and Limit
         query.push_str(" ORDER BY stars DESC, updated_at DESC LIMIT ?");
@@ -150,27 +222,42 @@ impl MarketplaceService {
         let skill_iter = stmt.query_map(
             rusqlite::params_from_iter(param_refs.iter()),
             |row| {
-                Ok(MarketplaceSkill::from_row_legacy(
-                    row.get(0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                    row.get(5)?,
-                    row.get(6)?,
-                    row.get(7)?,
-                    row.get(8)?,
-                    row.get(9)?,
-                    row.get(10)?,
-                    row.get(11)?,
-                ))
+                // Parse tags and compatibility
+                let tags: Vec<String> = row.get::<_, Option<String>>(10)?
+                    .and_then(|t| serde_json::from_str(&t).ok())
+                    .unwrap_or_default();
+
+                let compatibility: Option<serde_json::Value> = row.get::<_, Option<String>>(11)?
+                    .and_then(|c| serde_json::from_str(&c).ok());
+
+                Ok(MarketplaceSkillDTO {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    author: row.get(2)?,
+                    description: row.get(3)?,
+                    github_url: row.get(4)?,
+                    version: row.get(5)?,
+                    stars: row.get(6)?,
+                    forks: row.get(7)?,
+                    updated_at: row.get(8)?,
+                    tags,
+                    security_score: row.get(9)?,
+                    compatibility,
+                    repository_id: String::new(),  // Not available in this query
+                    repository_name: row.get(13)?,
+                    source_type: row.get(14)?,
+                    priority: row.get(15)?,
+                    skill_path: row.get(16)?,
+                    discovered_at: 0,  // Not needed for list
+                    synced_at: 0,      // Not needed for list
+                })
             }
         )?;
 
         let mut results = Vec::new();
         for skill in skill_iter {
             let skill = skill?;
-            results.push(MarketplaceSkillDTO::from(skill));
+            results.push(skill);
         }
 
         Ok(results)
