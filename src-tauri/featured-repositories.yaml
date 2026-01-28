@@ -24,15 +24,6 @@ categories:
         featured: true
         scan_subdirs: true
 
-      - url: "https://github.com/anthropics/claude-code-skills"
-        name: "claude-code-skills"
-        description:
-          en: "Curated collection of Claude Code skills by Anthropic"
-          zh: "Anthropic 精选的 Claude Code 技能合集"
-        tags: ["official", "verified", "curated"]
-        featured: true
-        scan_subdirs: true
-
   # Community repositories - High-quality community contributions
   - id: "community"
     name:

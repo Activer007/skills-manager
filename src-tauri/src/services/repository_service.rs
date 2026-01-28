@@ -4,6 +4,7 @@
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
+use log::{info, warn};
 use rusqlite::params;
 
 use crate::models::repository::{Repository, RepositoryCategory, ScanQueueEntry, ScanStatus};
@@ -179,21 +180,56 @@ impl RepositoryService {
         Ok(())
     }
 
-    /// Delete a repository by ID (cascades to scan queue)
+    /// Delete a repository by ID (with safety checks)
+    ///
+    /// # Safety Checks
+    /// - Prevents deletion if there are installed skills from this repository
+    /// - Cascades to scan queue entries
+    /// - CASCADE automatically deletes associated marketplace_skills
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - Repository has installed skills (user must uninstall them first)
+    /// - Database operation fails
     pub fn delete_repository(&self, id: &str) -> Result<u64> {
         let conn = get_connection()?;
 
-        // Delete scan queue entries first (manual cascade for safety)
+        // 安全检查：确保没有已安装的 Skills
+        let installed_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM installed_skills
+             WHERE original_repository_id = ?1",
+            params![id],
+            |row| row.get(0)
+        ).context("Failed to check for installed skills")?;
+
+        if installed_count > 0 {
+            log::warn!(
+                "Attempted to delete repository '{}' with {} installed skills",
+                id, installed_count
+            );
+            return Err(anyhow::anyhow!(
+                "Cannot delete repository: It has {} installed skill(s).\n\
+                 Please uninstall these skills from「My Skills」page first.\n\
+                 \n\
+                 无法删除仓库：该仓库有 {} 个已安装的 Skills。\n\
+                 请先在「我的 Skills」页面卸载这些 Skills，然后再删除仓库。",
+                installed_count, installed_count
+            ));
+        }
+
+        log::info!("Deleting repository '{}'", id);
+
+        // 删除扫描队列条目（手动级联以确保安全）
         conn.execute(
             "DELETE FROM repository_scan_queue WHERE repository_id = ?1",
             params![id],
-        )?;
+        ).context("Failed to delete scan queue entries")?;
 
-        // Delete the repository
+        // 删除仓库（CASCADE 自动删除关联的 marketplace_skills）
         let deleted = conn.execute(
             "DELETE FROM repositories WHERE id = ?1",
             params![id],
-        )?;
+        ).context("Failed to delete repository")?;
 
         Ok(deleted as u64)
     }
