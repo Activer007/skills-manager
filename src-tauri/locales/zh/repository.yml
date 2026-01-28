@@ -1,0 +1,5 @@
+# Repository service error messages (Chinese)
+
+# Repository deletion errors
+delete_repository_failed_installed_skills: "无法删除仓库：该仓库有 %{count} 个已安装的 Skills。\n请先在「我的 Skills」页面卸载这些 Skills，然后再删除仓库。"
+delete_repository_failed_unknown: "删除仓库失败：%{error}"

@@ -6,9 +6,14 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use log::{info, warn};
 use rusqlite::params;
+use sha2::{Sha256, Digest};
 
 use crate::models::repository::{Repository, RepositoryCategory, ScanQueueEntry, ScanStatus};
+use crate::models::source::{ScanResult, SkillSyncError, SourceFilter};
+use crate::models::marketplace::MarketplaceSkill;
 use crate::services::db::get_connection;
+use crate::services::marketplace_service::MarketplaceService;
+use crate::i18n::t;
 
 /// Service for managing repositories in the database
 pub struct RepositoryService;
@@ -208,12 +213,7 @@ impl RepositoryService {
                 id, installed_count
             );
             return Err(anyhow::anyhow!(
-                "Cannot delete repository: It has {} installed skill(s).\n\
-                 Please uninstall these skills from「My Skills」page first.\n\
-                 \n\
-                 无法删除仓库：该仓库有 {} 个已安装的 Skills。\n\
-                 请先在「我的 Skills」页面卸载这些 Skills，然后再删除仓库。",
-                installed_count, installed_count
+                t!("repository.delete_repository_failed_installed_skills", "count" => installed_count.to_string())
             ));
         }
 
@@ -285,6 +285,177 @@ impl RepositoryService {
         )?;
 
         Ok(count)
+    }
+
+    // ==================== Source Type Operations ====================
+
+    /// Get repositories by source type
+    pub fn get_repositories_by_source_type(&self, source_filter: SourceFilter) -> Result<Vec<Repository>> {
+        let conn = get_connection()?;
+
+        let query = match source_filter {
+            SourceFilter::Featured => {
+                "SELECT id, url, name, description, enabled, scan_subdirs, added_at,
+                 last_scanned, cache_path, cached_commit_sha, featured, category,
+                 source_type, priority, scan_status, etag
+                 FROM repositories WHERE source_type = 'featured' ORDER BY priority ASC, added_at DESC"
+            },
+            SourceFilter::User => {
+                "SELECT id, url, name, description, enabled, scan_subdirs, added_at,
+                 last_scanned, cache_path, cached_commit_sha, featured, category,
+                 source_type, priority, scan_status, etag
+                 FROM repositories WHERE source_type = 'user' ORDER BY added_at DESC"
+            },
+            SourceFilter::All => {
+                "SELECT id, url, name, description, enabled, scan_subdirs, added_at,
+                 last_scanned, cache_path, cached_commit_sha, featured, category,
+                 source_type, priority, scan_status, etag
+                 FROM repositories ORDER BY priority ASC, added_at DESC"
+            },
+        };
+
+        let mut stmt = conn.prepare(query)?;
+
+        let repos = stmt.query_map([], |row| {
+            Ok(self.row_to_repository(row)?)
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(repos)
+    }
+
+    /// Update repository scan status
+    pub fn update_repository_scan_status(&self, id: &str, status: &str) -> Result<()> {
+        let conn = get_connection()?;
+
+        conn.execute(
+            "UPDATE repositories SET scan_status = ?1 WHERE id = ?2",
+            params![status, id],
+        ).context("Failed to update repository scan status")?;
+
+        Ok(())
+    }
+
+    /// Update repository ETag for caching
+    pub fn update_repository_etag(&self, id: &str, etag: Option<&str>) -> Result<()> {
+        let conn = get_connection()?;
+
+        conn.execute(
+            "UPDATE repositories SET etag = ?1 WHERE id = ?2",
+            params![etag, id],
+        ).context("Failed to update repository etag")?;
+
+        Ok(())
+    }
+
+    /// Get count of marketplace skills for a repository
+    pub fn get_repository_skill_count(&self, repo_id: &str) -> Result<i32> {
+        let conn = get_connection()?;
+
+        let count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM marketplace_skills WHERE repository_id = ?1",
+            params![repo_id],
+            |row| row.get(0),
+        )?;
+
+        Ok(count)
+    }
+
+    // ==================== Sync Operations ====================
+
+    /// Sync discovered skills to marketplace
+    ///
+    /// This method takes a list of discovered skills from a repository scan
+    /// and syncs them to the marketplace_skills table.
+    ///
+    /// # Arguments
+    /// * `repo_id` - The repository ID
+    /// * `discovered_skills` - List of skills discovered during scan
+    ///
+    /// # Returns
+    /// * `ScanResult` - Summary of the sync operation
+    pub fn sync_skills_to_marketplace(
+        &self,
+        repo_id: &str,
+        discovered_skills: Vec<DiscoveredSkill>,
+    ) -> Result<ScanResult> {
+        let start = std::time::Instant::now();
+        let mut result = ScanResult::new(repo_id.to_string());
+        result.total_found = discovered_skills.len();
+
+        let marketplace_service = MarketplaceService::new();
+
+        for skill in discovered_skills {
+            // Generate skill ID: {repository_id}_{skill_path_hash}
+            let path_hash = Self::hash_skill_path(&skill.path);
+            let skill_id = format!("{}_{}", repo_id, path_hash);
+
+            let now = Utc::now().timestamp_millis();
+
+            let marketplace_skill = MarketplaceSkill {
+                id: skill_id.clone(),
+                name: skill.name.clone(),
+                author: skill.author.clone(),
+                description: skill.description.clone(),
+                skill_path: skill.path.clone(),
+                repository_id: repo_id.to_string(),
+                github_url: None, // Will be derived from repository
+                version: skill.version.clone(),
+                stars: 0,
+                forks: 0,
+                updated_at: now,
+                tags: skill.tags.as_ref().map(|t| serde_json::to_string(t).unwrap_or_default()),
+                security_score: None,
+                compatibility: None,
+                config_schema: None,
+                discovered_at: now,
+                synced_at: now,
+                data: None,
+            };
+
+            match marketplace_service.upsert_skill(&marketplace_skill) {
+                Ok(_) => {
+                    result.synced_count += 1;
+                    result.synced_skills.push(skill.name.clone());
+                    info!("Synced skill '{}' to marketplace", skill.name);
+                }
+                Err(e) => {
+                    result.failed_count += 1;
+                    result.errors.push(SkillSyncError::new(
+                        skill.name.clone(),
+                        e.to_string(),
+                    ));
+                    warn!("Failed to sync skill '{}': {}", skill.name, e);
+                }
+            }
+        }
+
+        // Update repository scan status
+        let status = if result.failed_count == 0 { "success" } else { "partial" };
+        let _ = self.update_repository_scan_status(repo_id, status);
+
+        // Update last_scanned timestamp
+        let conn = get_connection()?;
+        conn.execute(
+            "UPDATE repositories SET last_scanned = ?1 WHERE id = ?2",
+            params![Utc::now().timestamp_millis(), repo_id],
+        )?;
+
+        result.duration_ms = start.elapsed().as_millis() as u64;
+
+        info!(
+            "Sync completed for repository '{}': {} synced, {} failed in {}ms",
+            repo_id, result.synced_count, result.failed_count, result.duration_ms
+        );
+
+        Ok(result)
+    }
+
+    /// Helper: Calculate SHA-256 hash of skill path (first 8 chars)
+    fn hash_skill_path(path: &str) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(path.as_bytes());
+        format!("{:x}", hasher.finalize())[..8].to_string()
     }
 
     // ==================== Scan Queue Operations ====================
@@ -466,4 +637,21 @@ impl Default for RepositoryService {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Represents a skill discovered during repository scanning
+#[derive(Debug, Clone)]
+pub struct DiscoveredSkill {
+    /// Skill name from frontmatter
+    pub name: String,
+    /// Skill description
+    pub description: Option<String>,
+    /// Author name
+    pub author: Option<String>,
+    /// Version string
+    pub version: Option<String>,
+    /// Path within repository (e.g., "skills/weather-tool")
+    pub path: String,
+    /// Tags/categories
+    pub tags: Option<Vec<String>>,
 }
