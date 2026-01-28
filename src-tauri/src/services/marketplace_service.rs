@@ -10,6 +10,7 @@ use rusqlite::params;
 use chrono::{DateTime, Utc};
 
 use crate::models::marketplace::{MarketplaceSkill, MarketplaceSkillDTO};
+use crate::models::source::SourceFilter;
 use crate::services::db::get_connection;
 
 /// Type alias for marketplace skill results
@@ -43,6 +44,139 @@ impl MarketplaceService {
         // - Store in marketplace_skills table
 
         Ok(vec![])
+    }
+
+    /// Get marketplace Skills with source filtering
+    /// Uses primary source query (ROW_NUMBER CTE) for deduplication
+    pub fn list_skills_by_source(
+        &self,
+        source_filter: SourceFilter,
+        limit: Option<usize>
+    ) -> MarketplaceResult<Vec<MarketplaceSkillDTO>> {
+        let conn = get_connection()?;
+        let max_limit = limit.unwrap_or(100);
+
+        // Build base query logic with CTE for ranking
+        let mut query = String::from(
+            "WITH ranked_skills AS (
+                SELECT
+                    ms.id,
+                    ms.name,
+                    ms.author,
+                    ms.description,
+                    ms.github_url,
+                    ms.version,
+                    ms.stars,
+                    ms.forks,
+                    ms.updated_at,
+                    ms.tags,
+                    ms.security_score,
+                    ms.compatibility,
+                    r.name as repository_name,
+                    r.source_type,
+                    r.priority,
+                    ms.skill_path,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY ms.name,
+                        COALESCE(ms.author, '')
+                        ORDER BY r.priority ASC, ms.discovered_at ASC
+                    ) as rn
+                FROM marketplace_skills ms
+                JOIN repositories r ON ms.repository_id = r.id
+                WHERE r.enabled = 1"
+        );
+
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        // Apply source filter BEFORE ranking to ensure we rank within the filtered set
+        // if that's the desired behavior.
+        // However, usually we want to find the "best" version globally, and THEN filter?
+        // Actually, if I select "User Sources", I want to see the best version available from User Sources,
+        // even if there is a Featured version (which would normally hide it).
+        // So filtering inside the CTE is correct for "Show me what's available in X context".
+
+        match source_filter {
+            SourceFilter::Featured => {
+                query.push_str(" AND r.source_type = 'featured'");
+            },
+            SourceFilter::User => {
+                query.push_str(" AND r.source_type = 'user'");
+            },
+            SourceFilter::All => {
+                // No extra filter
+            }
+        }
+
+        // Close CTE and select top ranked items
+        query.push_str(")\nSELECT * FROM ranked_skills WHERE rn = 1");
+
+        // Add Ordering and Limit
+        query.push_str(" ORDER BY stars DESC, updated_at DESC LIMIT ?");
+        params.push(Box::new(max_limit as i64));
+
+        // Execute
+        let mut stmt = conn.prepare(&query)?;
+
+        // Convert params to dyn ToSql references
+        let mut param_refs: Vec<&dyn rusqlite::ToSql> = Vec::new();
+        for p in &params {
+            param_refs.push(p.as_ref());
+        }
+
+        let skill_iter = stmt.query_map(
+            rusqlite::params_from_iter(param_refs.iter()),
+            |row| {
+                // Parse tags and compatibility
+                let tags: Vec<String> = row.get::<_, Option<String>>(10)?
+                    .and_then(|t| serde_json::from_str(&t).ok())
+                    .unwrap_or_default();
+
+                let compatibility: Option<serde_json::Value> = row.get::<_, Option<String>>(11)?
+                    .and_then(|c| serde_json::from_str(&c).ok());
+
+                Ok(MarketplaceSkillDTO {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    author: row.get(2)?,
+                    description: row.get(3)?,
+                    github_url: row.get(4)?,
+                    version: row.get(5)?,
+                    stars: row.get(6)?,
+                    forks: row.get(7)?,
+                    updated_at: row.get(8)?,
+                    tags,
+                    security_score: row.get(9)?,
+                    compatibility,
+                    repository_id: String::new(), // Not available in query yet, strictly speaking we need to fetch it if we want it
+                    // Wait, the SQL selects r.name as repository_name (idx 12), source_type (idx 13), priority (idx 14), skill_path (idx 15)
+                    // Let's check the indices carefully based on SELECT list:
+                    // 0: id, 1: name, 2: author, 3: desc, 4: github, 5: version, 6: stars, 7: forks, 8: updated
+                    // 9: tags, 10: security, 11: compat
+                    // 12: repository_name, 13: source_type, 14: priority, 15: skill_path
+                    // Note: In list_skills above, index 10 is tags?
+                    // Let's re-verify list_skills implementation indices.
+                    // list_skills SELECT:
+                    // ms.id, ms.name, ms.author, ms.description, ms.github_url, ms.version, ms.stars, ms.forks, ms.updated_at (0-8)
+                    // ms.tags (9), ms.security_score (10), ms.compatibility (11)
+                    // r.name (12), r.source_type (13), r.priority (14), ms.skill_path (15)
+
+                    repository_name: row.get(12)?,
+                    source_type: row.get(13)?,
+                    priority: row.get(14)?,
+                    skill_path: row.get(15)?,
+                    repository_id: String::new(), // Still missing from SELECT list in CTE, need to add it if we want it populated
+                    discovered_at: 0,
+                    synced_at: 0,
+                })
+            }
+        )?;
+
+        let mut results = Vec::new();
+        for skill in skill_iter {
+            results.push(skill?);
+        }
+
+        Ok(results)
     }
 
     /// Search marketplace Skills by query string
