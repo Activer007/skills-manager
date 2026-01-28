@@ -29,18 +29,34 @@ pub fn run() {
                 log::error!("Failed to initialize database: {}", e);
             }
 
-            // Initialize default repositories if none exist
-            log::debug!("Checking default repositories...");
-            match crate::services::initialize_default_repositories() {
-                Ok(initialized) => {
-                    if initialized {
-                        log::info!("Default repositories initialized successfully");
+            // Seed featured repositories if none exist (new approach)
+            log::debug!("Checking for featured repositories to seed...");
+            match crate::services::seed_featured_repositories() {
+                Ok(seeded) => {
+                    if seeded {
+                        log::info!("Featured repositories seeded successfully");
                     }
                 }
                 Err(e) => {
-                    log::warn!("Failed to initialize default repositories: {}", e);
+                    log::warn!("Failed to seed featured repositories: {}", e);
+                    // Don't block application startup if seeding fails
                 }
             }
+
+            // Legacy: Initialize default repositories (kept for backward compatibility)
+            // This is now redundant as seed_featured_repositories handles the same logic
+            // using the YAML configuration instead of hardcoded values.
+            //
+            // match crate::services::initialize_default_repositories() {
+            //     Ok(initialized) => {
+            //         if initialized {
+            //             log::info!("Default repositories initialized successfully");
+            //         }
+            //     }
+            //     Err(e) => {
+            //         log::warn!("Failed to initialize default repositories: {}", e);
+            //     }
+            // }
 
             // Initialize and manage ConfigService
             let config_service = ConfigService::new();
