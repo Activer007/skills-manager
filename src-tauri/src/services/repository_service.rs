@@ -52,7 +52,8 @@ impl RepositoryService {
 
         let mut stmt = conn.prepare(
             "SELECT id, url, name, description, enabled, scan_subdirs, added_at,
-             last_scanned, cache_path, cached_commit_sha, featured, category
+             last_scanned, cache_path, cached_commit_sha, featured, category,
+             source_type, priority, scan_status, etag
              FROM repositories WHERE id = ?1"
         )?;
 
@@ -74,7 +75,8 @@ impl RepositoryService {
 
         let mut stmt = conn.prepare(
             "SELECT id, url, name, description, enabled, scan_subdirs, added_at,
-             last_scanned, cache_path, cached_commit_sha, featured, category
+             last_scanned, cache_path, cached_commit_sha, featured, category,
+             source_type, priority, scan_status, etag
              FROM repositories WHERE url = ?1 OR url = ?2"
         )?;
 
@@ -357,7 +359,28 @@ impl RepositoryService {
     fn row_to_repository(&self, row: &rusqlite::Row) -> rusqlite::Result<Repository> {
         let added_at_millis: i64 = row.get(6)?;
         let last_scanned_millis: Option<i64> = row.get(7)?;
+        let featured_raw: i32 = row.get(10)?;
         let category_str: String = row.get(11)?;
+
+        // Try to get new fields (may not exist in older DB versions)
+        let source_type: Option<String> = row.get(12).ok();
+        let priority: Option<i32> = row.get(13).ok();
+        let scan_status: Option<String> = row.get(14).ok();
+        let etag: Option<String> = row.get(15).ok();
+
+        // Infer source_type from featured if new field doesn't exist
+        let (source_type, priority) = match (source_type, priority) {
+            (Some(st), Some(p)) => (st, p),
+            _ => {
+                if featured_raw == 1 {
+                    ("featured".to_string(), 10)
+                } else {
+                    ("user".to_string(), 100)
+                }
+            }
+        };
+
+        let scan_status = scan_status.unwrap_or_else(|| "pending".to_string());
 
         Ok(Repository {
             id: row.get(0)?,
@@ -372,8 +395,12 @@ impl RepositoryService {
                 .and_then(DateTime::from_timestamp_millis),
             cache_path: row.get(8)?,
             cached_commit_sha: row.get(9)?,
-            featured: row.get::<_, i32>(10)? == 1,
+            featured: featured_raw == 1,
             category: category_str.parse().unwrap_or(RepositoryCategory::Custom),
+            source_type,
+            priority,
+            scan_status,
+            etag,
         })
     }
 

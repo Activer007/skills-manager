@@ -58,6 +58,16 @@ export interface InstalledSkill extends Partial<MarketplaceSkill> {
   securityIssues?: SecurityIssue[];
   derivedFrom?: string;
   forkType?: 'fork' | 'remix';
+
+  // ✅ 新增字段 (v2.1) - 快照模式支持
+  marketplaceSkillId?: string;  // 关联到市场 Skill ID（可选）
+  originalRepositoryId?: string;  // 原始仓库 ID
+  originalRepositoryName?: string;  // 原始仓库名称
+  originalRepositoryUrl?: string;  // 原始仓库 URL
+  originalSkillPath?: string;  // 原始 Skill 路径
+  originalAuthor?: string;  // 原始作者
+  originalSourceType?: 'featured' | 'user';  // 原始来源类型
+  installedAt?: number;  // ✅ 新增：安装时间戳（Unix timestamp 秒）
 }
 
 export interface SkillManifest {
@@ -79,19 +89,29 @@ export interface ExportResult {
 // 定义仓库类别
 export type RepositoryCategory = 'official' | 'community' | 'custom';
 
-// 定义后端返回的仓库结构
+// 定义后端返回的仓库结构 (v2.1)
 export interface Repository {
   id: string;
   url: string;
   name: string;
   description?: string;
+
+  // ✅ 新增字段 (v2.1)
+  sourceType: 'featured' | 'user';  // 来源类型
+  priority: number;  // 优先级（精选=10，用户=100）
+  scanStatus: 'pending' | 'scanning' | 'success' | 'failed';  // 扫描状态
+  etag?: string;  // GitHub API ETag 用于缓存
+
+  // Original fields
   enabled: boolean;
   scanSubdirs: boolean; // 注意：后端是 snake_case，前端通常用 camelCase，但 Tauri 默认序列化可能保留 snake_case，需要确认
   addedAt: number;      // Unix timestamp (ms)
   lastScanned?: number; // Unix timestamp (ms)
   cachePath?: string;
   cachedCommitSha?: string;
-  featured: boolean;
+
+  // Legacy field (kept for backwards compatibility)
+  featured: boolean;  // 映射到 sourceType='featured'
   category: RepositoryCategory;
 }
 
@@ -139,20 +159,37 @@ export interface FeaturedRepositoriesConfig {
 
 /**
  * Marketplace skill DTO returned from backend API
- * Corresponds to Rust's MarketplaceSkillDTO
+ * Corresponds to Rust's MarketplaceSkillDTO (v2.1)
  */
 export interface MarketplaceSkillDTO {
+  // Basic information
   id: string;
   name: string;
   author?: string;
   description?: string;
+
+  // Metadata
   github_url?: string;
+  version?: string;  // ✅ 新增：Skill 版本号
   stars: number;
   forks: number;
   updated_at: number;
+
+  // Tags (parsed as array)
   tags: string[];
   security_score?: number;
   compatibility?: CompatibilityInfo;
+
+  // ✅ 新增：来源信息（Source Information）
+  repositoryId: string;
+  repositoryName: string;
+  sourceType: 'featured' | 'user';  // ✅ 新增：来源类型
+  priority: number;  // ✅ 新增：优先级（精选=10，用户=100）
+  skillPath: string;  // ✅ 新增：在仓库中的路径
+
+  // Sync information
+  discoveredAt: number;  // ✅ 新增：发现时间戳
+  syncedAt: number;  // ✅ 新增：同步时间戳
 }
 
 /**

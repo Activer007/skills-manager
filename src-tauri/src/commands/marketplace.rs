@@ -18,6 +18,8 @@ struct RawMarketplaceSkill {
     description: Option<String>,
     #[serde(rename = "githubUrl")]
     github_url: Option<String>,
+    #[serde(default)]
+    version: Option<String>,
     stars: i64,
     forks: i64,
     #[serde(rename = "updatedAt")]
@@ -53,13 +55,19 @@ impl From<RawMarketplaceSkill> for MarketplaceSkill {
             name: raw.name,
             author: raw.author,
             description: raw.description,
+            skill_path: String::new(),  // Empty for legacy
+            repository_id: String::new(),  // Empty for legacy
             github_url: raw.github_url,
+            version: raw.version,
             stars: raw.stars,
             forks: raw.forks,
             updated_at: raw.updated_at,
             tags: raw.tags.as_ref().and_then(|t| serde_json::to_string(t).ok()),
             security_score: raw.security_score,
             compatibility: raw.compatibility.as_ref().and_then(|c| serde_json::to_string(c).ok()),
+            config_schema: None,
+            discovered_at: raw.updated_at,
+            synced_at: chrono::Utc::now().timestamp(),
             data,
         }
     }
