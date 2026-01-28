@@ -19,6 +19,7 @@ pub struct MarketplaceSkill {
 
     // Metadata
     pub github_url: Option<String>,
+    pub version: Option<String>,  // Skill version (e.g., "1.0.0")
     pub stars: i64,
     pub forks: i64,
     pub updated_at: i64,
@@ -64,6 +65,7 @@ pub struct MarketplaceSkillDTO {
 
     // Metadata
     pub github_url: Option<String>,
+    pub version: Option<String>,  // Skill version (e.g., "1.0.0")
     pub stars: i64,
     pub forks: i64,
     pub updated_at: i64,
@@ -111,6 +113,7 @@ impl MarketplaceSkill {
             skill_path: String::new(),  // Empty for legacy
             repository_id: String::new(),  // Empty for legacy
             github_url,
+            version: None,
             stars,
             forks,
             updated_at,
@@ -131,6 +134,7 @@ impl MarketplaceSkill {
         author: Option<String>,
         description: Option<String>,
         github_url: Option<String>,
+        version: Option<String>,
         stars: i64,
         forks: i64,
         updated_at: i64,
@@ -146,6 +150,7 @@ impl MarketplaceSkill {
             skill_path: String::new(),
             repository_id: String::new(),
             github_url,
+            version,
             stars,
             forks,
             updated_at,
@@ -181,6 +186,7 @@ impl MarketplaceSkillDTO {
             author: skill.author,
             description: skill.description,
             github_url: skill.github_url,
+            version: skill.version,
             stars: skill.stars,
             forks: skill.forks,
             updated_at: skill.updated_at,
@@ -216,6 +222,7 @@ impl From<MarketplaceSkill> for MarketplaceSkillDTO {
             author: skill.author,
             description: skill.description,
             github_url: skill.github_url,
+            version: skill.version,
             stars: skill.stars,
             forks: skill.forks,
             updated_at: skill.updated_at,

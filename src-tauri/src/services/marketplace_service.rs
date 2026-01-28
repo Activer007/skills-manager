@@ -68,7 +68,7 @@ impl MarketplaceService {
 
         // Use FTS match query
         let mut stmt = conn.prepare(
-            "SELECT m.id, m.name, m.author, m.description, m.github_url, m.stars, m.forks, m.updated_at, m.tags, m.security_score, m.compatibility
+            "SELECT m.id, m.name, m.author, m.description, m.github_url, m.version, m.stars, m.forks, m.updated_at, m.tags, m.security_score, m.compatibility
              FROM marketplace_skills m
              JOIN marketplace_skills_fts f ON m.id = f.skill_id
              WHERE f.marketplace_skills_fts MATCH ?1
@@ -91,6 +91,7 @@ impl MarketplaceService {
                     row.get(8)?,
                     row.get(9)?,
                     row.get(10)?,
+                    row.get(11)?,
                 ))
             },
         )?;
@@ -116,7 +117,7 @@ impl MarketplaceService {
 
         // Build dynamic query
         let mut query = String::from(
-            "SELECT id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, compatibility
+            "SELECT id, name, author, description, github_url, version, stars, forks, updated_at, tags, security_score, compatibility
              FROM marketplace_skills WHERE 1=1"
         );
         let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
@@ -161,6 +162,7 @@ impl MarketplaceService {
                     row.get(8)?,
                     row.get(9)?,
                     row.get(10)?,
+                    row.get(11)?,
                 ))
             }
         )?;
@@ -179,7 +181,7 @@ impl MarketplaceService {
         let conn = get_connection()?;
 
         let mut stmt = conn.prepare(
-            "SELECT id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, compatibility
+            "SELECT id, name, author, description, github_url, version, stars, forks, updated_at, tags, security_score, compatibility
              FROM marketplace_skills
              WHERE id = ?1"
         )?;
@@ -197,6 +199,7 @@ impl MarketplaceService {
                 row.get(8)?,
                 row.get(9)?,
                 row.get(10)?,
+                row.get(11)?,
             ))
         });
 

@@ -153,6 +153,7 @@ fn migrate_v11_create_marketplace_skills_table(conn: &Connection) -> anyhow::Res
             description TEXT,
             skill_path TEXT NOT NULL,
             repository_id TEXT NOT NULL,
+            version TEXT,
             stars INTEGER DEFAULT 0,
             forks INTEGER DEFAULT 0,
             updated_at INTEGER,
@@ -221,6 +222,7 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
             row.get::<_, Option<i32>>(9)?, // security_score
             row.get::<_, Option<String>>(10)?, // compatibility
             row.get::<_, Option<String>>(11)?, // data
+            None::<String>,             // version (not in old table, will be None)
         ))
     })?;
 
@@ -228,7 +230,7 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
     let mut unknown_repo_count = 0;
 
     for skill_result in skill_iter {
-        let (_old_id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, _compatibility, _data) = skill_result?;
+        let (_old_id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, _compatibility, _data, version) = skill_result?;
 
         // Extract repository info from github_url
         let (repo_url, repo_name) = match &github_url {
@@ -268,13 +270,13 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
         let mut insert_stmt = conn.prepare(
             "INSERT INTO marketplace_skills_v11 (
                 id, name, author, description, skill_path, repository_id,
-                stars, forks, updated_at, tags, security_score, discovered_at, synced_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)"
+                version, stars, forks, updated_at, tags, security_score, discovered_at, synced_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)"
         )?;
 
         insert_stmt.execute((
             &new_id, &name, &author, &description, &skill_path, &repo_id,
-            stars, forks, updated_at, &tags, &security_score, discovered_at, synced_at
+            &version, stars, forks, updated_at, &tags, &security_score, discovered_at, synced_at
         ))?;
 
         migrated_count += 1;

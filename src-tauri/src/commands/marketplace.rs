@@ -18,6 +18,8 @@ struct RawMarketplaceSkill {
     description: Option<String>,
     #[serde(rename = "githubUrl")]
     github_url: Option<String>,
+    #[serde(default)]
+    version: Option<String>,
     stars: i64,
     forks: i64,
     #[serde(rename = "updatedAt")]
@@ -56,6 +58,7 @@ impl From<RawMarketplaceSkill> for MarketplaceSkill {
             skill_path: String::new(),  // Empty for legacy
             repository_id: String::new(),  // Empty for legacy
             github_url: raw.github_url,
+            version: raw.version,
             stars: raw.stars,
             forks: raw.forks,
             updated_at: raw.updated_at,
