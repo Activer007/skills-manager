@@ -34,6 +34,12 @@ export interface MarketplaceSkill {
 
 export type AgentType = 'claude-code' | 'cursor' | 'windsurf' | 'v0' | 'unknown';
 
+/**
+ * Skill 来源类型
+ * - official: claude-ai 官方仓库（如 https://github.com/anthropics/skills）
+ * - featured: 精选仓库（高质量推荐）
+ * - user: 用户自定义仓库
+ */
 export type SourceType = 'official' | 'featured' | 'user';
 export type SourceFilter = 'all' | SourceType;
 
@@ -107,8 +113,20 @@ export interface Repository {
   description?: string;
 
   // ✅ 新增字段 (v2.1)
-  sourceType: 'official' | 'featured' | 'user';  // 来源类型（official=claude-ai官方仓库）
-  priority: number;  // 优先级（official=5, featured=10, user=100）
+  /**
+   * 来源类型
+   * - official: claude-ai 官方仓库（https://github.com/anthropics/skills）
+   * - featured: 精选仓库（高质量推荐）
+   * - user: 用户自定义仓库
+   */
+  sourceType: 'official' | 'featured' | 'user';
+  /**
+   * 优先级（数值越小优先级越高）
+   * - official: 5（最高优先级）
+   * - featured: 10
+   * - user: 100
+   */
+  priority: number;
   scanStatus: 'pending' | 'scanning' | 'success' | 'failed';  // 扫描状态
   etag?: string;  // GitHub API ETag 用于缓存
 

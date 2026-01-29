@@ -116,7 +116,10 @@ export function useMarketplaceLogic() {
 
       // 4. Source Filter
       if (sourceFilter !== 'all') {
-        // Use sourceType directly (backend will set 'official' for claude-ai official repos)
+        // 使用 sourceType 字段筛选（后端负责标记正确的类型）
+        // - official: claude-ai 官方仓库（https://github.com/anthropics/skills）
+        // - featured: 精选仓库
+        // - user: 用户仓库
         if (skill.sourceType !== sourceFilter) return false;
       }
 
