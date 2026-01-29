@@ -51,38 +51,37 @@
 
 ### 🚧 阻塞问题
 
-1. **数据映射问题**: `useMarketplaceSkills` Hook 在 DTO → MarketplaceSkill 转换时丢失来源信息
-   - MarketplaceSkill 缺少 `repositoryId`, `repositoryName`, `sourceType`, `priority` 字段
-   - 即使后端返回了完整数据，前端也无法使用
-2. **来源筛选 UI 缺失**: Marketplace 页面没有"精选"或"用户添加"的筛选选项
-3. **徽章显示组件缺失**: SkillCard 组件中没有显示"精选"或"用户添加"徽章
-4. **产品决策待定**: 是否将"仓库管理"重命名为"来源管理"
+#### ✅ 文档验证发现的问题（2025-01-29，已修复 PR #123）
 
-### 🎯 近期优先级
+**以下高优先级问题已全部解决**：
 
-1. **高优先级**: 修复数据映射问题（0.5 天）⚠️ 阻塞其他任务
-   - 在 MarketplaceSkill 类型添加来源字段：`repositoryId`, `repositoryName`, `sourceType`, `priority`
-   - 修复 useMarketplaceSkills Hook 的 DTO → MarketplaceSkill 映射
-   - 验证来源数据正确显示
+1. ✅ **默认路由错误** - 新用户现在首先进入 `/marketplace` 而非空页面
+2. ✅ **Dashboard 路由未配置** - 用户可访问 `/dashboard`（ISSUE-001）
+3. ✅ **来源筛选 UI** - FilterPanel 组件已完全实现来源筛选功能
+4. ✅ **Marketplace 安全评分显示** - 已添加安全评分和等级显示
+5. ✅ **数据映射问题** - MarketplaceSkill 已包含所有来源字段
+6. ✅ **徽章显示组件** - SkillCard 已显示来源徽章
 
-2. **高优先级**: 实现前端来源筛选功能（0.5 天）
-   - 在 FilterPanel 组件添加"来源"筛选组
-   - 在 useMarketplaceLogic 添加 sourceFilter 状态
-   - 集成到 Marketplace 页面
+**验证报告**: `docs/verification/summary-report.md`
 
-3. **高优先级**: 实现徽章显示组件（0.5 天）
-   - 在 SkillCard 组件中显示来源徽章
-   - 区分"官方精选"和"用户来源"样式
-   - 支持显示仓库名称简称
+#### 📋 中低优先级任务（待实施）
 
-4. **中优先级**: Token 配置引导功能（0.5 天）
-   - 在设置页面或 Repositories 页面显眼位置添加配置提示
-   - 说明配置 GitHub Token 的好处（提高 API 限流阈值）
+**详细任务清单**: `docs/verification/medium-low-priority-tasks.md`
 
-5. **低优先级**: Phase 7/8 路由和国际化（可延后）
-   - 决定是否重命名"仓库管理" → "来源管理"
-   - 更新路由配置和翻译（如需要）
-   - 预估完成时间: 0.5-1 天
+**推荐优先实施**（快速胜利，1 周内）：
+1. 批量启用所有 Skills（0.5-1 天）
+2. 任务筛选粒度改进（0.5 天）
+3. 任务详细日志显示（0.5-1 天）
+
+**核心增强功能**（2-3 周内）：
+4. Marketplace 质量评分显示（2-3 天，需后端支持）
+5. 集合拖拽排序（1-2 天，ISSUE-002）
+
+#### 🔧 技术债务
+
+1. **待决策**: 是否将"仓库管理"重命名为"来源管理"
+2. **可选功能**: 新用户欢迎/引导页面
+3. **可选优化**: 按质量评分排序、类别筛选完善
 
 ---
 
@@ -96,6 +95,7 @@
 | v2.2 | 2025-01-28 | 更新任务完成状态；标记 Phase 2 已完成；添加进展总览表；明确下一步行动 | Claude |
 | v2.3 | 2025-01-29 | 标记 Phase 4 已完成；更新优先级；添加 API 层详细说明 | Claude |
 | v2.4 | 2025-01-29 | 评估 Phase 6 进度；发现数据映射问题；更新阻塞任务和优先级 | Claude |
+| v2.5 | 2026-01-29 | 完成文档验证，修复所有高优先级问题（PR #123）；系统完成度从 90% 提升到 95% | Claude |
 
 ---
 
@@ -1345,6 +1345,78 @@ Then 显示所有 Skills（每个 Skill 只显示主来源）
   - v11 迁移脚本
   - 数据库结构变更
   - 向后兼容性说明
+
+---
+
+## F. 文档验证报告
+
+本文档验证过程中的详细报告已保存到独立文件，避免内容爆炸。
+
+### 已完成的验证报告
+
+#### Phase 1: 数据流验证（已完成）
+
+| ID | 流程图 | 验证日期 | 完成度 | 状态 | 报告文件 |
+|----|--------|----------|--------|------|----------|
+| DF-01 | repository-to-market-data-flow.mermaid | 2025-01-29 | 90% (26/29) | ✅ 已修复（PR #122） | - |
+| DF-02 | security-scan-flow.mermaid | 2025-01-29 | 100% (32/32) | ✅ 完全实现 | - |
+| DF-03 | task-management-flow.mermaid | 2025-01-29 | 100% (32/32) | ✅ 完全实现 | - |
+
+#### Phase 2: 用户旅程验证（已完成）
+
+| ID | 流程图 | 验证日期 | 完成度 | 状态 | 报告文件 |
+|----|--------|----------|--------|------|----------|
+| UJ-01 | new-user-onboarding.mermaid | 2025-01-29 | 82% (44/54) | ⚠️ 有待修复项 | [docs/verification/uj-01-new-user-onboarding.md](./docs/verification/uj-01-new-user-onboarding.md) |
+| UJ-02 | daily-user-management.mermaid | 2025-01-29 | 85% (46/54) | ✅ 设计合理，无需修复 | [docs/verification/uj-02-daily-user-management.md](./docs/verification/uj-02-daily-user-management.md) |
+| UJ-03 | advanced-user-workflow.mermaid | 2025-01-29 | 93% (75/81) | ⚠️ 基本通过，有可选优化项 | [docs/verification/uj-03-advanced-user-workflow.md](./docs/verification/uj-03-advanced-user-workflow.md) |
+| UJ-04 | creator-publish-share.mermaid | 2025-01-29 | 88% (82/93) | ✅ 核心功能完整，有可选增强项 | [docs/verification/uj-04-creator-publish-share.md](./docs/verification/uj-04-creator-publish-share.md) |
+| UJ-05 | admin-system-maintenance.mermaid | 2025-01-29 | 72% (56/78) | ⚠️ 有待修复项（ISSUE-001） | [docs/verification/uj-05-admin-system-maintenance.md](./docs/verification/uj-05-admin-system-maintenance.md) |
+
+**Phase 2 总体完成度**: **84%** (303/360 步骤实现)
+
+#### Phase 3: 功能流程验证（已完成）
+
+**验证时间**: 2025-01-29
+**验证数量**: 19 个功能流程图
+**总体完成度**: **95%** (~700/740 步骤实现)
+
+| 类别 | 流程图 | 完成度 | 状态 |
+|------|--------|--------|------|
+| **marketplace-source** | add-custom-source (SC-09) | 100% | ✅ 完全通过 |
+| | browse-marketplace (SC-08) | 92% | ⚠️ 缺少来源筛选 UI |
+| | filter-by-source (SC-11) | 70% | ⚠️ 缺少来源筛选 UI |
+| | manage-sources (SC-10) | 100% | ✅ 完全通过 |
+| **skill-management** | import-from-github (SC-01) | 100% | ✅ 完全通过 |
+| | import-from-local (SC-02) | 100% | ✅ 完全通过 |
+| | import-from-package (SC-03) | 95% | ✅ 基本通过 |
+| | uninstall-skill (SC-04) | 100% | ✅ 完全通过 |
+| | enable-disable-skill (SC-05) | 100% | ✅ 完全通过 |
+| | configure-skill-params (SC-06) | 100% | ✅ 完全通过 |
+| | view-skill-details (SC-07) | 90% | ⚠️ Marketplace 缺少质量/安全评分 |
+| **share-community** | share-skill (SC-12) | 100% | ✅ 完全通过 |
+| | fork-remix-skill (SC-15) | 95% | ✅ 基本通过 |
+| | import-from-share-link (SC-13) | 100% | ✅ 完全通过 |
+| | import-from-share-image (SC-14) | 100% | ✅ 完全通过 |
+| | manage-collections (SC-16) | 95% | ✅ 基本通过 |
+| | publish-to-market (SC-17) | 100% | ✅ 完全通过 |
+| **other-modules** | view-security-report (SC-18) | 100% | ✅ 完全通过 |
+| | view-task-center (SC-19) | 90% | ✅ 基本通过 |
+
+**Phase 3 关键发现**：
+1. ✅ 核心功能高度完整（大部分流程 90%+ 实现）
+2. ❌ **来源筛选 UI 缺失**（影响 3 个流程图：SC-08, SC-11）
+3. ⚠️ Marketplace 缺少质量/安全评分（影响 SC-07）
+4. ❌ Dashboard 路由未配置（UJ-05 ISSUE-001）
+5. ⚠️ 默认路由错误（UJ-01，应进入 `/marketplace`）
+
+### 发现的问题汇总
+
+**高优先级问题**（影响核心用户体验）：
+1. 默认路由错误 → 应进入 `/marketplace`
+2. Marketplace 缺少质量/安全信息 → 应显示评分卡片
+
+**中优先级问题**：
+1. 无欢迎页面引导
 
 ---
 
