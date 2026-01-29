@@ -39,7 +39,7 @@ flowchart TD
     UpdateFTS5 --> InsertFTS[SQL: INSERT INTO marketplace_skills_fts<br/>rowid, name, description]
     InsertFTS --> LoopMetadata
 
-    LoopMetadata -->|完成| EmitEvent[后端: 发送事件<br/>repository-scan-complete]
+    LoopMetadata -->|完成| EmitEvent[后端: 发送事件<br/>repository-updated]
     EmitEvent --> ReturnResult[返回扫描结果<br/>skills_found: N]
 
     ReturnResult --> FrontendReceive[前端: 接收结果]
