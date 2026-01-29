@@ -28,6 +28,8 @@ import { FilterPanel } from '../components/FilterPanel';
 import { Filter as FilterIcon } from 'lucide-react';
 import { MarketplaceHero } from '../components/Marketplace/MarketplaceHero';
 import { AddToCollectionModal } from '../components/AddToCollectionModal';
+import { TokenConfigBanner } from '../components/TokenConfigBanner';
+import { getTokenBannerStatus, setTokenBannerDismissed } from '../utils/tokenBannerStorage';
 
 // Constant
 const GUTTER_SIZE = 24;
@@ -130,6 +132,16 @@ const Marketplace = () => {
   const installTimerRef = useRef<number | null>(null);
   const [installProgress, setInstallProgress] = useState(0);
   const [isInstalling, setIsInstalling] = useState(false);
+
+  // ✅ 新增：Token 配置横幅状态管理 (v2.7.0)
+  const [showTokenBanner, setShowTokenBanner] = useState(() => {
+    return getTokenBannerStatus() === 'show';
+  });
+
+  const handleDismissBanner = (type: 'never' | 'later') => {
+    setTokenBannerDismissed(type);
+    setShowTokenBanner(false);
+  };
 
   const formatUpdatedAt = useCallback((value?: number) => {
     if (!value) return i18n.language === 'zh' ? '未知' : 'Unknown';
@@ -317,6 +329,15 @@ const Marketplace = () => {
         onImportClick={() => setShowImportModal(true)}
         isGithubUrl={isGithubUrl}
       />
+
+      {/* ✅ 新增：Token 配置引导横幅 (v2.7.0) */}
+      {showTokenBanner && (
+        <div className="px-2">
+          <TokenConfigBanner
+            onDismiss={handleDismissBanner}
+          />
+        </div>
+      )}
 
       {/* Filter Chips with Scroll Indicators */}
       <div className="relative">
