@@ -49,6 +49,11 @@ pub fn init_db() -> Result<()> {
         }
     }
 
+    if let Err(e) = ensure_repository_schema(&conn) {
+        log::error!("Failed to ensure repository schema: {:?}", e);
+        return Err(e);
+    }
+
     // Set the global pool
     log::debug!("Setting global database pool...");
     DB_POOL.set(pool)
@@ -148,6 +153,7 @@ fn init_schema(conn: &Connection) -> Result<()> {
             last_scanned INTEGER,
             cache_path TEXT,
             cached_commit_sha TEXT,
+            featured INTEGER DEFAULT 0,
             category TEXT DEFAULT 'custom',
             -- New fields from V11
             source_type TEXT DEFAULT 'user',
@@ -477,6 +483,100 @@ fn init_schema(conn: &Connection) -> Result<()> {
             WHERE r.enabled = 1
         )
         SELECT * FROM ranked_skills WHERE rn = 1",
+        [],
+    )?;
+
+    Ok(())
+}
+
+fn ensure_repository_schema(conn: &Connection) -> Result<()> {
+    let has_column = |table: &str, col: &str| -> Result<bool> {
+        let count: i32 = conn.query_row(
+            &format!("SELECT COUNT(*) FROM pragma_table_info('{}') WHERE name = '{}'", table, col),
+            [],
+            |row| row.get(0),
+        )?;
+        Ok(count > 0)
+    };
+
+    // Only attempt fixes if repositories table exists.
+    let repositories_exists: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'repositories'",
+        [],
+        |row| row.get(0),
+    )?;
+    if repositories_exists == 0 {
+        return Ok(());
+    }
+
+    let has_source_type = has_column("repositories", "source_type")?;
+    let has_priority = has_column("repositories", "priority")?;
+    let has_scan_status = has_column("repositories", "scan_status")?;
+    let has_etag = has_column("repositories", "etag")?;
+    let has_featured = has_column("repositories", "featured")?;
+
+    if !has_source_type {
+        conn.execute(
+            "ALTER TABLE repositories ADD COLUMN source_type TEXT DEFAULT 'user'",
+            [],
+        )?;
+    }
+
+    if !has_priority {
+        conn.execute(
+            "ALTER TABLE repositories ADD COLUMN priority INTEGER DEFAULT 100",
+            [],
+        )?;
+    }
+
+    if !has_scan_status {
+        conn.execute(
+            "ALTER TABLE repositories ADD COLUMN scan_status TEXT DEFAULT 'pending'",
+            [],
+        )?;
+    }
+
+    if !has_etag {
+        conn.execute(
+            "ALTER TABLE repositories ADD COLUMN etag TEXT",
+            [],
+        )?;
+    }
+
+    if has_featured {
+        conn.execute(
+            "UPDATE repositories
+             SET source_type = CASE WHEN featured = 1 THEN 'featured' ELSE 'user' END
+             WHERE source_type IS NULL OR source_type = ''",
+            [],
+        )?;
+
+        conn.execute(
+            "UPDATE repositories
+             SET priority = CASE WHEN featured = 1 THEN 10 ELSE 100 END
+             WHERE priority IS NULL",
+            [],
+        )?;
+    } else {
+        conn.execute(
+            "UPDATE repositories
+             SET source_type = 'user'
+             WHERE source_type IS NULL OR source_type = ''",
+            [],
+        )?;
+
+        conn.execute(
+            "UPDATE repositories
+             SET priority = 100
+             WHERE priority IS NULL",
+            [],
+        )?;
+    }
+
+    conn.execute(
+        "UPDATE repositories
+         SET scan_status = 'pending'
+         WHERE scan_status IS NULL OR scan_status = ''",
         [],
     )?;
 

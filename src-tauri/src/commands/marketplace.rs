@@ -3,10 +3,13 @@
 //! This module provides Tauri commands for marketplace operations
 
 use crate::services::marketplace_service::{MarketplaceService, MarketplaceStats};
+use crate::services::repository_service::RepositoryService;
+use crate::models::repository::{Repository, RepositoryCategory};
 use crate::models::marketplace::{MarketplaceSkill, MarketplaceSkillDTO};
 use crate::models::source::SourceFilter;
 use std::fs;
 use std::path::PathBuf;
+use std::collections::HashMap;
 
 /// Raw marketplace skill JSON structure
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -237,12 +240,99 @@ pub async fn import_marketplace_from_json(
 
     // Import to database
     let service = MarketplaceService::new();
+    let repository_service = RepositoryService::new();
+    let mut repository_cache: HashMap<String, String> = HashMap::new();
     let mut success_count = 0;
     let mut error_count = 0;
     let skipped_count = 0;
 
+    let fallback_repo_url = "https://github.com/marketplace/legacy-json";
+
+    let resolve_repository_id = |repo_url: &str,
+                                 repository_service: &RepositoryService,
+                                 repository_cache: &mut HashMap<String, String>| -> Result<String, String> {
+        if let Some(id) = repository_cache.get(repo_url) {
+            return Ok(id.clone());
+        }
+
+        if let Ok(Some(existing)) = repository_service.get_repository_by_url(repo_url) {
+            repository_cache.insert(repo_url.to_string(), existing.id.clone());
+            return Ok(existing.id);
+        }
+
+        let repo_name = Repository::parse_github_url(repo_url)
+            .map(|(_, repo)| repo)
+            .unwrap_or_else(|_| "marketplace".to_string());
+
+        let repo = Repository {
+            id: uuid::Uuid::new_v4().to_string(),
+            url: repo_url.to_string(),
+            name: repo_name,
+            description: Some("Imported from marketplace.json".to_string()),
+            source_type: "featured".to_string(),
+            priority: 10,
+            scan_status: "pending".to_string(),
+            etag: None,
+            enabled: true,
+            scan_subdirs: true,
+            added_at: chrono::Utc::now(),
+            last_scanned: None,
+            cache_path: None,
+            cached_commit_sha: None,
+            featured: true,
+            category: RepositoryCategory::Community,
+        };
+
+        match repository_service.add_repository(&repo) {
+            Ok(_) => {
+                repository_cache.insert(repo.url.clone(), repo.id.clone());
+                Ok(repo.id)
+            }
+            Err(e) => Err(format!("Failed to add repository {}: {}", repo.url, e)),
+        }
+    };
+
+    let parse_repo_info = |url: &str| -> Option<(String, Option<String>)> {
+        let (owner, repo) = Repository::parse_github_url(url).ok()?;
+        let repo_url = format!("https://github.com/{}/{}", owner, repo);
+
+        let skill_path = if let Some(pos) = url.find("/tree/") {
+            let remainder = &url[(pos + "/tree/".len())..];
+            let mut parts = remainder.split('/');
+            let _branch = parts.next();
+            let path = parts.collect::<Vec<_>>().join("/");
+            if path.is_empty() { None } else { Some(path) }
+        } else if let Some(pos) = url.find("/blob/") {
+            let remainder = &url[(pos + "/blob/".len())..];
+            let mut parts = remainder.split('/');
+            let _branch = parts.next();
+            let path = parts.collect::<Vec<_>>().join("/");
+            if path.is_empty() { None } else { Some(path) }
+        } else {
+            None
+        };
+
+        Some((repo_url, skill_path))
+    };
+
     for raw_skill in raw_skills {
-        let skill: MarketplaceSkill = raw_skill.into();
+        let (repo_url, inferred_path) = raw_skill.github_url
+            .as_deref()
+            .and_then(parse_repo_info)
+            .unwrap_or_else(|| (fallback_repo_url.to_string(), None));
+
+        let repository_id = match resolve_repository_id(&repo_url, &repository_service, &mut repository_cache) {
+            Ok(id) => id,
+            Err(e) => {
+                log::error!("{}", e);
+                error_count += 1;
+                continue;
+            }
+        };
+
+        let mut skill: MarketplaceSkill = raw_skill.into();
+        skill.repository_id = repository_id;
+        skill.skill_path = inferred_path.unwrap_or_else(|| skill.id.clone());
 
         match service.upsert_skill(&skill) {
             Ok(_) => success_count += 1,
