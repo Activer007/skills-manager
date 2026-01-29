@@ -48,7 +48,15 @@ export function useMarketplaceLogic() {
       params.minStars = TOP_RATED_THRESHOLD;
     }
 
-    params.sourceType = sourceFilter;
+    // Pass sourceType directly to backend (including 'official')
+    // 后端需要支持 'official' | 'featured' | 'user' 三种类型
+    if (sourceFilter !== 'all') {
+      params.sourceType = sourceFilter;
+      // 开发模式下输出调试信息
+      if (import.meta.env.DEV) {
+        console.debug(`[Marketplace] Filtering by sourceType: ${sourceFilter}`);
+      }
+    }
 
     return params;
   }, [debouncedSearchTerm, filter, sourceFilter]);
@@ -60,6 +68,18 @@ export function useMarketplaceLogic() {
     error: marketplaceError,
     refetch: refetchMarketplace,
   } = useMarketplaceSkills(queryParams);
+
+  // 监控 API 错误，如果后端不支持 'official' 类型则提示
+  useEffect(() => {
+    if (isMarketplaceError && sourceFilter === 'official') {
+      console.warn(
+        '[Marketplace] API error when filtering by sourceType="official". ' +
+        'This may indicate the backend does not support the "official" type yet. ' +
+        'Please ensure the backend has been updated to support SourceType::Official.',
+        marketplaceError
+      );
+    }
+  }, [isMarketplaceError, sourceFilter, marketplaceError]);
 
   const isGithubUrl = useMemo(() => {
     return GITHUB_URL_REGEX.test(searchTerm);
@@ -111,6 +131,22 @@ export function useMarketplaceLogic() {
         const hasTag = skill.tags?.some(t => t.toLowerCase() === compatibilityFilter.toLowerCase());
 
         if (!supported && !hasTag) return false;
+      }
+
+      // 4. Source Filter
+      if (sourceFilter !== 'all') {
+        // 使用 sourceType 字段筛选（后端负责标记正确的类型）
+        // - official: claude-ai 官方仓库（https://github.com/anthropics/skills）
+        // - featured: 精选仓库
+        // - user: 用户仓库
+        //
+        // 向后兼容：如果 sourceType 为 undefined/null，视为不匹配任何非 'all' 的筛选
+        // 这样老数据不会错误地显示在筛选结果中
+        if (!skill.sourceType) {
+          console.debug(`Skill "${skill.name}" missing sourceType, excluding from filter`);
+          return false;
+        }
+        if (skill.sourceType !== sourceFilter) return false;
       }
 
       return true;

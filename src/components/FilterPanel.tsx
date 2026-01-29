@@ -87,13 +87,18 @@ export const FilterPanel = ({
   const sourceOptions: { value: SourceFilter; label: string; icon?: React.ReactNode }[] = [
     { value: 'all', label: i18n.language === 'zh' ? '全部来源' : 'All Sources' },
     {
+      value: 'official',
+      label: i18n.language === 'zh' ? '官方' : 'Official',
+      icon: <Shield size={14} className="text-purple-500" />
+    },
+    {
       value: 'featured',
-      label: i18n.language === 'zh' ? '官方精选' : 'Featured',
+      label: i18n.language === 'zh' ? '精选仓库' : 'Featured',
       icon: <Star size={14} className="text-yellow-500" />
     },
     {
       value: 'user',
-      label: i18n.language === 'zh' ? '用户来源' : 'User Sources',
+      label: i18n.language === 'zh' ? '用户仓库' : 'User Repositories',
       icon: <User size={14} className="text-blue-500" />
     },
   ];

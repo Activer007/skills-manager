@@ -39,7 +39,14 @@
       "Bash(powershell:*)",
       "Bash(cargo run:*)",
       "Bash(cargo clippy:*)",
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "Bash(git checkout:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(npx eslint:*)",
+      "Bash(git commit:*)",
+      "Bash(git stash:*)",
+      "Bash(npm run build)"
     ]
   }
 }
