@@ -230,37 +230,51 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
     let github_re = Regex::new(r"github\.com/([^/]+)/([^/]+)")
         .map_err(|e| anyhow::anyhow!("Failed to compile regex: {}", e))?;
 
+    // Phase 1: Read all data into memory to avoid locking issues and potential deadlocks
+    // We define a struct to hold the data we need to migrate
+    struct LegacySkillData {
+        name: String,
+        author: Option<String>,
+        description: Option<String>,
+        github_url: Option<String>,
+        stars: i64,
+        forks: i64,
+        updated_at: i64,
+        tags: Option<String>,
+        security_score: Option<i32>,
+    }
+
     let mut stmt = conn.prepare(
-        "SELECT id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, compatibility, data
+        "SELECT name, author, description, github_url, stars, forks, updated_at, tags, security_score
          FROM marketplace_skills"
     )?;
 
-    let skill_iter = stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, String>(0)?,   // id
-            row.get::<_, String>(1)?,   // name
-            row.get::<_, Option<String>>(2)?, // author
-            row.get::<_, Option<String>>(3)?, // description
-            row.get::<_, Option<String>>(4)?, // github_url
-            row.get::<_, i64>(5)?,      // stars
-            row.get::<_, i64>(6)?,      // forks
-            row.get::<_, i64>(7)?,      // updated_at
-            row.get::<_, Option<String>>(8)?, // tags
-            row.get::<_, Option<i32>>(9)?, // security_score
-            row.get::<_, Option<String>>(10)?, // compatibility
-            row.get::<_, Option<String>>(11)?, // data
-            None::<String>,             // version (not in old table, will be None)
-        ))
-    })?;
+    // Collect all rows into a Vector first
+    let skills_data: Vec<LegacySkillData> = stmt.query_map([], |row| {
+        Ok(LegacySkillData {
+            name: row.get(0)?,
+            author: row.get(1)?,
+            description: row.get(2)?,
+            github_url: row.get(3)?,
+            stars: row.get(4)?,
+            forks: row.get(5)?,
+            updated_at: row.get(6)?,
+            tags: row.get(7)?,
+            security_score: row.get(8)?,
+        })
+    })?
+    .collect::<Result<Vec<_>, _>>()?;
+
+    // Drop the statement to ensure the read transaction/lock is released
+    drop(stmt);
 
     let mut migrated_count = 0;
     let mut unknown_repo_count = 0;
 
-    for skill_result in skill_iter {
-        let (_old_id, name, author, description, github_url, stars, forks, updated_at, tags, security_score, _compatibility, _data, version) = skill_result?;
-
+    // Phase 2: Process and insert data
+    for skill in skills_data {
         // Extract repository info from github_url
-        let (repo_url, repo_name) = match &github_url {
+        let (repo_url, repo_name) = match &skill.github_url {
             Some(url) => {
                 match extract_repository_from_url(&github_re, url) {
                     Some(info) => info,
@@ -272,7 +286,7 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
                 }
             }
             None => {
-                warn!("Skill {} has no github_url", name);
+                warn!("Skill {} has no github_url", skill.name);
                 unknown_repo_count += 1;
                 ("https://github.com/unknown/unknown-repo".to_string(), "Unknown Repository".to_string())
             }
@@ -282,7 +296,7 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
         let repo_id = find_or_create_repository(conn, &repo_url, &repo_name)?;
 
         // Calculate skill_path (assume root level)
-        let skill_path = format!("skills/{}", slugify(&name));
+        let skill_path = format!("skills/{}", slugify(&skill.name));
 
         // Generate new ID: {repository_id}_{skill_path_hash}
         let path_hash = sha256_hash(&skill_path);
@@ -290,14 +304,15 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
 
         // Apply author fallback strategy
         let resolved_author = resolve_author_fallback(
-            author.as_deref(),
-            github_url.as_deref()
+            skill.author.as_deref(),
+            skill.github_url.as_deref()
         );
 
-        // Timestamps (统一使用毫秒时间戳)
+        // Timestamps (Use millisecond timestamp)
         let now = chrono::Utc::now().timestamp_millis();
-        let discovered_at = updated_at;
+        let discovered_at = skill.updated_at;
         let synced_at = now;
+        let version: Option<String> = None;
 
         // Insert into new table
         // Use INSERT OR REPLACE to handle potential duplicates (dirty data in old table)
@@ -310,8 +325,8 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
         )?;
 
         insert_stmt.execute((
-            &new_id, &name, &resolved_author, &description, &skill_path, &repo_id,
-            &version, stars, forks, updated_at, &tags, &security_score, discovered_at, synced_at
+            &new_id, &skill.name, &resolved_author, &skill.description, &skill_path, &repo_id,
+            &version, skill.stars, skill.forks, skill.updated_at, &skill.tags, &skill.security_score, discovered_at, synced_at
         ))?;
 
         migrated_count += 1;
