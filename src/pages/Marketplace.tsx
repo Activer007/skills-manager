@@ -6,6 +6,7 @@ import { useMarketplaceLogic } from '../hooks/useMarketplaceLogic';
 import type { MarketplaceSkill, InstalledSkill } from '../types';
 import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
 import { getLocalizedDescription } from '../utils/i18n';
+import { SECURITY_SCORE_THRESHOLDS } from '../utils/securityHelpers';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from '../store/useToastStore';
 import { SkeletonCard } from '../components/SkeletonCard';
@@ -15,7 +16,7 @@ import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Progress } from '../components/ui/Progress';
 import { cn } from '../utils/cn';
-import { Star, GitBranch, Github } from 'lucide-react';
+import { Star, GitBranch, Github, Shield, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { FixedSizeGrid as Grid } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 import type { CSSProperties } from 'react';
@@ -609,6 +610,65 @@ const Marketplace = () => {
                          </div>
                     </div>
                 </div>
+
+                {/* Security Score Display */}
+                {selectedSkill.securityScore !== undefined && (
+                    <div className="p-4 bg-slate-50 dark:bg-base-200 rounded-xl border border-gray-100 dark:border-base-300">
+                        <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                <Shield size={18} className="text-blue-500" />
+                                {i18n.language === 'zh' ? '安全评分' : 'Security Score'}
+                            </h4>
+                            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                                {selectedSkill.securityScore}
+                            </div>
+                        </div>
+                        {selectedSkill.securityScore >= SECURITY_SCORE_THRESHOLDS.SAFE ? (
+                            <div className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+                                <CheckCircle size={14} />
+                                {i18n.language === 'zh' ? '安全' : 'Safe'}
+                            </div>
+                        ) : selectedSkill.securityScore >= SECURITY_SCORE_THRESHOLDS.WARNING ? (
+                            <div className="text-sm text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                                <AlertTriangle size={14} />
+                                {i18n.language === 'zh' ? '需注意' : 'Caution'}
+                            </div>
+                        ) : (
+                            <div className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                                <XCircle size={14} />
+                                {i18n.language === 'zh' ? '有风险' : 'Risky'}
+                            </div>
+                        )}
+                        {selectedSkill.securityIssues && selectedSkill.securityIssues.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                <div className="text-xs text-slate-500 mb-1">
+                                    {i18n.language === 'zh' ? '发现安全问题' : 'Security Issues'} ({selectedSkill.securityIssues.length})
+                                </div>
+                                <div className="space-y-1">
+                                    {selectedSkill.securityIssues.slice(0, 3).map((issue, index) => (
+                                        <div key={index} className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-2">
+                                            <span className={cn(
+                                                "font-medium",
+                                                issue.severity === 'Critical' && "text-red-600 dark:text-red-400",
+                                                issue.severity === 'Error' && "text-red-500 dark:text-red-400",
+                                                issue.severity === 'Warning' && "text-yellow-600 dark:text-yellow-400",
+                                                issue.severity === 'Info' && "text-blue-600 dark:text-blue-400"
+                                            )}>
+                                                [{issue.severity}]
+                                            </span>
+                                            <span className="flex-1">{issue.description}</span>
+                                        </div>
+                                    ))}
+                                    {selectedSkill.securityIssues.length > 3 && (
+                                        <div className="text-xs text-slate-500">
+                                            +{selectedSkill.securityIssues.length - 3} {i18n.language === 'zh' ? '更多' : 'more'}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {selectedSkill.tags && selectedSkill.tags.length > 0 && (
                     <div>
