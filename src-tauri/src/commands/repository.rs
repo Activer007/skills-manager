@@ -65,6 +65,7 @@ pub async fn add_repository(
             success: false,
             message: e,
             repository_id: None,
+            task_id: None,
         });
     }
 
@@ -76,6 +77,7 @@ pub async fn add_repository(
             success: false,
             message: "Repository already exists".to_string(),
             repository_id: None,
+            task_id: None,
         });
     }
 
@@ -135,12 +137,6 @@ pub async fn add_repository(
         let task_id_clone = task_id.clone();
 
         tokio::spawn(async move {
-            // Create a dummy channel for progress events
-            // In real implementation, this should emit events to the frontend
-            use tauri::ipc::Channel;
-            use std::sync::Arc;
-            use tokio::sync::Mutex;
-
             // We can't create a proper channel here, so we'll just call the scan function
             // and update task status manually
             TASK_MANAGER.update_status(&app_clone, &task_id_clone, TaskStatus::Running).await;
@@ -173,7 +169,7 @@ pub async fn add_repository(
 /// Delete a repository by ID
 #[tauri::command]
 pub fn delete_repository(id: String) -> Result<DeleteRepositoryResult, String> {
-    use crate::errors::{ApiError, detect_api_rate_limit};
+    use crate::errors::detect_api_rate_limit;
 
     let service = RepositoryService::new();
 
@@ -266,11 +262,13 @@ pub fn toggle_repository_enabled(id: String, enabled: bool) -> Result<Repository
                 if enabled { "enabled" } else { "disabled" }
             ),
             repository_id: Some(id),
+            task_id: None,
         }),
         Err(e) => Ok(RepositoryResponse {
             success: false,
             message: format!("Failed to update repository: {}", e),
             repository_id: None,
+            task_id: None,
         }),
     }
 }
