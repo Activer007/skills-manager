@@ -1,0 +1,36 @@
+%% SC-15: Fork/Remix Skill
+%% 流程图: fork-remix-skill.mermaid
+
+flowchart TD
+    Start([开始: 用户点击 Fork 按钮]) --> ShowDialog[显示 Fork 对话框]
+    ShowDialog --> InputNewName[输入新 Skill 名称]
+    InputNewName --> InputNewDesc[输入新描述]
+    InputNewDesc --> ShowTargetDir[显示目标目录<br/>~/.claude/skills/]
+    ShowTargetDir --> CheckDir{目录是否存在}
+    CheckDir -->|存在| ShowExistsError[显示错误<br/>目录已存在，请使用其他名称]
+    CheckDir -->|不存在| ConfirmFork[确认创建]
+
+    ShowExistsError --> End([结束])
+
+    ConfirmFork --> ReadSource[读取源 Skill 目录]
+    ReadSource --> CopyFiles[复制所有文件]
+    CopyFiles --> CreateDir[创建新目录]
+    CreateDir --> WriteFiles[写入文件到新目录]
+    WriteFiles --> UpdateManifest[更新 SKILL.md<br/>name, description]
+    UpdateManifest --> RecordParent[记录 parent_skill_id<br/>追踪来源]
+    RecordParent --> SaveDB[保存到数据库]
+
+    SaveDB --> AskEditor{打开编辑器?}
+    AskEditor -->|是| LaunchEditor[启动系统编辑器]
+    AskEditor -->|否| RefreshList[刷新列表]
+    LaunchEditor --> RefreshList
+
+    RefreshList --> ShowNewSkill[显示新的 Fork Skill]
+    ShowNewSkill --> ShowSuccess[显示创建成功提示]
+    ShowSuccess --> End2([结束: Fork 完成])
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style End2 fill:#e1f5e1
+    style ShowExistsError fill:#f8d7da
+    style ShowSuccess fill:#d1ecf1

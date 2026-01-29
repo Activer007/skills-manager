@@ -1,0 +1,97 @@
+%% 旅程 4: 创作发布
+%% 流程图: creator-publish-share.mermaid
+
+flowchart TD
+    Start([开始: 创作者发布 Skill]) --> CreateRepo[在 GitHub 创建 Skill 仓库]
+    CreateRepo --> AddSKILLMD[添加 SKILL.md 文件]
+    AddSKILLMD --> WriteContent[编写 Skill 内容]
+    WriteContent --> CommitPush[提交并推送到 GitHub]
+
+    CommitPush --> AddSource[添加自定义来源<br/>参考旅程 3]
+    AddSource --> VerifySync[验证 Skill 已同步到市场]
+
+    VerifySync --> EnterMarket[进入市场页面]
+    EnterMarket --> SearchSkill[搜索刚创建的 Skill]
+    SearchSkill --> ViewInMarket[在市场中查看 Skill]
+    ViewInMarket --> VerifyInfo{验证信息}
+    VerifyInfo -->|正确| InstallOwn[安装自己的 Skill]
+    VerifyInfo -->|错误| FixMetadata[修复元数据]
+    FixMetadata --> AddSource
+
+    InstallOwn --> ClickInstall[点击安装按钮]
+    ClickInstall --> WaitInstall[等待安装完成]
+    WaitInstall --> ViewInMySkills[在 我的 Skills 中查看]
+
+    ViewInMySkills --> ClickShare[点击 🔗 分享按钮]
+    ClickShare --> SelectShareMethod{选择分享方式}
+
+    SelectShareMethod -->|分享链接| GenShareLink[生成分享链接]
+    SelectShareMethod -->|文本分享| GenShareText[生成分享文本]
+    SelectShareMethod -->|图片分享| GenShareCard[生成分享卡片]
+    SelectShareMethod -->|包导出| ExportPackage[导出 Skill 包]
+
+    %% 分享链接流程
+    GenShareLink --> CallGenerateAPI[调用 generate_share_link API]
+    CallGenerateAPI --> StoreMetadata[存储元数据到数据库]
+    StoreMetadata --> GenShareID[生成唯一 share_id]
+    GenShareID --> BuildURL[构建分享链接<br/>/share/:shareId]
+    BuildURL --> CopyLink[复制链接到剪贴板]
+    CopyLink --> ShowLinkSuccess[显示生成成功提示]
+    ShowLinkSuccess --> PublishSocial{发布到社交媒体?}
+
+    %% 文本分享流程
+    GenShareText --> SelectPlatform[选择平台<br/>X/Twitter/微信/邮件]
+    SelectPlatform --> GenText[生成多平台文本]
+    GenText --> CopyText[复制文本到剪贴板]
+    CopyText --> PublishSocial
+
+    %% 图片分享流程
+    GenShareCard --> SelectTheme[选择主题<br/>深色/浅色/渐变]
+    SelectTheme --> GenCanvas[生成 Canvas 画布]
+    GenCanvas --> DrawCard[绘制分享卡片]
+    DrawCard --> GenQRCode[生成二维码]
+    GenQRCode --> ExportPNG[导出为 PNG 图片]
+    ExportPNG --> SaveImage[保存图片到本地]
+    SaveImage --> PublishSocial
+
+    %% 包导出流程
+    ExportPackage --> PackFiles[打包 Skill 文件]
+    PackFiles --> GenManifest[生成 skill-manifest.json]
+    GenManifest --> CalcChecksum[计算 SHA-256 校验和]
+    CalcChecksum --> CreateZIP[创建 .zip 文件]
+    CreateZIP --> SaveZIP[保存到本地]
+    SaveZIP --> PublishSocial
+
+    %% 社交媒体发布
+    PublishSocial -->|是| OpenSocial[打开社交媒体平台]
+    PublishSocial -->|否| CreateCollection{创建合集?}
+
+    OpenSocial --> PasteContent[粘贴链接/文本/图片]
+    PasteContent --> AddDescription[添加描述文案]
+    AddDescription --> PublishPost[发布帖子]
+    PublishPost --> CreateCollection
+
+    %% 创建合集流程
+    CreateCollection -->|是| EnterCollections[进入合集页面<br/>/collections]
+    CreateCollection -->|否| ViewCreatorProfile[查看创作者资料]
+
+    EnterCollections --> ClickCreateColl[点击 创建合集]
+    ClickCreateColl --> InputCollName[输入合集名称]
+    InputCollName --> InputCollDesc[输入合集描述]
+    InputCollDesc --> SelectIcon[选择图标]
+    SelectIcon --> CreateCollRecord[创建合集记录]
+    CreateCollRecord --> AddSkillsToColl[添加 Skills 到合集]
+    AddSkillsToColl --> ShowCollSuccess[显示合集创建成功]
+    ShowCollSuccess --> ViewCreatorProfile
+
+    %% 查看创作者资料
+    ViewCreatorProfile --> EnterProfile[进入创作者资料页<br/>/creator/:id]
+    EnterProfile --> ShowStats[显示统计数据<br/>Skills/安装量/评分]
+    ShowStats --> ListCreatorSkills[列出创作者的所有 Skills]
+    ListCreatorSkills --> ViewFeedback[查看用户反馈]
+    ViewFeedback --> Complete([完成: 发布流程结束])
+
+    style Start fill:#e1f5e1
+    style Complete fill:#e1f5e1
+    style ShowLinkSuccess fill:#d1ecf1
+    style ShowCollSuccess fill:#d1ecf1

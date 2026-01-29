@@ -3,6 +3,7 @@ rust_i18n::i18n!("locales", fallback = "en");
 
 use tauri::Manager;
 use crate::services::config_service::ConfigService;
+use crate::services::marketplace_service::MarketplaceService;
 
 // Import modules
 pub mod analyzer;
@@ -17,7 +18,10 @@ pub mod tasks;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialize logging
+    // Initialize logging - force INFO level if not set
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "info");
+    }
     env_logger::init();
     log::info!("Skills Manager starting...");
 
@@ -25,39 +29,55 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            log::debug!("Initializing database...");
-            if let Err(e) = crate::services::db::init_db() {
-                log::error!("Failed to initialize database: {}", e);
-            }
+            // Move database initialization to a background task to avoid blocking the main thread
+            tauri::async_runtime::spawn(async move {
+                log::info!("Starting background initialization...");
 
-            // Seed featured repositories if none exist (new approach)
-            log::debug!("Checking for featured repositories to seed...");
-            match crate::services::seed_featured_repositories() {
-                Ok(seeded) => {
-                    if seeded {
-                        log::info!("Featured repositories seeded successfully");
+                log::debug!("Initializing database...");
+                match crate::services::db::init_db() {
+                    Ok(_) => log::info!("Database initialized successfully"),
+                    Err(e) => log::error!("Failed to initialize database: {}", e),
+                }
+
+                // Seed featured repositories if none exist
+                log::debug!("Checking for featured repositories to seed...");
+                match crate::services::seed_featured_repositories() {
+                    Ok(seeded) => {
+                        if seeded {
+                            log::info!("Featured repositories seeded successfully");
+                        }
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to seed featured repositories: {}", e);
                     }
                 }
-                Err(e) => {
-                    log::warn!("Failed to seed featured repositories: {}", e);
-                    // Don't block application startup if seeding fails
-                }
-            }
 
-            // Legacy: Initialize default repositories (kept for backward compatibility)
-            // This is now redundant as seed_featured_repositories handles the same logic
-            // using the YAML configuration instead of hardcoded values.
-            //
-            // match crate::services::initialize_default_repositories() {
-            //     Ok(initialized) => {
-            //         if initialized {
-            //             log::info!("Default repositories initialized successfully");
-            //         }
-            //     }
-            //     Err(e) => {
-            //         log::warn!("Failed to initialize default repositories: {}", e);
-            //     }
-            // }
+                // Auto-import marketplace data if database is empty
+                match MarketplaceService::new().get_stats() {
+                    Ok(stats) if stats.total_skills == 0 => {
+                        log::info!("Marketplace is empty, importing from JSON...");
+                        match crate::commands::marketplace::import_marketplace_from_json(None).await {
+                            Ok(result) => {
+                                log::info!(
+                                    "Marketplace import completed: {} total, {} success, {} errors",
+                                    result.total_count,
+                                    result.success_count,
+                                    result.error_count
+                                );
+                            }
+                            Err(e) => {
+                                log::warn!("Marketplace import failed: {}", e);
+                            }
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::warn!("Failed to get marketplace stats: {}", e);
+                    }
+                }
+
+                log::info!("Background initialization completed");
+            });
 
             // Initialize and manage ConfigService
             let config_service = ConfigService::new();

@@ -1,0 +1,63 @@
+%% 旅程 1: 新用户入门
+%% 流程图: new-user-onboarding.mermaid
+
+flowchart TD
+    Start([开始: 新用户首次启动应用]) --> LaunchApp[启动应用]
+    LaunchApp --> WelcomePage{显示欢迎界面?}
+    WelcomePage -->|是| ShowWelcome[显示欢迎卡片]
+    WelcomePage -->|否| EnterMarket[直接进入市场]
+
+    ShowWelcome --> EnterMarket[进入市场页面 /marketplace]
+
+    EnterMarket --> ViewFeatured[查看 Featured Skills 列表]
+    ViewFeatured --> BrowseSkills[浏览 Skill 卡片]
+    BrowseSkills --> CheckInterest{感兴趣?}
+
+    CheckInterest -->|否| ContinueBrowse[继续浏览]
+    CheckInterest -->|是| SearchSkills[搜索感兴趣的 Skills]
+
+    SearchSkills --> InputKeyword[输入关键词<br/>例如: frontend]
+    InputKeyword --> ViewSearchResults[查看搜索结果]
+
+    ViewSearchResults --> SelectSkill[选择某个 Skill]
+    SelectSkill --> ViewSkillDetails[查看 Skill 详情<br/>SlideOver 侧边抽屉]
+
+    ViewSkillDetails --> CheckInfo{查看信息}
+    CheckInfo -->|评分| ViewQualityScore[查看质量评分<br/>⭐ 9.2/10 S级]
+    CheckInfo -->|安全| ViewSecurityLevel[查看安全等级<br/>🟢 安全 90分]
+    CheckInfo -->|版本| ViewVersion[查看版本信息<br/>📦 v1.0.0]
+
+    ViewQualityScore --> DecideInstall{决定是否安装?}
+    ViewSecurityLevel --> DecideInstall{决定是否安装?}
+    ViewVersion --> DecideInstall{决定是否安装?}
+    DecideInstall -->|否| GoBack[返回继续浏览]
+    DecideInstall -->|是| ClickInstall[点击 安装 按钮]
+
+    ClickInstall --> CreateTask[创建后台任务]
+    CreateTask --> DownloadSkill[下载 Skill 文件]
+    DownloadSkill --> ParseManifest[解析 SKILL.md]
+    ParseManifest --> SecurityScan[执行安全扫描]
+    SecurityScan --> QualityScore[质量评分]
+    QualityScore --> InstallToLocal[安装到本地目录]
+    InstallToLocal --> ShowSuccess[显示安装成功提示]
+
+    ShowSuccess --> EnterMySkills[进入 我的 Skills 页面]
+    EnterMySkills --> ViewInstalled[查看已安装的 Skill]
+    ViewInstalled --> ToggleEnable[切换开关 启用/禁用]
+
+    ToggleEnable --> ShowEnabled[显示启用成功提示]
+    ShowEnabled --> OpenConfig{需要配置参数?}
+    OpenConfig -->|是| OpenConfigTab[打开 配置 标签页]
+    OpenConfig -->|否| Complete
+    OpenConfigTab --> FillParams[填写参数]
+    FillParams --> SaveConfig[保存配置]
+    SaveConfig --> ShowConfigSaved[显示配置保存成功]
+    ShowConfigSaved --> Complete([完成: 首次使用成功])
+
+    GoBack --> ContinueBrowse
+
+    style Start fill:#e1f5e1
+    style Complete fill:#e1f5e1
+    style ShowSuccess fill:#fff3cd
+    style ShowEnabled fill:#d1ecf1
+    style ShowConfigSaved fill:#d1ecf1

@@ -1,0 +1,58 @@
+%% DF-01: 仓库→市场数据流
+%% 流程图: repository-to-market-data-flow.mermaid
+
+flowchart TD
+    Start([开始: 用户添加仓库]) --> FrontendInput[前端: 输入 GitHub URL]
+    FrontendInput --> ValidateURL[前端: 验证 URL 格式]
+    ValidateURL -->|无效| ShowError[显示错误提示]
+    ValidateURL -->|有效| ExtractInfo[前端: 提取 owner/repo]
+
+    ShowError --> End([结束])
+
+    ExtractInfo --> CallScanAPI[前端: 调用 scan_repository API]
+    CallScanAPI --> BackendReceive[后端: 接收请求]
+
+    BackendReceive --> CallGitHubAPI[后端: 调用 GitHub API]
+    CallGitHubAPI --> GetRepoInfo[获取仓库信息]
+    GetRepoInfo --> GetFileTree[获取文件树]
+    GetFileTree --> SearchSkills[搜索 Skill 目录<br/>.claude/skills/]
+
+    SearchSkills --> FindSKILLMD[查找包含 SKILL.md 的目录]
+    FindSKILLMD --> LoopSkills{遍历 Skill 目录}
+
+    LoopSkills --> ReadSKILLMD[读取 SKILL.md 文件]
+    ReadSKILLMD --> ParseFrontmatter[解析 frontmatter<br/>YAML 格式]
+    ParseFrontmatter --> ExtractFields[提取字段<br/>name, description, version, author]
+    ExtractFields --> AddToVector[添加到 Vec<SkillMetadata>]
+    AddToVector --> LoopSkills
+
+    LoopSkills -->|完成| ReturnMetadata[返回 Skill 元数据列表]
+
+    ReturnMetadata --> InsertRepo[数据库: 插入/更新 Repository 记录]
+    InsertRepo --> UpsertRepo[SQL: UPSERT repositories<br/>name, url, source_type, enabled, skill_count, last_scanned_at]
+
+    UpsertRepo --> LoopMetadata{遍历 Skill 元数据}
+    LoopMetadata --> InsertSkill[数据库: 插入/更新 Marketplace Skill 记录]
+    InsertSkill --> UpsertSkill[SQL: UPSERT marketplace_skills<br/>name, description, version, author, source_url, repository_name, source_type]
+
+    UpsertSkill --> UpdateFTS5[数据库: 更新 FTS5 索引]
+    UpdateFTS5 --> InsertFTS[SQL: INSERT INTO marketplace_skills_fts<br/>rowid, name, description]
+    InsertFTS --> LoopMetadata
+
+    LoopMetadata -->|完成| EmitEvent[后端: 发送事件<br/>repository-scan-complete]
+    EmitEvent --> ReturnResult[返回扫描结果<br/>skills_found: N]
+
+    ReturnResult --> FrontendReceive[前端: 接收结果]
+    FrontendReceive --> InvalidateCache[前端: 失效 TanStack Query 缓存<br/>invalidateQueries: marketplace_skills]
+    InvalidateCache --> RefreshUI[前端: 刷新 UI]
+    RefreshUI --> ShowToast[显示 Toast 提示<br/>发现 N 个 Skills，已同步到市场]
+    ShowToast --> End2([结束: 仓库扫描完成])
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style End2 fill:#e1f5e1
+    style ShowError fill:#f8d7da
+    style ShowToast fill:#d1ecf1
+    style InsertRepo fill:#e3f2fd
+    style InsertSkill fill:#e3f2fd
+    style UpdateFTS5 fill:#e3f2fd

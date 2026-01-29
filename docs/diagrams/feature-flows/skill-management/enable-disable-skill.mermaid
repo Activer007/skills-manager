@@ -1,0 +1,22 @@
+%% SC-05: 启用/禁用 Skill
+%% 流程图: enable-disable-skill.mermaid
+
+flowchart TD
+    Start([开始: 用户切换开关]) --> CheckCurrentState{检查当前状态}
+    CheckCurrentState -->|当前启用| UserDisable[用户禁用 Skill]
+    CheckCurrentState -->|当前禁用| UserEnable[用户启用 Skill]
+
+    UserDisable --> UpdateDBFalse[更新数据库<br/>enabled: false]
+    UpdateDBFalse --> EmitEventFalse[发送状态变更事件]
+    EmitEventFalse --> ShowDisabled[显示 Toast 提示<br/>❌ Skill 已禁用]
+    ShowDisabled --> End([结束])
+
+    UserEnable --> UpdateDBTrue[更新数据库<br/>enabled: true]
+    UpdateDBTrue --> EmitEventTrue[发送状态变更事件]
+    EmitEventTrue --> ShowEnabled[显示 Toast 提示<br/>✅ Skill 已启用]
+    ShowEnabled --> End
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style ShowDisabled fill:#fff3cd
+    style ShowEnabled fill:#d1ecf1

@@ -57,6 +57,7 @@ impl MarketplaceService {
         let max_limit = limit.unwrap_or(100);
 
         // Build base query logic with CTE for ranking
+        // Note: github_url removed in v11 schema, now use r.url as repo_url
         let mut query = String::from(
             "WITH ranked_skills AS (
                 SELECT
@@ -64,18 +65,18 @@ impl MarketplaceService {
                     ms.name,
                     ms.author,
                     ms.description,
-                    ms.github_url,
                     ms.version,
                     ms.stars,
                     ms.forks,
                     ms.updated_at,
                     ms.tags,
                     ms.security_score,
-                    ms.compatibility,
                     r.name as repository_name,
                     r.source_type,
                     r.priority,
                     ms.skill_path,
+                    ms.repository_id,
+                    r.url as repo_url,
                     ROW_NUMBER() OVER (
                         PARTITION BY ms.name,
                         COALESCE(ms.author, '')
@@ -126,16 +127,19 @@ impl MarketplaceService {
         let skill_iter = stmt.query_map(
             rusqlite::params_from_iter(param_refs.iter()),
             |row| {
-                // Parse tags and compatibility
-                let tags: Vec<String> = row.get::<_, Option<String>>(10)?
+                // Parse tags (index 8)
+                let tags: Vec<String> = row.get::<_, Option<String>>(8)?
                     .and_then(|t| serde_json::from_str(&t).ok())
                     .unwrap_or_default();
 
-                let compatibility: Option<serde_json::Value> = row.get::<_, Option<String>>(11)?
-                    .and_then(|c| serde_json::from_str(&c).ok());
+                // Compatibility removed from DB in v11, defaulting to None
+                let compatibility: Option<serde_json::Value> = None;
+
+                // Construct github_url from repo_url (index 15)
+                let repo_url: Option<String> = row.get(15).ok();
 
                 // Safely get repository_id with fallback and warning
-                let repository_id: Result<String, _> = row.get(16);
+                let repository_id: Result<String, _> = row.get(14);
                 let repository_id = match repository_id {
                     Ok(id) if !id.is_empty() => id,
                     Ok(_) => {
@@ -153,18 +157,18 @@ impl MarketplaceService {
                     name: row.get(1)?,
                     author: row.get(2)?,
                     description: row.get(3)?,
-                    github_url: row.get(4)?,
-                    version: row.get(5)?,
-                    stars: row.get(6)?,
-                    forks: row.get(7)?,
-                    updated_at: row.get(8)?,
+                    github_url: repo_url,
+                    version: row.get(4)?,
+                    stars: row.get(5)?,
+                    forks: row.get(6)?,
+                    updated_at: row.get(7)?,
                     tags,
                     security_score: row.get(9)?,
                     compatibility,
-                    repository_name: row.get(12)?,
-                    source_type: row.get(13)?,
-                    priority: row.get(14)?,
-                    skill_path: row.get(15)?,
+                    repository_name: row.get(10)?,
+                    source_type: row.get(11)?,
+                    priority: row.get(12)?,
+                    skill_path: row.get(13)?,
                     repository_id,
                     discovered_at: 0,
                     synced_at: 0,

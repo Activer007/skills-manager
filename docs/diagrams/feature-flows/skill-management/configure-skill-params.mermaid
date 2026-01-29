@@ -1,0 +1,27 @@
+%% SC-06: 配置 Skill 参数
+%% 流程图: configure-skill-params.mermaid
+
+flowchart TD
+    Start([开始: 用户打开配置界面]) --> OpenSlideOver[打开 SlideOver 侧边抽屉]
+    OpenSlideOver --> SwitchConfigTab[切换到 配置 标签页]
+    SwitchConfigTab --> GenerateForm[生成动态表单]
+
+    GenerateForm --> LoadCurrentConfig[加载当前配置]
+    LoadCurrentConfig --> RenderFields[渲染表单字段]
+    RenderFields --> UserModify[用户修改参数]
+
+    UserModify --> ClickSave[点击 保存 按钮]
+    ClickSave --> ValidateParams[验证参数格式]
+    ValidateParams -->|失败| ShowValidationError[显示错误<br/>参数格式错误]
+    ValidateParams -->|成功| SaveToDB[保存到数据库<br/>config JSON 字段]
+
+    ShowValidationError --> UserModify
+
+    SaveToDB --> ClearCache[清理缓存]
+    ClearCache --> ShowSuccess[显示保存成功提示]
+    ShowSuccess --> End([结束: 配置保存完成])
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style ShowValidationError fill:#f8d7da
+    style ShowSuccess fill:#d1ecf1

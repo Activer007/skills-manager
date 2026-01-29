@@ -1,0 +1,81 @@
+%% 旅程 2: 日常管理
+%% 流程图: daily-user-management.mermaid
+
+flowchart TD
+    Start([开始: 用户每天打开应用]) --> EnterMySkills[进入 我的 Skills 页面<br/>/my-skills]
+
+    EnterMySkills --> ViewInstalledSkills[查看所有已安装的 Skills]
+    ViewInstalledSkills --> CheckTab{查看标签页}
+
+    CheckTab -->|系统级| ViewSystemLevel[查看系统级 Skills]
+    CheckTab -->|项目级| ViewProjectLevel[查看项目级 Skills]
+    CheckTab -->|已禁用| ViewDisabled[查看已禁用的 Skills]
+
+    ViewSystemLevel --> ListSkills[显示 Skill 列表<br/>带开关按钮]
+    ViewProjectLevel --> ListSkills
+    ViewDisabled --> ListSkills
+
+    ListSkills --> CheckStatus{检查 Skill 状态}
+
+    CheckStatus -->|需要启用| ToggleOn[点击开关 ON]
+    CheckStatus -->|需要禁用| ToggleOff[点击开关 OFF]
+    CheckStatus -->|需要配置| ClickConfig[点击 ⚙️ 配置按钮]
+
+    ToggleOn --> UpdateDB[更新数据库 enabled=true]
+    UpdateDB --> ShowToast[显示 Toast 提示<br/>✅ Skill 已启用]
+    ShowToast --> CheckNext{还有其他操作?}
+
+    ToggleOff --> UpdateDB2[更新数据库 enabled=false]
+    UpdateDB2 --> ShowToast2[显示 Toast 提示<br/>❌ Skill 已禁用]
+    ShowToast2 --> CheckNext
+
+    ClickConfig --> OpenSlideOver[打开 SlideOver 侧边抽屉]
+    OpenSlideOver --> SwitchConfigTab[切换到 配置 标签页]
+    SwitchConfigTab --> ShowDynamicForm[显示动态表单]
+    ShowDynamicForm --> ModifyParams[修改参数]
+    ModifyParams --> SaveParams[点击 保存 按钮]
+    SaveParams --> ValidateParams[验证参数格式]
+    ValidateParams -->|成功| SaveToDB[保存到数据库]
+    ValidateParams -->|失败| ShowError[显示错误提示]
+    ShowError --> ModifyParams
+
+    SaveToDB --> ShowSuccess[显示保存成功提示]
+    ShowSuccess --> CheckNext
+
+    CheckNext -->|是| ListSkills
+    CheckNext -->|否| EnterTaskCenter[进入任务中心<br/>/tasks]
+
+    EnterTaskCenter --> ViewTasks[查看所有任务]
+    ViewTasks --> FilterTasks{筛选任务}
+    FilterTasks -->|全部| ShowAllTasks[显示所有任务]
+    FilterTasks -->|进行中| ShowRunning[显示进行中任务]
+    FilterTasks -->|已完成| ShowCompleted[显示已完成任务]
+    FilterTasks -->|失败| ShowFailed[显示失败任务]
+
+    ShowAllTasks --> CheckStatus2{检查任务状态}
+    ShowRunning --> CheckStatus2
+    ShowCompleted --> CheckStatus2
+    ShowFailed --> CheckStatus2
+
+    CheckStatus2 -->|有失败任务| ViewError[查看错误详情]
+    CheckStatus2 -->|无失败任务| BrowseMarket{浏览市场?}
+
+    ViewError --> ShowErrorMsg[显示错误信息]
+    ShowErrorMsg --> Retry{需要重试?}
+    Retry -->|是| RetryTask[点击重试]
+    Retry -->|否| BrowseMarket
+    RetryTask --> ExecuteTask[执行任务]
+    ExecuteTask --> BrowseMarket
+
+    BrowseMarket -->|是| EnterMarket[进入市场<br/>/marketplace]
+    BrowseMarket -->|否| Complete([完成: 日常管理结束])
+
+    EnterMarket --> BrowseNewSkills[浏览新上架的 Skills]
+    BrowseNewSkills --> ViewTrending[查看热门 Skills]
+    ViewTrending --> Complete
+
+    style Start fill:#e1f5e1
+    style Complete fill:#e1f5e1
+    style ShowToast fill:#d1ecf1
+    style ShowSuccess fill:#d1ecf1
+    style ShowError fill:#f8d7da

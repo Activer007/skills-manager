@@ -1,0 +1,63 @@
+%% SC-18: 查看安全报告
+%% 流程图: view-security-report.mermaid
+
+flowchart TD
+    Start([开始: 用户进入安全页面]) --> EnterSecurity[进入安全页面<br/>/security]
+    EnterSecurity --> CallAPI[调用 get_security_report API]
+    CallAPI --> LoadReport[加载安全报告]
+    LoadReport --> CalcDist[计算等级分布<br/>安全/风险/阻断/未知]
+
+    CalcDist --> RenderOverview[渲染安全概览]
+    RenderOverview --> ShowStats[显示统计数据<br/>45 安全 / 3 风险 / 0 阻断 / 2 未知]
+    ShowStats --> UserAction{用户操作}
+
+    UserAction -->|查看风险 Skills| ClickRisk[点击 风险 统计卡片]
+    UserAction -->|查看扫描历史| GoToHistory[跳转到扫描历史页面]
+    UserAction -->|管理白名单| GoToWhitelist[进入白名单管理]
+
+    ClickRisk --> ShowRiskList[显示风险 Skills 列表]
+    ShowRiskList --> SelectRiskSkill[选择某个风险 Skill]
+    SelectRiskSkill --> ShowRiskDialog[显示风险详情对话框]
+
+    ShowRiskDialog --> DisplayScore[显示安全评分<br/>例如: 60分]
+    DisplayScore --> DisplayLevel[显示安全等级<br/>🟡 风险]
+    DisplayLevel --> ListFindings[列出发现的问题<br/>命令注入/敏感信息等]
+
+    ListFindings --> SelectFinding{选择某个问题}
+    SelectFinding --> ShowDetail[显示详细信息<br/>严重程度/位置/代码/建议]
+    ShowDetail --> UserChoice{用户操作}
+    UserChoice -->|加入白名单| AddWhitelist
+    UserChoice -->|重新扫描| ReScan
+    UserChoice -->|关闭| CloseDialog
+
+    AddWhitelist --> ShowWhitelistDialog[显示白名单对话框]
+    ShowWhitelistDialog --> SelectType{选择类型}
+    SelectType -->|Skill| AddSkillWhitelist[添加 Skill 白名单]
+    SelectType -->|规则| AddRuleWhitelist[添加规则白名单]
+
+    AddSkillWhitelist --> InputReason[输入原因说明]
+    AddRuleWhitelist --> SelectRules[选择规则<br/>☑ 命令注入<br/>☑ 敏感信息]
+    SelectRules --> InputReason
+    InputReason --> SaveWhitelist[保存到数据库]
+    SaveWhitelist --> ShowSuccess[显示添加成功提示]
+    ShowSuccess --> InvalidateCache[失效缓存]
+    InvalidateCache --> CloseDialog[关闭对话框]
+    CloseDialog --> RefreshReport[刷新安全报告]
+    RefreshReport --> UserAction
+
+    ReScan --> CallScanAPI[调用 scan_skill_security API<br/>force: true]
+    CallScanAPI --> ExecuteScan[执行安全扫描<br/>忽略缓存]
+    ExecuteScan --> UpdateReport[更新安全报告]
+    UpdateReport --> ShowScanResult[显示扫描结果]
+    ShowScanResult --> CloseDialog
+    CloseDialog --> RefreshReport
+    RefreshReport --> UserAction
+
+    CloseDialog --> UserAction
+
+    GoToHistory --> End([结束])
+    GoToWhitelist --> End
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style ShowSuccess fill:#d1ecf1

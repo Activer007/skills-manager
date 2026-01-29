@@ -31,8 +31,9 @@ impl RepositoryService {
         conn.execute(
             "INSERT OR IGNORE INTO repositories
             (id, url, name, description, enabled, scan_subdirs, added_at, last_scanned,
-             cache_path, cached_commit_sha, featured, category)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+             cache_path, cached_commit_sha, featured, category,
+             source_type, priority, scan_status, etag)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
             params![
                 repo.id,
                 repo.url,
@@ -46,6 +47,11 @@ impl RepositoryService {
                 repo.cached_commit_sha,
                 repo.featured as i32,
                 repo.category.to_string(),
+                // New fields (v2.1)
+                repo.source_type,
+                repo.priority,
+                repo.scan_status,
+                repo.etag,
             ],
         ).context("Failed to insert repository")?;
 
@@ -103,7 +109,8 @@ impl RepositoryService {
 
         let mut stmt = conn.prepare(
             "SELECT id, url, name, description, enabled, scan_subdirs, added_at,
-             last_scanned, cache_path, cached_commit_sha, featured, category
+             last_scanned, cache_path, cached_commit_sha, featured, category,
+             source_type, priority, scan_status, etag
              FROM repositories ORDER BY featured DESC, added_at DESC"
         )?;
 
@@ -121,7 +128,8 @@ impl RepositoryService {
 
         let mut stmt = conn.prepare(
             "SELECT id, url, name, description, enabled, scan_subdirs, added_at,
-             last_scanned, cache_path, cached_commit_sha, featured, category
+             last_scanned, cache_path, cached_commit_sha, featured, category,
+             source_type, priority, scan_status, etag
              FROM repositories WHERE enabled = 1 ORDER BY featured DESC, added_at DESC"
         )?;
 

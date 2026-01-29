@@ -1,0 +1,31 @@
+%% SC-07: 查看 Skill 详情
+%% 流程图: view-skill-details.mermaid
+
+flowchart TD
+    Start([开始: 用户点击 Skill 名称]) --> OpenSlideOver[打开 SlideOver 侧边抽屉]
+    OpenSlideOver --> LoadSkillData[加载 Skill 数据]
+    LoadSkillData --> ShowTabs[显示 3 个标签页]
+
+    ShowTabs --> UserSelectTab{用户选择标签}
+    UserSelectTab -->|详情| ShowDetails[显示详情标签]
+    UserSelectTab -->|配置| ShowConfig[显示配置标签]
+    UserSelectTab -->|分享| ShowShare[显示分享标签]
+
+    ShowDetails --> RenderDetails[渲染详情内容]
+    RenderDetails --> DisplayDesc[显示描述]
+    DisplayDesc --> DisplayQuality[显示质量评分<br/>⭐ 9.2/10 S 级]
+    DisplayQuality --> DisplaySecurity[显示安全等级<br/>🟢 安全 90分]
+    DisplaySecurity --> DisplayVersion[显示版本信息<br/>📦 v1.0.0]
+    DisplayVersion --> DisplayAuthor[显示作者<br/>👤 John Doe]
+    DisplayAuthor --> CloseSlide{用户关闭?}
+    CloseSlide -->|是| End([结束])
+    CloseSlide -->|否| UserSelectTab
+
+    ShowConfig --> RenderConfig[渲染配置表单<br/>参考 SC-06]
+    RenderConfig --> CloseSlide
+
+    ShowShare --> RenderShare[渲染分享面板<br/>4 种分享方式]
+    RenderShare --> CloseSlide
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1

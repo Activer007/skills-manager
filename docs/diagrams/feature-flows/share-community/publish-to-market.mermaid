@@ -1,0 +1,47 @@
+%% SC-17: 发布 Skill 到市场
+%% 流程图: publish-to-market.mermaid
+
+flowchart TD
+    Start([开始: 创作者准备发布]) --> CreateGitHubRepo[在 GitHub 创建仓库]
+    CreateGitHubRepo --> AddSKILLMD[添加 SKILL.md 文件]
+    AddSKILLMD --> WriteSkillContent[编写 Skill 内容]
+    WriteSkillContent --> CommitPush[提交并推送到 GitHub]
+
+    CommitPush --> AddSource[添加自定义来源<br/>参考 SC-09]
+    AddSource --> ScanFlow[扫描仓库流程<br/>参考 SC-09]
+    ScanFlow --> SyncToMarket[同步到市场数据库]
+
+    SyncToMarket --> GoToMarket[进入市场页面]
+    GoToMarket --> SearchOwnSkill[搜索自己的 Skill]
+    SearchOwnSkill --> FoundSkill{找到 Skill?}
+    FoundSkill -->|否| WaitSync[等待同步完成<br/>可能需要几分钟]
+    FoundSkill -->|是| ViewInMarket[在市场中查看 Skill]
+
+    WaitSync --> RefreshMarket[刷新市场页面]
+    RefreshMarket --> SearchOwnSkill
+
+    ViewInMarket --> VerifyInfo{验证信息}
+    VerifyInfo -->|正确| InstallOwn[安装自己的 Skill]
+    VerifyInfo -->|错误| FixMetadata[修复元数据]
+
+    FixMetadata --> UpdateSKILLMD[更新 SKILL.md]
+    UpdateSKILLMD --> CommitPush
+
+    InstallOwn --> InstallFlow[安装流程<br/>参考 SC-01]
+    InstallFlow --> GoToMySkills[进入 我的 Skills]
+    GoToMySkills --> ViewOwnSkill[查看已安装的 Skill]
+
+    ViewOwnSkill --> GenerateShareLink[生成分享链接<br/>参考 SC-12]
+    GenerateShareLink --> CopyLink[复制分享链接]
+    CopyLink --> PublishSocial{发布到社区?}
+    PublishSocial -->|是| ShareToSocial[分享到社交媒体]
+    PublishSocial -->|否| CreateCollection2{创建合集?}
+
+    ShareToSocial --> CreateCollection2
+    CreateCollection2 -->|是| CreateFlow[创建合集流程<br/>参考 SC-16]
+    CreateCollection2 -->|否| End([结束: 发布完成])
+
+    CreateFlow --> End
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1

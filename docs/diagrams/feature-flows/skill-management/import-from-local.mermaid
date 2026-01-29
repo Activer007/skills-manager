@@ -1,0 +1,37 @@
+%% SC-02: 从本地文件夹导入
+%% 流程图: import-from-local.mermaid
+
+flowchart TD
+    Start([开始: 用户点击从本地导入]) --> OpenDialog[打开文件夹选择对话框]
+    OpenDialog --> UserSelectFolder[用户选择文件夹]
+    UserSelectFolder --> ValidatePath{验证文件夹}
+    ValidatePath -->|路径无效| ShowPathError[显示错误<br/>权限不足或路径不存在]
+    ValidatePath -->|路径有效| CheckFiles[检查文件夹内容]
+
+    ShowPathError --> End([结束])
+
+    CheckFiles --> FindSKILLMD{查找 SKILL.md}
+    FindSKILLMD -->|未找到| ShowNoSKILL[显示错误<br/>所选文件夹不包含有效的 SKILL.md]
+    FindSKILLMD -->|找到| ReadSKILLMD[读取 SKILL.md 文件]
+
+    ShowNoSKILL --> End
+
+    ReadSKILLMD --> ParseFrontmatter[解析 frontmatter]
+    ParseFrontmatter --> ExtractFields[提取字段<br/>name, description, version, author]
+    ExtractFields --> ValidateFields{验证字段}
+    ValidateFields -->|失败| ShowFormatError[显示错误<br/>SKILL.md 格式错误]
+    ValidateFields -->|成功| CallSecurityScan[调用安全扫描]
+
+    ShowFormatError --> End
+
+    CallSecurityScan --> ScanFlow[参考 SC-01 步骤 3-5<br/>安全扫描 + 质量评分 + 安装]
+    ScanFlow --> CompleteFlow[完成导入流程]
+    CompleteFlow --> ShowSuccess[显示导入成功提示]
+    ShowSuccess --> End([结束: 导入完成])
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style ShowPathError fill:#f8d7da
+    style ShowNoSKILL fill:#f8d7da
+    style ShowFormatError fill:#f8d7da
+    style ShowSuccess fill:#d1ecf1

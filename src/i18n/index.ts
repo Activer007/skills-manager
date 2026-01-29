@@ -131,6 +131,17 @@ const resources = {
       error: "Error",
       success: "Success",
       warning: "Warning",
+      common: {
+        loading: "Loading...",
+        noData: "No data available",
+        confirm: "Confirm",
+        error: "Error",
+        success: "Success",
+        warning: "Warning",
+        retry: "Retry",
+        disabled: "Disabled",
+        cancel: "Cancel",
+      },
 
       // Repositories
       repositories: {
@@ -331,6 +342,17 @@ const resources = {
       noData: "暂无数据",
       confirm: "确认",
       error: "错误",
+      common: {
+        loading: "加载中...",
+        noData: "暂无数据",
+        confirm: "确认",
+        error: "错误",
+        success: "成功",
+        warning: "警告",
+        retry: "重试",
+        disabled: "已禁用",
+        cancel: "取消",
+      },
       success: "成功",
       warning: "警告",
 

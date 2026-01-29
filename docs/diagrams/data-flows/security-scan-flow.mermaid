@@ -1,0 +1,60 @@
+%% DF-02: 安全扫描流程
+%% 流程图: security-scan-flow.mermaid
+
+flowchart TD
+    Start([开始: 触发安全扫描]) --> CallScanAPI[调用 scan_skill_security API]
+    CallScanAPI --> ReadSkillFile[后端: 读取 Skill 文件]
+    ReadSkillFile --> CalcChecksum[后端: 计算 SHA-256 校验和]
+    CalcChecksum --> CheckCache{检查缓存<br/>security_scan_cache 表}
+
+    CheckCache -->|缓存命中| ReturnCache[返回缓存结果]
+    CheckCache -->|缓存未命中| LoadRules[加载安全规则]
+
+    ReturnCache --> ShowReport[显示安全报告]
+    ShowReport --> End([结束])
+
+    LoadRules --> InitRules[初始化规则列表<br/>CommandInjectionRule, SensitiveInfoRule, ...]
+    InitRules --> FilterByMode[根据扫描模式筛选规则<br/>strict/standard/relaxed]
+    FilterByMode --> LoopRules[遍历规则]
+
+    LoopRules --> CheckEnabled{规则启用?}
+    CheckEnabled -->|否| NextRule[下一个规则]
+    CheckEnabled -->|是| ExecuteScan[执行规则扫描<br/>scan: content]
+
+    ExecuteScan --> FindFindings[查找风险发现]
+    FindFindings --> AddFindings[添加到 findings 列表]
+    AddFindings --> NextRule
+
+    NextRule --> LoopRules
+    LoopRules -->|完成| CheckWhitelist[检查白名单<br/>whitelist_rules 表]
+
+    CheckWhitelist --> FilterFindings[过滤白名单规则]
+    FilterFindings --> CalcPenalty[计算总惩罚分<br/>Σ(finding.severity_penalty)]
+    CalcPenalty --> CalcScore[计算安全评分<br/>100 - total_penalty]
+    CalcScore --> DetermineLevel{确定安全等级}
+    DetermineLevel -->|>=90| SetSafe[设置: safe]
+    DetermineLevel -->|70-89| SetRisk[设置: risk]
+    DetermineLevel -->|<70| SetBlocked[设置: blocked]
+
+    SetSafe --> GenReport[生成安全报告<br/>SecurityReport]
+    SetRisk --> GenReport
+    SetBlocked --> GenReport
+
+    GenReport --> SaveReportDB[保存到数据库<br/>security_reports 表]
+    SaveReportDB --> SaveCacheDB[保存到缓存<br/>security_scan_cache 表]
+    SaveCacheDB --> ReturnReport[返回报告]
+
+    ReturnReport --> FrontendReceive[前端: 接收报告]
+    FrontendReceive --> UpdateState[更新状态<br/>React setState]
+    UpdateState --> RenderUI[渲染 UI]
+    RenderUI --> ShowLevel[显示安全等级<br/>🟢/🟡/🔴]
+    ShowLevel --> ShowScore[显示评分<br/>90分]
+    ShowScore --> ShowFindingsList[列出发现的问题]
+    ShowFindingsList --> End2([结束: 扫描完成])
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style End2 fill:#e1f5e1
+    style LoadRules fill:#fff3cd
+    style SaveReportDB fill:#e3f2fd
+    style SaveCacheDB fill:#e3f2fd

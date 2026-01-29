@@ -1,0 +1,97 @@
+%% SC-16: 管理合集
+%% 流程图: manage-collections.mermaid
+
+flowchart TD
+    Start([开始: 用户进入合集页面]) --> EnterCollections[进入合集页面<br/>/collections]
+    EnterCollections --> LoadCollections[加载合集列表]
+    LoadCollections --> RenderCollections[渲染合集卡片]
+
+    RenderCollections --> UserAction{用户操作}
+    UserAction -->|创建合集| CreateCollection
+    UserAction -->|查看详情| ViewDetail
+    UserAction -->|编辑合集| EditCollection
+    UserAction -->|删除合集| DeleteCollection
+
+    %% 创建合集
+    CreateCollection --> ClickCreate[点击 创建合集 按钮]
+    ClickCreate --> ShowCreateDialog[显示创建对话框]
+    ShowCreateDialog --> InputName[输入合集名称]
+    InputName --> InputDesc[输入合集描述]
+    InputDesc --> SelectIcon[选择图标]
+    SelectIcon --> ClickCreateConfirm[点击 创建 按钮]
+    ClickCreateConfirm --> ValidateName{验证名称}
+    ValidateName -->|重复| ShowDupError[显示错误<br/>合集名称已存在]
+    ValidateName -->|有效| SaveCollection[保存到数据库]
+
+    ShowDupError --> InputName
+
+    SaveCollection --> ShowCreateSuccess[显示创建成功提示]
+    ShowCreateSuccess --> RefreshList[刷新合集列表]
+    RefreshList --> UserAction
+
+    %% 查看详情
+    ViewDetail --> ClickCollection[点击合集卡片]
+    ClickCollection --> EnterDetail[进入合集详情页<br/>/collections/:id]
+    EnterDetail --> LoadSkills[加载合集中的 Skills]
+    LoadSkills --> RenderSkills[渲染 Skill 列表]
+
+    RenderSkills --> DetailAction{详情页操作}
+    DetailAction -->|添加 Skills| AddSkills
+    DetailAction -->|移除 Skills| RemoveSkills
+    DetailAction -->|拖拽排序| DragSort
+    DetailAction -->|启用所有| EnableAll
+    DetailAction -->|返回| Back
+
+    AddSkills --> ClickAdd[点击 添加 Skills 按钮]
+    ClickAdd --> ShowSkillSelector[显示 Skill 选择器]
+    ShowSkillSelector --> SelectSkills[多选 Skills]
+    SelectSkills --> ConfirmAdd[确认添加]
+    ConfirmAdd --> UpdateCollectionSkills[更新合集 Skills]
+    UpdateCollectionSkills --> RefreshDetail[刷新详情页]
+    RefreshDetail --> DetailAction
+
+    RemoveSkills --> SelectSkills2[选择 Skills]
+    SelectSkills2 --> ClickRemove[点击 移除 按钮]
+    ClickRemove --> UpdateCollectionSkills
+    UpdateCollectionSkills --> RefreshDetail
+    RefreshDetail --> DetailAction
+
+    DragSort --> ShowGripIcons[显示拖拽手柄<br/>||| 图标]
+    ShowGripIcons --> NoteUnimplemented[⚠️ 功能未实现<br/>ISSUE-002]
+    NoteUnimplemented --> DetailAction
+
+    EnableAll --> ClickEnableAll[点击 启用所有 按钮]
+    ClickEnableAll --> BatchEnable[批量启用 Skills]
+    BatchEnable --> ShowProgress[显示进度提示]
+    ShowProgress --> NoteUnimplemented2[⚠️ 功能未实现<br/>ISSUE-003]
+    NoteUnimplemented2 --> DetailAction
+
+    Back --> RenderCollections
+
+    %% 编辑合集
+    EditCollection --> ClickEdit[点击 编辑 按钮]
+    ClickEdit --> ShowEditDialog[显示编辑对话框]
+    ShowEditDialog --> ModifyName[修改名称]
+    ModifyName --> ModifyDesc[修改描述]
+    ModifyDesc --> UpdateCollection[更新合集记录]
+    UpdateCollection --> ShowEditSuccess[显示更新成功提示]
+    ShowEditSuccess --> RefreshList
+    RefreshList --> UserAction
+
+    %% 删除合集
+    DeleteCollection --> ClickDelete[点击 删除 按钮]
+    ClickDelete --> ShowDeleteConfirm[显示确认对话框]
+    ShowDeleteConfirm --> UserConfirm{用户确认?}
+    UserConfirm -->|取消| UserAction
+    UserConfirm -->|确认| DeleteCollectionDB[删除合集记录]
+    DeleteCollectionDB --> ShowDeleteSuccess[显示删除成功提示]
+    ShowDeleteSuccess --> RefreshList
+    RefreshList --> UserAction
+
+    style Start fill:#e1f5e1
+    style ShowCreateSuccess fill:#d1ecf1
+    style ShowEditSuccess fill:#d1ecf1
+    style ShowDeleteSuccess fill:#d1ecf1
+    style ShowDupError fill:#f8d7da
+    style NoteUnimplemented fill:#fff3cd
+    style NoteUnimplemented2 fill:#fff3cd
