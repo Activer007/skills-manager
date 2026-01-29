@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
-import type { InstalledSkill, MarketplaceSkill, MarketplaceSkillDTO, ListMarketplaceParams } from '../types';
+import type { InstalledSkill, MarketplaceSkill, MarketplaceSkillDTO, ListMarketplaceParams, DeleteRepositoryResult, ApiErrorResponse } from '../types';
 import { fetchMarketplaceData } from '../utils/marketplace';
 import type { SecurityReport } from '../types/security';
 
@@ -209,10 +209,37 @@ export function useImportPackageSkill() {
  * @param params - Query parameters for filtering and pagination
  * @returns React Query result with MarketplaceSkillDTO array
  */
-export function useMarketplaceSkills(params?: ListMarketplaceParams) {
+export function useMarketplaceSkills(params?: ListMarketplaceParams & { sourceType?: 'featured' | 'user' | 'all' }) {
   return useQuery({
     queryKey: ['marketplace-skills', params],
     queryFn: async () => {
+      // If sourceType filter is provided, use the new filtered endpoint
+      if (params?.sourceType && params.sourceType !== 'all') {
+        const data = await invoke<MarketplaceSkillDTO[]>('list_marketplace_skills_by_source', {
+          sourceType: params.sourceType,
+          limit: params.limit || 100,
+          offset: params.offset || 0,
+        });
+
+        return data.map(dto => ({
+          id: dto.id,
+          name: dto.name,
+          author: dto.author || 'Unknown',
+          authorAvatar: '',
+          description: dto.description || '',
+          githubUrl: dto.github_url || '',
+          stars: dto.stars,
+          forks: dto.forks,
+          updatedAt: dto.updated_at,
+          hasMarketplace: false,
+          path: 'SKILL.md',
+          branch: 'main',
+          tags: dto.tags,
+          securityScore: dto.security_score,
+          compatibility: dto.compatibility,
+        })) as MarketplaceSkill[];
+      }
+
       // If search query is provided, use search endpoint
       if (params?.searchQuery) {
         const data = await invoke<MarketplaceSkillDTO[]>('search_marketplace_skills', {
@@ -343,6 +370,42 @@ export function useForkSkill() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['skills'] });
+    },
+  });
+}
+
+/**
+ * Hook for deleting a repository with detailed result
+ *
+ * @returns Mutation hook with enhanced error handling and success feedback
+ */
+export function useDeleteRepository() {
+  const queryClient = useQueryClient();
+
+  return useMutation<DeleteRepositoryResult, Error, string>({
+    mutationFn: async (id: string) => {
+      return await invoke<DeleteRepositoryResult>('delete_repository', { id });
+    },
+    onSuccess: (result) => {
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ['repositories'] });
+      queryClient.invalidateQueries({ queryKey: ['marketplace-skills'] });
+
+      // Log success for debugging
+      console.log(`Repository deleted: ${result.deletedSkillsCount} skills removed`);
+    },
+    onError: (error: Error) => {
+      // Enhanced error handling for API rate limits
+      const apiError = error as unknown as ApiErrorResponse;
+
+      if (apiError.code === 'API_RATE_LIMIT_EXCEEDED') {
+        console.error('API rate limit exceeded:', apiError.message);
+        if (apiError.helpUrl) {
+          console.info('Configure token at:', apiError.helpUrl);
+        }
+      } else {
+        console.error('Failed to delete repository:', error.message);
+      }
     },
   });
 }

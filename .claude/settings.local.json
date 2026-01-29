@@ -37,7 +37,9 @@
       "Bash(Select-String -Pattern '^\\\\s+\\(ok|x|-\\)\\\\s+\\\\d+\\\\s+\\\\[chromium\\\\]')",
       "Bash(Select-Object -Last 30 \")",
       "Bash(powershell:*)",
-      "Bash(cargo run:*)"
+      "Bash(cargo run:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo check:*)"
     ]
   }
 }

@@ -4,6 +4,7 @@
 
 use crate::services::marketplace_service::{MarketplaceService, MarketplaceStats};
 use crate::models::marketplace::{MarketplaceSkill, MarketplaceSkillDTO};
+use crate::models::source::SourceFilter;
 use std::fs;
 use std::path::PathBuf;
 
@@ -97,6 +98,44 @@ pub async fn list_marketplace_skills(
         min_stars,
         limit
     ).map_err(|e| e.to_string())
+}
+
+/// List marketplace Skills by source type with deduplication
+///
+/// This command lists marketplace skills filtered by source type.
+/// When multiple repositories provide the same skill, only the one from
+/// the highest priority source is returned (featured > user).
+///
+/// # Arguments
+/// * `source_type` - Filter by source: "featured", "user", or "all" (default)
+/// * `limit` - Maximum number of skills to return
+/// * `offset` - Pagination offset (optional, default: 0)
+///
+/// # Returns
+/// Vector of MarketplaceSkillDTO with primary source deduplication applied
+#[tauri::command]
+pub async fn list_marketplace_skills_by_source(
+    source_type: Option<String>,
+    limit: Option<usize>,
+    offset: Option<usize>,
+) -> Result<Vec<MarketplaceSkillDTO>, String> {
+    let service = MarketplaceService::new();
+
+    // Parse source filter
+    let source_filter = match source_type.as_deref() {
+        Some("featured") => SourceFilter::Featured,
+        Some("user") => SourceFilter::User,
+        Some("all") | None => SourceFilter::All,
+        Some(other) => {
+            return Err(format!(
+                "Invalid source_type '{}'. Expected 'featured', 'user', or 'all'",
+                other
+            ));
+        }
+    };
+
+    service.list_skills_by_source(source_filter, limit)
+        .map_err(|e| e.to_string())
 }
 
 /// Get a single marketplace Skill by ID
