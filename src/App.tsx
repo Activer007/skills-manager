@@ -126,7 +126,7 @@ const router = createBrowserRouter([
   },
   {
     path: '*',
-    element: <Navigate to="/my-skills" replace />,
+    element: <Navigate to="/marketplace" replace />,
   }
 ]);
 

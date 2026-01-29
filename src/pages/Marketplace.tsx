@@ -6,6 +6,7 @@ import { useMarketplaceLogic } from '../hooks/useMarketplaceLogic';
 import type { MarketplaceSkill, InstalledSkill } from '../types';
 import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
 import { getLocalizedDescription } from '../utils/i18n';
+import { SECURITY_SCORE_THRESHOLDS } from '../utils/securityHelpers';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from '../store/useToastStore';
 import { SkeletonCard } from '../components/SkeletonCard';
@@ -622,12 +623,12 @@ const Marketplace = () => {
                                 {selectedSkill.securityScore}
                             </div>
                         </div>
-                        {selectedSkill.securityScore >= 70 ? (
+                        {selectedSkill.securityScore >= SECURITY_SCORE_THRESHOLDS.SAFE ? (
                             <div className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
                                 <CheckCircle size={14} />
                                 {i18n.language === 'zh' ? '安全' : 'Safe'}
                             </div>
-                        ) : selectedSkill.securityScore >= 40 ? (
+                        ) : selectedSkill.securityScore >= SECURITY_SCORE_THRESHOLDS.WARNING ? (
                             <div className="text-sm text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
                                 <AlertTriangle size={14} />
                                 {i18n.language === 'zh' ? '需注意' : 'Caution'}
