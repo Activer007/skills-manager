@@ -300,8 +300,10 @@ fn migrate_v11_migrate_marketplace_skills_data(conn: &Connection) -> anyhow::Res
         let synced_at = now;
 
         // Insert into new table
+        // Use INSERT OR REPLACE to handle potential duplicates (dirty data in old table)
+        // This resolves: UNIQUE constraint failed: marketplace_skills_v11.repository_id, marketplace_skills_v11.skill_path
         let mut insert_stmt = conn.prepare(
-            "INSERT INTO marketplace_skills_v11 (
+            "INSERT OR REPLACE INTO marketplace_skills_v11 (
                 id, name, author, description, skill_path, repository_id,
                 version, stars, forks, updated_at, tags, security_score, discovered_at, synced_at
             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)"
