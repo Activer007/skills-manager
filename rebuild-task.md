@@ -16,7 +16,7 @@
 | **阶段三** | 服务层改造 | ✅ 已完成 | 100% | RepositoryService 和 MarketplaceService 重构完成 |
 | **阶段四** | API 层改造 | ✅ 已完成 | 100% | Phase 4 全部完成 |
 | **阶段五** | 前端类型定义 | ✅ 已完成 | 100% | TypeScript 类型已同步 |
-| **阶段六** | UI 组件改造 | ⏳ 进行中 | 30% | 缺少来源筛选和徽章显示 |
+| **阶段六** | UI 组件改造 | ⏳ 进行中 | 50% | 后端 API 已就绪，前端缺少数据映射 |
 | **阶段七** | 路由和导航 | ⏳ 待决定 | 0% | 需要产品决策 |
 | **阶段八** | 国际化 | ⏳ 待开始 | 0% | 依赖重命名决策 |
 | **阶段九** | 测试 | 🔄 部分完成 | 40% | Phase 2/3/4 测试完成 |
@@ -44,34 +44,42 @@
   - 前端类型定义更新（Repository, MarketplaceSkillDTO, Filter）
   - 测试文件补充（marketplace_test, repository_test）
 
-- ⏳ **下一里程碑**: Phase 6 (UI 组件改造)
-  - 来源筛选 UI（官方/用户/全部）
-  - 徽章显示组件（精选/自定义）
-  - Token 配置引导
-  - 预估完成时间: 1-2 天
+- ⏳ **下一里程碑**: Phase 6 (UI 组件改造) - 数据映射修复
+  - MarketplaceSkill 类型缺少来源字段
+  - useMarketplaceSkills Hook 映射时丢失来源数据
+  - 预估完成时间: 0.5 天
 
 ### 🚧 阻塞问题
 
-1. **前端来源筛选功能缺失**: Marketplace 页面没有"精选"或"用户添加"的筛选选项
-2. **徽章显示组件缺失**: SkillCard 组件中没有显示"精选"或"用户添加"徽章
-3. **产品决策待定**: 是否将"仓库管理"重命名为"来源管理"
+1. **数据映射问题**: `useMarketplaceSkills` Hook 在 DTO → MarketplaceSkill 转换时丢失来源信息
+   - MarketplaceSkill 缺少 `repositoryId`, `repositoryName`, `sourceType`, `priority` 字段
+   - 即使后端返回了完整数据，前端也无法使用
+2. **来源筛选 UI 缺失**: Marketplace 页面没有"精选"或"用户添加"的筛选选项
+3. **徽章显示组件缺失**: SkillCard 组件中没有显示"精选"或"用户添加"徽章
+4. **产品决策待定**: 是否将"仓库管理"重命名为"来源管理"
 
 ### 🎯 近期优先级
 
-1. **高优先级**: 实现前端来源筛选功能（1 天）
-   - 在 Marketplace 页面添加来源筛选下拉菜单
-   - 集成 `list_marketplace_skills_by_source` API
-   - 更新 `useMarketplaceSkills` Hook 支持筛选
+1. **高优先级**: 修复数据映射问题（0.5 天）⚠️ 阻塞其他任务
+   - 在 MarketplaceSkill 类型添加来源字段：`repositoryId`, `repositoryName`, `sourceType`, `priority`
+   - 修复 useMarketplaceSkills Hook 的 DTO → MarketplaceSkill 映射
+   - 验证来源数据正确显示
 
-2. **高优先级**: 实现徽章显示组件（0.5 天）
+2. **高优先级**: 实现前端来源筛选功能（0.5 天）
+   - 在 FilterPanel 组件添加"来源"筛选组
+   - 在 useMarketplaceLogic 添加 sourceFilter 状态
+   - 集成到 Marketplace 页面
+
+3. **高优先级**: 实现徽章显示组件（0.5 天）
    - 在 SkillCard 组件中显示来源徽章
    - 区分"官方精选"和"用户来源"样式
+   - 支持显示仓库名称简称
 
-3. **高优先级**: Token 配置引导功能（0.5 天）
+4. **中优先级**: Token 配置引导功能（0.5 天）
    - 在设置页面或 Repositories 页面显眼位置添加配置提示
    - 说明配置 GitHub Token 的好处（提高 API 限流阈值）
 
-4. **低优先级**: Phase 7/8 路由和国际化（可延后）
+5. **低优先级**: Phase 7/8 路由和国际化（可延后）
    - 决定是否重命名"仓库管理" → "来源管理"
    - 更新路由配置和翻译（如需要）
    - 预估完成时间: 0.5-1 天
@@ -87,6 +95,7 @@
 | v2.1 | 2025-01-28 | 优化数据一致性（快照字段）；改进去重逻辑（引入 Namespace）；增强 API 限流处理；优化 ID 格式 | Claude |
 | v2.2 | 2025-01-28 | 更新任务完成状态；标记 Phase 2 已完成；添加进展总览表；明确下一步行动 | Claude |
 | v2.3 | 2025-01-29 | 标记 Phase 4 已完成；更新优先级；添加 API 层详细说明 | Claude |
+| v2.4 | 2025-01-29 | 评估 Phase 6 进度；发现数据映射问题；更新阻塞任务和优先级 | Claude |
 
 ---
 
@@ -949,7 +958,7 @@ ORDER BY stars DESC;
   - 统一错误码（ApiError 枚举：NOT_FOUND, INVALID_INPUT, DATABASE_ERROR, GIT_ERROR, API_RATE_LIMIT_EXCEEDED, REPOSITORY_EXISTS, REPOSITORY_HAS_INSTALLED_SKILLS, INTERNAL_ERROR）✅
   - 添加详细日志（log::info! 和 log::error!）✅
   - 错误消息序列化（#[serde(tag = "code", content = "details")]）✅
-  - **API 限流处理**：detect_api_rate_limit 函数检测 403/429 错误 ⚠️ 待集成
+  - **API 限流处理**：detect_api_rate_limit 函数检测 403/429 错误 ✅ 已集成
 
 - [x] **Task 4.4**: 前端类型定义更新 ✅
   - 更新 Repository 接口（新增 sourceType, priority, scanStatus, etag）✅
@@ -997,22 +1006,41 @@ ORDER BY stars DESC;
 
 **完成时间**: 2025-01-28 (类型定义)
 
-#### ⏳ 阶段六：UI 组件改造 (进行中 - 3-4天)
+#### ⏳ 阶段六：UI 组件改造 (进行中 - 50% 完成)
+
+**后端 API 已就绪，前端缺少数据映射**
+
+- [ ] **Task 6.0**: 修复数据映射问题 ⚠️ **阻塞任务**
+  - 在 MarketplaceSkill 类型添加来源字段 ❌
+    - `repositoryId?: string`
+    - `repositoryName?: string`
+    - `sourceType?: 'featured' | 'user'`
+    - `priority?: number`
+  - 修复 useMarketplaceSkills Hook 的 DTO → MarketplaceSkill 映射 ❌
+    - 当前映射在 src/hooks/useSkills.ts:224-240 丢失来源数据
+    - 需要将 DTO 的来源字段映射到 MarketplaceSkill
+  - 验证来源数据正确传递到组件 ❌
 
 - [ ] **Task 6.1**: SkillCard 组件增强
-  - 添加来源徽章显示 ❌
+  - 添加来源徽章显示 ❌ (依赖 Task 6.0)
+    - 根据 `sourceType` 显示徽章
+    - 精选: "官方精选" + 星星图标
+    - 用户: 显示仓库名称简称
   - 支持不同徽章样式（官方/用户）❌
   - 显示仓库名称或简称 ❌
 
 - [ ] **Task 6.2**: FilterPanel 组件增强
   - 添加"来源"筛选选项 ❌
   - 支持多选：官方/用户/全部 ❌
+    - 使用新的 SourceFilter 类型：`'all' | 'featured' | 'user'`
 
 - [ ] **Task 6.3**: Marketplace 页面改造
   - 添加"添加自定义来源"按钮 ⚠️ 部分完成
-  - 集成来源筛选功能 ❌
+  - 集成来源筛选功能 ❌ (依赖 Task 6.0 和 6.2)
+    - 在 useMarketplaceLogic 添加 sourceFilter 状态
+    - 传递 sourceType 给 useMarketplaceSkills
   - 优化操作反馈（Toast，不强制跳转）✅
-  - 添加来源徽章显示 ❌
+  - 添加来源徽章显示 ❌ (依赖 Task 6.1)
 
 - [ ] **Task 6.4**: Repositories 页面重构为 Sources
   - 重命名路由和页面标题 ⚠️ 待决定
@@ -1022,16 +1050,22 @@ ORDER BY stars DESC;
   - 优化操作流程 ⚠️ 待优化
   - **Token 配置引导**：显眼位置提示配置 GitHub Token 以提高限流阈值 ❌
 
-- [ ] **Task 6.5**: 添加来源对话框
+- [x] **Task 6.5**: 添加来源对话框 ✅
   - 扫描进度显示 ✅
   - Toast 提示（不强制跳转）✅
   - 成功后的操作选项 ✅
 
 **实现状态**:
 - ✅ 已实现：扫描进度、Toast 提示、操作选项、官方/用户区分
-- ❌ 缺失：来源筛选 UI、徽章显示、Token 配置引导
+- ⚠️ **关键阻塞**: 数据映射问题导致来源信息丢失
+- ❌ 缺失：来源字段、来源筛选 UI、徽章显示、Token 配置引导
 
-**预估完成时间**: 1-2 天
+**已发现的问题**:
+1. `useMarketplaceSkills` Hook (src/hooks/useSkills.ts:212-241) 已经支持 `sourceType` 参数
+2. 后端 API `list_marketplace_skills_by_source` 已实现并返回完整数据
+3. **但前端映射时丢弃了来源字段**，导致 UI 无法使用
+
+**预估完成时间**: 1-2 天（修复数据映射 0.5 天 + UI 实现 0.5-1 天）
 
 #### ⏳ 阶段七：路由和导航 (待开始 - 1天)
 
