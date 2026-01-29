@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useMarketplaceSkills } from './useSkills';
-import type { SecurityFilter, CompatibilityFilter } from '../components/FilterPanel';
+import type { SecurityFilter, CompatibilityFilter, SourceFilter } from '../components/FilterPanel';
 import type { SortOption } from '../components/SortDropdown';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
 import type { ListMarketplaceParams } from '../types';
@@ -27,6 +27,7 @@ export function useMarketplaceLogic() {
   const [sortOption, setSortOption] = useState<SortOption>('stars');
   const [securityFilter, setSecurityFilter] = useState<SecurityFilter>('all');
   const [compatibilityFilter, setCompatibilityFilter] = useState<CompatibilityFilter>('all');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [showFilters, setShowFilters] = useState(false);
 
   // Debounce search term to avoid excessive backend calls
@@ -41,6 +42,11 @@ export function useMarketplaceLogic() {
   const queryParams = useMemo<ListMarketplaceParams>(() => {
     const params: ListMarketplaceParams = { limit: 100 }; // Default limit to reduce memory usage
 
+    // 来源筛选（新增 v2.7.0）
+    if (sourceFilter !== 'all') {
+      params.sourceType = sourceFilter;
+    }
+
     if (debouncedSearchTerm) {
       params.searchQuery = debouncedSearchTerm;
     } else if (filter === 'top-rated') {
@@ -48,7 +54,7 @@ export function useMarketplaceLogic() {
     }
 
     return params;
-  }, [debouncedSearchTerm, filter]);
+  }, [debouncedSearchTerm, filter, sourceFilter]);
 
   const {
     data: marketplaceSkills = [],
@@ -110,10 +116,15 @@ export function useMarketplaceLogic() {
         if (!supported && !hasTag) return false;
       }
 
+      // 4. Source Filter (v2.7.0)
+      if (sourceFilter !== 'all') {
+        if (skill.sourceType !== sourceFilter) return false;
+      }
+
       return true;
     });
 
-    // 4. Sorting
+    // 5. Sorting
     return result.sort((a, b) => {
       switch (sortOption) {
         case 'stars':
@@ -128,7 +139,7 @@ export function useMarketplaceLogic() {
           return 0;
       }
     });
-  }, [marketplaceSkills, searchTerm, filter, securityFilter, compatibilityFilter, sortOption]);
+  }, [marketplaceSkills, searchTerm, filter, securityFilter, compatibilityFilter, sourceFilter, sortOption]);
 
   return {
     marketplaceSkills,
@@ -146,6 +157,8 @@ export function useMarketplaceLogic() {
     setSecurityFilter,
     compatibilityFilter,
     setCompatibilityFilter,
+    sourceFilter,
+    setSourceFilter,
     showFilters,
     setShowFilters,
     isGithubUrl,

@@ -9,18 +9,24 @@ import {
   Terminal,
   Cpu,
   Filter,
-  X
+  X,
+  Package,
+  Sparkles,
+  Users
 } from 'lucide-react';
 import type { AgentType } from '../types';
 
 export type SecurityFilter = 'all' | 'safe' | 'risk' | 'unknown';
 export type CompatibilityFilter = 'all' | AgentType;
+export type SourceFilter = 'all' | 'featured' | 'user';
 
 interface FilterPanelProps {
   securityFilter: SecurityFilter;
   setSecurityFilter: (filter: SecurityFilter) => void;
   compatibilityFilter: CompatibilityFilter;
   setCompatibilityFilter: (filter: CompatibilityFilter) => void;
+  sourceFilter: SourceFilter;
+  setSourceFilter: (filter: SourceFilter) => void;
   onReset: () => void;
   className?: string;
 }
@@ -30,6 +36,8 @@ export const FilterPanel = ({
   setSecurityFilter,
   compatibilityFilter,
   setCompatibilityFilter,
+  sourceFilter,
+  setSourceFilter,
   onReset,
   className
 }: FilterPanelProps) => {
@@ -78,7 +86,25 @@ export const FilterPanel = ({
     },
   ];
 
-  const hasActiveFilters = securityFilter !== 'all' || compatibilityFilter !== 'all';
+  const sourceOptions: { value: SourceFilter; label: string; icon?: React.ReactNode }[] = [
+    {
+      value: 'all',
+      label: i18n.language === 'zh' ? '全部来源' : 'All Sources',
+      icon: <Package size={14} />
+    },
+    {
+      value: 'featured',
+      label: i18n.language === 'zh' ? '官方精选' : 'Featured',
+      icon: <Sparkles size={14} className="text-amber-500" />
+    },
+    {
+      value: 'user',
+      label: i18n.language === 'zh' ? '用户仓库' : 'User Repos',
+      icon: <Users size={14} />
+    },
+  ];
+
+  const hasActiveFilters = securityFilter !== 'all' || compatibilityFilter !== 'all' || sourceFilter !== 'all';
 
   return (
     <div className={cn("bg-white dark:bg-base-100 rounded-xl border border-gray-100 dark:border-base-300 p-4 shadow-sm", className)}>
@@ -120,6 +146,33 @@ export const FilterPanel = ({
                 title={option.label}
                 aria-pressed={securityFilter === option.value}
                 data-testid={`security-filter-${option.value}`}
+              >
+                {option.icon}
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Source Filter */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            {i18n.language === 'zh' ? '来源类型' : 'Source Type'}
+          </label>
+          <div className="flex flex-wrap gap-2" role="group" aria-label={i18n.language === 'zh' ? '来源类型筛选' : 'Source type filter'}>
+            {sourceOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSourceFilter(option.value)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border",
+                  sourceFilter === option.value
+                    ? "bg-primary/10 border-primary/20 text-primary"
+                    : "bg-slate-50 dark:bg-base-200 border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-base-300"
+                )}
+                title={option.label}
+                aria-pressed={sourceFilter === option.value}
+                data-testid={`source-filter-${option.value}`}
               >
                 {option.icon}
                 {option.label}

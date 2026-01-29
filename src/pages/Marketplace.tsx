@@ -106,6 +106,8 @@ const Marketplace = () => {
     setSecurityFilter,
     compatibilityFilter,
     setCompatibilityFilter,
+    sourceFilter,
+    setSourceFilter,
     showFilters,
     setShowFilters,
     isGithubUrl,
@@ -392,9 +394,12 @@ const Marketplace = () => {
                 setSecurityFilter={setSecurityFilter}
                 compatibilityFilter={compatibilityFilter}
                 setCompatibilityFilter={setCompatibilityFilter}
+                sourceFilter={sourceFilter}
+                setSourceFilter={setSourceFilter}
                 onReset={() => {
                     setSecurityFilter('all');
                     setCompatibilityFilter('all');
+                    setSourceFilter('all');
                 }}
             />
         </motion.div>

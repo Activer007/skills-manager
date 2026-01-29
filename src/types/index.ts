@@ -23,6 +23,11 @@ export interface MarketplaceSkill {
   securityScore?: number;
   securityIssues?: SecurityIssue[];
   compatibility?: CompatibilityInfo;
+
+  // ✅ 新增字段 (v2.7.0) - 来源筛选功能
+  sourceType?: 'featured' | 'user';  // 来源类型
+  repositoryName?: string;            // 仓库名称
+  repositoryId?: string;              // 仓库 ID
 }
 
 export type AgentType = 'claude-code' | 'cursor' | 'windsurf' | 'v0' | 'unknown';
