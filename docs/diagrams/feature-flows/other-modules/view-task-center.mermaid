@@ -1,0 +1,69 @@
+# SC-19: 查看任务中心
+# 流程图: view-task-center.mermaid
+
+flowchart TD
+    Start([开始: 用户进入任务中心]) --> EnterTasks[进入任务中心页面<br/>/tasks]
+    EnterTasks --> CallAPI[调用 get_tasks API]
+    CallAPI --> LoadTasks[加载任务列表]
+    LoadTasks --> RenderTasks[渲染任务列表]
+
+    RenderTasks --> ShowTabs[显示筛选标签<br/>全部/进行中/已完成/失败]
+    ShowTabs --> UserFilter{用户筛选}
+    UserFilter -->|全部| ShowAllTasks[显示所有任务]
+    UserFilter -->|进行中| ShowRunning[显示进行中任务<br/>status: running]
+    UserFilter -->|已完成| ShowCompleted[显示已完成任务<br/>status: completed]
+    UserFilter -->|失败| ShowFailed[显示失败任务<br/>status: failed]
+
+    ShowAllTasks --> SelectTask{选择任务}
+    ShowRunning --> SelectTask
+    ShowCompleted --> SelectTask
+    ShowFailed --> SelectTask
+
+    SelectTask --> ClickTask[点击任务卡片]
+    ClickTask --> ShowDetailDialog[显示任务详情对话框]
+
+    ShowDetailDialog --> DisplayTaskInfo[显示任务信息<br/>类型/状态/创建时间/耗时]
+    DisplayTaskInfo --> ShowSteps[显示执行步骤<br/>下载/解析/扫描/安装]
+    ShowSteps --> CheckStatus{检查任务状态}
+
+    CheckStatus -->|进行中| ShowProgress[显示进度百分比<br/>████████░░ 80%]
+    CheckStatus -->|已完成| ShowCompletedMsg[显示完成时间]
+    CheckStatus -->|失败| ShowErrorMsg[显示错误信息]
+
+    ShowProgress --> TaskAction{用户操作}
+    ShowCompletedMsg --> TaskAction
+    ShowErrorMsg --> TaskAction
+
+    TaskAction -->|取消任务| ClickCancel[点击 取消 按钮]
+    TaskAction -->|重试| ClickRetry[点击 重试 按钮]
+    TaskAction -->|查看日志| ViewLogs[查看详细日志]
+    TaskAction -->|关闭| CloseDialog
+
+    ClickCancel --> CheckStatus2{检查状态}
+    CheckStatus2 -->|已完成/失败| ShowCannotCancel[显示提示<br/>任务无法取消]
+    CheckStatus2 -->|进行中| ConfirmCancel[确认取消操作]
+    ShowCannotCancel --> CloseDialog
+
+    ConfirmCancel --> UserConfirm{用户确认?}
+    UserConfirm -->|取消| CloseDialog
+    UserConfirm -->|确认| SendCancelSignal[发送取消信号到后端]
+    SendCancelSignal --> UpdateStatusCancelled[更新任务状态为 cancelled]
+    UpdateStatusCancelled --> EmitCancelled[发送取消事件]
+    EmitCancelled --> RefreshList[刷新任务列表]
+    RefreshList --> End([结束])
+
+    ClickRetry --> CallRetryAPI[调用重试 API]
+    CallRetryAPI --> CreateNewTask[创建新任务]
+    CreateNewTask --> ExecuteTask[执行任务]
+    ExecuteTask --> RefreshList
+    RefreshList --> End
+
+    ViewLogs --> ShowLogContent[显示日志内容<br/>详细步骤和时间戳]
+    ShowLogContent --> CloseDialog
+    CloseDialog --> UserFilter
+
+    CloseDialog --> UserFilter
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style ShowCannotCancel fill:#fff3cd

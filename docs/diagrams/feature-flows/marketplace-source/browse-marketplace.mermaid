@@ -1,0 +1,67 @@
+# SC-08: 浏览和安装市场 Skills
+# 流程图: browse-marketplace.mermaid
+
+flowchart TD
+    Start([开始: 用户进入市场]) --> EnterMarket[进入市场页面<br/>/marketplace]
+    EnterMarket --> CallAPI[调用 list_marketplace_skills API]
+    CallAPI --> FetchFromDB[从数据库获取 Skills]
+    FetchFromDB --> RenderList[渲染 Skill 卡片列表]
+
+    RenderList --> UserAction{用户操作}
+    UserAction -->|搜索| SearchSkills
+    UserAction -->|筛选| FilterSkills
+    UserAction -->|排序| SortSkills
+    UserAction -->|安装| InstallSkill
+    UserAction -->|查看详情| ViewDetails
+
+    %% 搜索流程
+    SearchSkills --> InputKeyword[输入搜索关键词]
+    InputKeyword --> CallSearchAPI[调用 search_marketplace_skills API]
+    CallSearchAPI --> QueryFTS5[查询 FTS5 全文索引]
+    QueryFTS5 --> ReturnResults[返回搜索结果]
+    ReturnResults --> UpdateList[更新列表]
+    UpdateList --> UserAction
+
+    %% 筛选流程
+    FilterSkills --> ClickFilter[点击筛选按钮]
+    ClickFilter --> SelectFilter{选择筛选类型}
+    SelectFilter -->|来源| SelectSource[选择来源<br/>Featured/User]
+    SelectFilter -->|类别| SelectCategory[选择类别]
+    SelectFilter -->|安全等级| SelectSecurity[选择安全等级<br/>安全/风险/阻断]
+
+    SelectSource --> ApplySourceFilter[应用来源筛选]
+    SelectCategory --> ApplyCategoryFilter[应用类别筛选]
+    SelectSecurity --> ApplySecurityFilter[应用安全筛选]
+
+    ApplySourceFilter --> CallFilterAPI[调用 list_marketplace_skills_by_source API]
+    ApplyCategoryFilter --> CallFilterAPI
+    ApplySecurityFilter --> CallFilterAPI
+
+    CallFilterAPI --> UpdateList
+    UpdateList --> UserAction
+
+    %% 排序流程
+    SortSkills --> SelectSort{选择排序方式}
+    SelectSort -->|评分| SortByScore[按质量评分排序]
+    SelectSort -->|更新时间| SortByUpdated[按更新时间排序]
+    SelectSort -->|安装量| SortByInstalls[按安装量排序]
+
+    SortByScore --> UpdateList
+    SortByUpdated --> UpdateList
+    SortByInstalls --> UpdateList
+
+    %% 安装流程
+    InstallSkill --> ClickInstall[点击安装按钮]
+    ClickInstall --> ImportFlow[参考 SC-01<br/>从 GitHub 导入流程]
+    ImportFlow --> RefreshList[刷新列表]
+    RefreshList --> UserAction
+
+    %% 查看详情流程
+    ViewDetails --> ClickSkill[点击 Skill 卡片]
+    ClickSkill --> OpenSlideOver[打开 SlideOver 侧边抽屉]
+    OpenSlideOver --> ShowDetailTabs[显示详情/配置/分享标签]
+    ShowDetailTabs --> Close{关闭详情?}
+    Close -->|是| UserAction
+    Close -->|否| ShowDetailTabs
+
+    style Start fill:#e1f5e1

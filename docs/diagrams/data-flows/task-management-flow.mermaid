@@ -1,0 +1,70 @@
+# DF-03: 任务管理流程
+# 流程图: task-management-flow.mermaid
+
+flowchart TD
+    Start([开始: 用户触发操作]) --> FrontendCall[前端: 调用 Tauri Command]
+    FrontendCall --> CreateTask[后端: 创建任务记录]
+
+    CreateTask --> GenTaskID[生成任务 ID<br/>UUID]
+    GenTaskID --> InsertDB[插入 tasks 表<br/>id, type, status: pending, input_json, progress: 0]
+    InsertDB --> EmitCreated[发送事件<br/>task-created]
+
+    EmitCreated --> UpdateStatusPending[更新状态: pending]
+    UpdateStatusPending --> AsyncSpawn[后端: 异步执行任务<br/>tokio::spawn]
+
+    AsyncSpawn --> UpdateStatusRunning[更新状态: running]
+    UpdateStatusRunning --> EmitProgressStart[发送进度事件<br/>task-progress, 0%]
+
+    EmitProgressStart --> ExecuteSteps[执行任务步骤]
+
+    ExecuteSteps --> Step1[步骤 1: 下载文件]
+    Step1 --> EmitProgress20[发送进度事件<br/>20%]
+    EmitProgress20 --> Step2[步骤 2: 解析 SKILL.md]
+    Step2 --> EmitProgress40[发送进度事件<br/>40%]
+    EmitProgress40 --> Step3[步骤 3: 安全扫描]
+    Step3 --> EmitProgress60[发送进度事件<br/>60%]
+    EmitProgress60 --> Step4[步骤 4: 质量评分]
+    Step4 --> EmitProgress80[发送进度事件<br/>80%]
+    EmitProgress80 --> Step5[步骤 5: 安装到本地]
+    Step5 --> EmitProgress100[发送进度事件<br/>100%]
+
+    EmitProgress100 --> CheckResult{检查结果}
+    CheckResult -->|成功| UpdateStatusCompleted[更新状态: completed<br/>completed_at: timestamp]
+    CheckResult -->|失败| UpdateStatusFailed[更新状态: failed<br/>error_message: error]
+
+    UpdateStatusCompleted --> EmitCompleted[发送完成事件<br/>task-completed]
+    EmitCompleted --> ReturnSuccess[返回成功]
+
+    UpdateStatusFailed --> EmitFailed[发送失败事件<br/>task-failed]
+    EmitFailed --> ReturnError[返回错误]
+
+    ReturnSuccess --> FrontendListener[前端: 监听事件<br/>useTaskListener Hook]
+    ReturnError --> FrontendListener
+
+    FrontendListener --> OnTaskProgress[on task-progress 事件]
+    OnTaskProgress --> UpdateTaskState[更新任务状态<br/>React Query cache]
+    UpdateTaskState --> RefreshTaskList[刷新任务列表 UI]
+    RefreshTaskList --> ShowProgressBar[显示进度条<br/>████████░░]
+
+    FrontendListener --> OnTaskCompleted[on task-completed 事件]
+    OnTaskCompleted --> InvalidateQueries[失效相关查询<br/>invalidateQueries: installed_skills]
+    InvalidateQueries --> ShowSuccessToast[显示成功提示<br/>✅ 安装成功]
+    ShowSuccessToast --> RefreshMySkills[刷新 我的 Skills 列表]
+
+    FrontendListener --> OnTaskFailed[on task-failed 事件]
+    OnTaskFailed --> ShowErrorToast[显示错误提示<br/>❌ 安装失败]
+    ShowErrorToast --> ShowErrorDetail[显示错误详情]
+
+    RefreshMySkills --> End([结束])
+    ShowErrorDetail --> End
+
+    ShowProgressBar --> OnTaskProgress
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style InsertDB fill:#e3f2fd
+    style UpdateStatusRunning fill:#fff3cd
+    style UpdateStatusCompleted fill:#d1ecf1
+    style UpdateStatusFailed fill:#f8d7da
+    style ShowSuccessToast fill:#d1ecf1
+    style ShowErrorToast fill:#f8d7da

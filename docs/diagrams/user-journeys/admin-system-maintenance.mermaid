@@ -1,0 +1,115 @@
+# 旅程 5: 系统维护
+# 流程图: admin-system-maintenance.mermaid
+
+flowchart TD
+    Start([开始: 管理员系统维护]) --> ChooseTask{选择维护任务}
+
+    ChooseTask -->|查看安全| EnterSecurity[进入安全页面<br/>/security]
+    ChooseTask -->|查看历史| EnterHistory[进入扫描历史<br/>/scan-history]
+    ChooseTask -->|管理白名单| ManageWhitelist[管理白名单]
+    ChooseTask -->|清理缓存| ClearCache[清理缓存]
+    ChooseTask -->|查看统计| ViewDashboard[查看仪表板统计]
+
+    %% 查看安全报告
+    EnterSecurity --> ViewSecurityOverview[查看安全概览]
+    ViewSecurityOverview --> ShowDist[显示等级分布<br/>安全/风险/阻断/未知]
+    ShowDist --> CheckRiskSkills{有风险 Skills?}
+    CheckRiskSkills -->|否| ViewDashboard
+    CheckRiskSkills -->|是| ListRiskSkills[列出风险 Skills]
+
+    ListRiskSkills --> SelectRiskSkill[选择某个风险 Skill]
+    SelectRiskSkill --> ViewRiskDetail[查看风险详情]
+    ViewRiskDetail --> ShowFindings[显示发现的问题<br/>命令注入/敏感信息等]
+    ShowFindings --> Action{选择操作}
+    Action -->|加入白名单| AddWhitelistEntry[添加到白名单]
+    Action -->|重新扫描| ReScanSkill[重新扫描 Skill]
+    Action -->|忽略| IgnoreRisk[忽略风险]
+
+    AddWhitelistEntry --> SelectWhitelistType{选择白名单类型}
+    SelectWhitelistType -->|Skill| AddSkillWhitelist[添加 Skill 白名单]
+    SelectWhitelistType -->|规则| AddRuleWhitelist[添加规则白名单]
+    AddSkillWhitelist --> InputReason[输入原因]
+    AddRuleWhitelist --> InputReason
+    InputReason --> SaveWhitelist[保存到数据库]
+    SaveWhitelist --> ShowWhitelistSuccess[显示添加成功]
+    ShowWhitelistSuccess --> ViewDashboard
+
+    ReScanSkill --> ExecuteScan[执行安全扫描]
+    ExecuteScan --> UpdateReport[更新安全报告]
+    UpdateReport --> ViewDashboard
+
+    IgnoreRisk --> ViewDashboard
+
+    %% 查看扫描历史
+    EnterHistory --> ViewHistoryList[查看扫描历史列表]
+    ViewHistoryList --> FilterHistory{筛选历史}
+    FilterHistory -->|按等级| FilterByLevel[按安全等级筛选]
+    FilterHistory -->|按日期| FilterByDate[按日期筛选]
+    FilterHistory -->|搜索| SearchHistory[搜索关键词]
+
+    FilterByLevel --> ShowFilteredResults[显示筛选结果]
+    FilterByDate --> ShowFilteredResults
+    SearchHistory --> ShowFilteredResults
+
+    ShowFilteredResults --> ExportHistory{导出历史?}
+    ExportHistory -->|是| SelectFormat[选择导出格式<br/>JSON/CSV]
+    ExportHistory -->|否| ViewDashboard
+    SelectFormat --> DownloadFile[下载文件]
+    DownloadFile --> ViewDashboard
+
+    %% 清理缓存
+    ClearCache --> EnterSettings[进入设置页面<br/>/settings]
+    EnterSettings --> ViewCacheStats[查看缓存统计<br/>市场/安全/质量]
+    ViewCacheStats --> ClickClearCache[点击 清理缓存 按钮]
+    ClickClearCache --> ShowConfirm[显示确认对话框]
+    ShowConfirm --> ConfirmClear{确认清理?}
+    ConfirmClear -->|否| ViewDashboard
+    ConfirmClear -->|是| ExecuteClear[执行清理操作]
+    ExecuteClear --> ClearMarketCache[清理市场缓存]
+    ClearMarketCache --> ClearSecurityCache[清理安全扫描缓存]
+    ClearSecurityCache --> ClearQualityCache[清理质量评分缓存]
+    ClearQualityCache --> CalcFreedSpace[计算释放空间]
+    CalcFreedSpace --> ShowClearSuccess[显示清理成功<br/>释放空间: 202 MB]
+    ShowClearSuccess --> ViewDashboard
+
+    %% 查看仪表板统计
+    ViewDashboard --> CheckDashboard{Dashboard 可用?}
+    CheckDashboard -->|否| ShowDashboardError[⚠️ Dashboard 未配置路由<br/>ISSUE-001]
+    CheckDashboard -->|是| ShowStats[显示系统统计<br/>已安装/启用/安全警报]
+
+    ShowDashboardError --> ManageFeatured{管理精选仓库?}
+    ShowStats --> ManageFeatured
+
+    ManageFeatured -->|是| EnterRepos[进入来源页面]
+    ManageFeatured -->|否| Complete([完成: 系统维护结束])
+
+    EnterRepos --> ViewFeaturedRepos[查看官方精选来源]
+    ViewFeaturedRepos --> SelectFeatured[选择某个精选仓库]
+    SelectFeatured --> FeaturedAction{选择操作}
+    FeaturedAction -->|禁用| DisableFeatured[禁用精选仓库]
+    FeaturedAction -->|重新扫描| ReScanFeatured[重新扫描仓库]
+    FeaturedAction -->|替换| ReplaceFeatured[替换精选仓库]
+
+    DisableFeatured --> UpdateRepoStatus[更新仓库状态<br/>enabled=false]
+    UpdateRepoStatus --> ConfirmDisable{确认禁用?}
+    ConfirmDisable -->|否| EnterRepos
+    ConfirmDisable -->|是| HideSkills[隐藏该来源的 Skills]
+    HideSkills --> Complete
+
+    ReScanFeatured --> ScanRepository[扫描仓库<br/>参考旅程 3]
+    ScanRepository --> UpdateSkills[更新 Skills]
+    UpdateSkills --> Complete
+
+    ReplaceFeatured --> InputNewURL[输入新的仓库 URL]
+    InputNewURL --> ValidateNewURL{验证 URL}
+    ValidateNewURL -->|无效| ShowURLError[显示错误]
+    ValidateNewURL -->|有效| UpdateFeaturedURL[更新精选仓库 URL]
+    ShowURLError --> InputNewURL
+    UpdateFeaturedURL --> Complete
+
+    style Start fill:#e1f5e1
+    style Complete fill:#e1f5e1
+    style ShowWhitelistSuccess fill:#d1ecf1
+    style ShowClearSuccess fill:#d1ecf1
+    style ShowDashboardError fill:#f8d7da
+    style ShowURLError fill:#f8d7da

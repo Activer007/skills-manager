@@ -1,0 +1,26 @@
+# SC-04: 卸载 Skill
+# 流程图: uninstall-skill.mermaid
+
+flowchart TD
+    Start([开始: 用户点击卸载按钮]) --> ShowConfirm[显示确认对话框]
+    ShowConfirm --> UserConfirm{用户确认?}
+    UserConfirm -->|取消| End([结束: 取消卸载])
+    UserConfirm -->|确认| CheckFiles{检查文件占用}
+
+    CheckFiles -->|文件被占用| ShowBusyError[显示错误<br/>Skill 文件被占用，无法删除]
+    CheckFiles -->|无占用| DeleteFiles[删除 Skill 目录]
+
+    ShowBusyError --> End
+
+    DeleteFiles --> RemoveDB[从数据库移除记录<br/>或标记为已卸载]
+    RemoveDB --> ClearCache[清理缓存]
+    ClearCache --> UpdateMarket[更新 marketplace_skills<br/>installed: false]
+    UpdateMarket --> ShowSuccess[显示卸载成功提示]
+    ShowSuccess --> RefreshList[刷新列表]
+    RefreshList --> End2([结束: 卸载完成])
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style End2 fill:#e1f5e1
+    style ShowBusyError fill:#f8d7da
+    style ShowSuccess fill:#d1ecf1

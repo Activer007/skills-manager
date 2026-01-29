@@ -1,0 +1,52 @@
+# SC-13: 从分享链接导入
+# 流程图: import-from-share-link.mermaid
+
+flowchart TD
+    Start([开始: 用户打开分享链接]) --> ParseURL[解析 URL<br/>提取 shareId]
+    ParseURL --> ValidateShareId{验证 shareId 格式}
+    ValidateShareId -->|无效| ShowInvalidError[显示错误<br/>无效的分享链接格式]
+    ValidateShareId -->|有效| CallResolveAPI[调用 resolve_share_link API]
+
+    ShowInvalidError --> End([结束])
+
+    CallResolveAPI --> QueryDB[查询 ShareRecord 表]
+    QueryDB --> CheckExists{shareId 存在?}
+    CheckExists -->|否| ShowExpiredError[显示错误<br/>链接已过期或不存在]
+    CheckExists -->|是| ReturnRecord[返回 ShareRecord]
+
+    ShowExpiredError --> End
+
+    ReturnRecord --> ParseMetadata[解析 ShareMetadata]
+    ParseMetadata --> CheckSourceURL{检查 source_url}
+    CheckSourceURL -->|缺失| ShowNoSourceWarning[显示警告<br/>无法安装 - 缺少源地址]
+    CheckSourceURL -->|存在| ValidateGitHubURL{验证 GitHub URL}
+    ValidateGitHubURL -->|非标准| ShowNonStandardWarning[显示警告<br/>非标准 GitHub 链接]
+    ValidateGitHubURL -->|标准| ShowPreview[显示分享预览页面]
+
+    ShowNoSourceWarning --> DisableInstall[禁用安装按钮]
+    DisableInstall --> WaitUser[等待用户操作]
+    WaitUser --> End
+
+    ShowNonStandardWarning --> UserChoice{用户选择}
+    UserChoice -->|取消| End
+    UserChoice -->|继续| ShowPreview
+
+    ShowPreview --> RenderPreview[渲染 SharePreview 页面]
+    RenderPreview --> DisplayInfo[显示 Skill 信息<br/>名称、描述、评分、版本]
+    DisplayInfo --> DisplaySecurity[显示安全等级<br/>🟢/🟡/🔴]
+    DisplaySecurity --> DisplayQuality[显示质量评分<br/>⭐ x.x/10]
+    DisplayQuality --> ClickInstall[点击 安装 Skill 按钮]
+
+    ClickInstall --> CallImportAPI[调用 import_github_skill_with_progress API]
+    CallImportAPI --> ImportFlow[导入流程<br/>参考 SC-01]
+    ImportFlow --> ShowInstallSuccess[显示安装成功]
+    ShowInstallSuccess --> End2([结束: 导入完成])
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style End2 fill:#e1f5e1
+    style ShowInvalidError fill:#f8d7da
+    style ShowExpiredError fill:#f8d7da
+    style ShowNoSourceWarning fill:#fff3cd
+    style ShowNonStandardWarning fill:#fff3cd
+    style ShowInstallSuccess fill:#d1ecf1

@@ -1,0 +1,86 @@
+# 旅程 3: 高级工作流
+# 流程图: advanced-user-workflow.mermaid
+
+flowchart TD
+    Start([开始: 高级用户工作流]) --> ChooseAction{选择操作}
+
+    ChooseAction -->|添加来源| AddSource[添加自定义 GitHub 来源]
+    ChooseAction -->|Fork Skill| ForkSkill[ Fork/Remix Skill]
+    ChooseAction -->|项目配置| ProjectConfig[配置项目级 Skills]
+
+    %% 添加来源流程
+    AddSource --> EnterRepos[进入来源页面<br/>/repositories]
+    EnterRepos --> ClickAddRepo[点击 添加仓库 按钮]
+    ClickAddRepo --> InputURL[输入 GitHub URL]
+    InputURL --> ValidateURL{验证 URL}
+    ValidateURL -->|无效| ShowURLError[显示错误提示<br/>请输入有效的 GitHub URL]
+    ValidateURL -->|有效| ScanRepo[扫描仓库]
+
+    ShowURLError --> InputURL
+
+    ScanRepo --> SearchSkills[搜索 Skill 目录]
+    SearchSkills --> ExtractMetadata[提取 Skill 元数据]
+    ExtractMetadata --> SyncMarket[同步到市场数据库]
+    SyncMarket --> ShowScanResult[显示扫描结果<br/>发现 N 个 Skills]
+    ShowScanResult --> ViewMarket{查看市场?}
+
+    ViewMarket -->|是| EnterMarketFromRepo[进入市场]
+    ViewMarket -->|否| FilterSource{按来源筛选?}
+
+    %% 按来源筛选
+    FilterSource -->|是| EnterMarketFromRepo
+    FilterSource -->|否| FilterBySource[按来源筛选<br/>mycompany/team-skills]
+
+    EnterMarketFromRepo --> ClickFilter[点击来源筛选下拉菜单]
+    ClickFilter --> SelectSource[选择特定来源]
+    SelectSource --> UpdateList[更新 Skill 列表]
+    UpdateList --> ViewSourceSkills[查看该来源的 Skills]
+    ViewSourceSkills --> ChooseAction
+
+    FilterBySource --> ViewSourceSkills
+
+    %% Fork Skill 流程
+    ForkSkill --> EnterMySkills[进入 我的 Skills]
+    EnterMySkills --> SelectSkillToFor[选择要 Fork 的 Skill]
+    SelectSkillToFor --> ClickFork[点击 🔄 Fork 按钮]
+    ClickFork --> ShowForkDialog[显示 Fork 对话框]
+    ShowForkDialog --> InputNewName[输入新 Skill 名称]
+    InputNewName --> InputNewDesc[输入新描述]
+    InputNewDesc --> ShowTargetDir[显示目标目录]
+    ShowTargetDir --> ConfirmFork[确认创建]
+    ConfirmFork --> CopyFiles[复制 Skill 文件]
+    CopyFiles --> UpdateManifest[更新 SKILL.md]
+    UpdateManifest --> SaveParent[记录 parent_skill_id]
+    SaveParent --> ShowForkSuccess[显示创建成功]
+    ShowForkSuccess --> OpenEditor{打开编辑器?}
+    OpenEditor -->|是| LaunchEditor[启动系统编辑器]
+    OpenEditor -->|否| ChooseAction
+    LaunchEditor --> ChooseAction
+
+    %% 项目配置流程
+    ProjectConfig --> EnterSettings[进入设置页面<br/>/settings]
+    EnterSettings --> ClickAddPath[点击 添加项目路径]
+    ClickAddPath --> BrowseDir[浏览目录]
+    BrowseDir --> SelectProjectDir[选择项目根目录]
+    SelectProjectDir --> ValidatePath{验证路径}
+    ValidatePath -->|无效| ShowPathError[显示错误<br/>路径不存在]
+    ValidatePath -->|有效| AddPathToList[添加到项目路径列表]
+    AddPathToList --> ScanProjectSkills[扫描项目级 Skills]
+    ScanProjectSkills --> ShowProjectCount[显示发现的 Skills 数量]
+    ShowProjectCount --> ReturnMySkills[返回 我的 Skills]
+    ReturnMySkills --> SwitchProjectTab[切换到 项目级 标签页]
+    SwitchProjectTab --> ViewProjectSkills[查看项目级 Skills]
+    ViewProjectSkills --> ManageProjectSkills[管理项目级 Skills]
+    ManageProjectSkills --> ChooseAction
+
+    ShowPathError --> BrowseDir
+
+    %% 完成
+    ChooseAction -->|完成| Complete([完成: 高级工作流结束])
+
+    style Start fill:#e1f5e1
+    style Complete fill:#e1f5e1
+    style ShowScanResult fill:#d1ecf1
+    style ShowForkSuccess fill:#d1ecf1
+    style ShowURLError fill:#f8d7da
+    style ShowPathError fill:#f8d7da

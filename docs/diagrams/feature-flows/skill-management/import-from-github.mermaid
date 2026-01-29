@@ -1,0 +1,113 @@
+# SC-01: 从 GitHub 导入 Skill
+# 流程图: import-from-github.mermaid
+
+flowchart TD
+    Start([开始: 用户点击安装按钮]) --> ValidateInput{验证输入}
+    ValidateInput -->|URL 无效| ShowURLError[显示错误<br/>请输入有效的 GitHub URL]
+    ValidateInput -->|URL 有效| CreateTask[创建后台任务]
+    ShowURLError --> End([结束])
+
+    CreateTask --> GenerateTaskID[生成任务 ID]
+    GenerateTaskID --> SaveTaskDB[保存任务到数据库<br/>status: pending]
+
+    SaveTaskDB --> EmitCreated[发送任务创建事件]
+    EmitCreated --> UpdateStatusRunning[更新任务状态为 running]
+
+    UpdateStatusRunning --> Step1_Download[步骤 1: 下载 Skill 文件]
+    Step1_Download --> CallGitHubAPI[调用 GitHub API]
+    CallGitHubAPI --> GetRepoInfo[获取仓库信息]
+    GetRepoInfo --> DownloadFiles[下载 SKILL.md 和相关文件]
+    DownloadFiles --> EmitProgress20[发送进度事件 20%<br/>正在下载...]
+
+    EmitProgress20 --> Step2_Parse[步骤 2: 解析 SKILL.md]
+    Step2_Parse --> ReadFile[读取 SKILL.md 文件]
+    ReadFile --> ExtractFrontmatter[提取 frontmatter<br/>YAML 格式]
+    ExtractFrontmatter --> ParseFields[解析字段<br/>name, description, version, author]
+    ParseFields --> ValidateMetadata{验证元数据}
+    ValidateMetadata -->|失败| UseDefaults[使用默认值<br/>version: 1.0.0]
+    ValidateMetadata -->|成功| CheckFrontmatter
+    UseDefaults --> CheckFrontmatter{frontmatter 存在?}
+    CheckFrontmatter -->|否| ShowManifestError[显示错误<br/>仓库中未发现 SKILL.md]
+    CheckFrontmatter -->|是| EmitProgress40
+    ShowManifestError --> UpdateStatusFailed[更新任务状态为 failed]
+    UpdateStatusFailed --> EmitFailed[发送任务失败事件]
+    EmitFailed --> End
+
+    EmitProgress40[发送进度事件 40%<br/>正在解析...] --> Step3_Security[步骤 3: 安全扫描]
+    Step3_Security --> CallSecurityScan[调用 scan_skill_security]
+    CallSecurityScan --> CalcChecksum[计算 SHA-256 校验和]
+    CalcChecksum --> CheckCache{检查缓存}
+    CheckCache -->|缓存命中| ReturnCache[返回缓存结果]
+    CheckCache -->|缓存未命中| ExecuteRules[执行安全规则检测]
+
+    ExecuteRules --> FindFindings[查找风险发现]
+    FindFindings --> CheckWhitelist{检查白名单}
+    CheckWhitelist --> FilterFindings[过滤白名单规则]
+    FilterFindings --> CalcScore[计算安全评分<br/>100 - total_penalty]
+    CalcScore --> DetermineLevel{确定安全等级}
+    DetermineLevel -->|>=90| SetSafe[设置等级: safe]
+    DetermineLevel -->|70-89| SetRisk[设置等级: risk]
+    DetermineLevel -->|<70| SetBlocked[设置等级: blocked]
+
+    SetSafe --> SaveReport[保存安全报告]
+    SetRisk --> CheckBlock{是否阻断?}
+    SetBlocked --> CheckBlock
+
+    SaveReport --> EmitProgress60
+    CheckBlock -->|是| UpdateStatusBlocked[更新状态为 blocked]
+    CheckBlock -->|否| EmitProgress60
+    UpdateStatusBlocked --> EmitBlocked[发送阻断事件]
+    EmitBlocked --> End
+
+    EmitProgress60[发送进度事件 60%<br/>正在扫描...] --> Step4_Quality[步骤 4: 质量评分]
+    Step4_Quality --> CallQualityScan[调用 analyze_skill_quality]
+    CallQualityScan --> ScoreContent[评分内容质量<br/>50分]
+    ScoreContent --> ScoreTechnical[评分技术实现<br/>30分]
+    ScoreTechnical --> ScoreMaintenance[评分维护性<br/>10分]
+    ScoreMaintenance --> ScoreUX[评分用户体验<br/>10分]
+
+    ScoreUX --> SumScores[汇总评分]
+    SumScores --> CalcTotal[计算总分<br/>0-100]
+    CalcTotal --> DetermineGrade{确定等级}
+    DetermineGrade -->|90-100| GradeS[S 级: 卓越]
+    DetermineGrade -->|80-89| GradeA[A 级: 优秀]
+    DetermineGrade -->|70-79| GradeB[B 级: 良好]
+    DetermineGrade -->|60-69| GradeC[C 级: 合格]
+    DetermineGrade -->|0-59| GradeD[D 级: 需改进]
+
+    GradeS --> SaveQualityReport[保存质量报告]
+    GradeA --> SaveQualityReport
+    GradeB --> SaveQualityReport
+    GradeC --> SaveQualityReport
+    GradeD --> SaveQualityReport
+
+    SaveQualityReport --> EmitProgress80[发送进度事件 80%<br/>正在评分...]
+
+    EmitProgress80 --> Step5_Install[步骤 5: 安装到本地]
+    Step5_Install --> ChooseTarget{选择目标目录}
+    ChooseTarget -->|系统级| SystemDir[~/.claude/skills/]
+    ChooseTarget -->|项目级| ProjectDir[/project/.claude/skills/]
+
+    SystemDir --> CopyFiles[复制 Skill 文件]
+    ProjectDir --> CopyFiles
+
+    CopyFiles --> SaveToDB[保存到数据库<br/>installed_skills 表]
+    SaveToDB --> UpdateInstalled[更新 marketplace_skills<br/>installed: true]
+    UpdateInstalled --> EmitProgress100[发送进度事件 100%]
+
+    EmitProgress100 --> UpdateStatusCompleted[更新任务状态为 completed]
+    UpdateStatusCompleted --> EmitCompleted[发送任务完成事件]
+    EmitCompleted --> ShowToast[显示 Toast 提示<br/>✅ 安装成功]
+    ShowToast --> RefreshList[刷新 我的 Skills 列表]
+    RefreshList --> End([结束: 导入完成])
+
+    ReturnCache --> EmitProgress60
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style ShowURLError fill:#f8d7da
+    style ShowManifestError fill:#f8d7da
+    style ShowToast fill:#d1ecf1
+    style UpdateStatusFailed fill:#f8d7da
+    style UpdateStatusBlocked fill:#f8d7da
+    style UpdateStatusCompleted fill:#d1ecf1

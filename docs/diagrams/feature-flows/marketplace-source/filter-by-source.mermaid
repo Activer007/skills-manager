@@ -1,0 +1,36 @@
+# SC-11: 按来源筛选市场 Skills
+# 流程图: filter-by-source.mermaid
+
+flowchart TD
+    Start([开始: 用户打开来源筛选]) --> EnterMarket[进入市场页面<br/>/marketplace]
+    EnterMarket --> ClickFilterDropdown[点击来源筛选下拉菜单]
+    ClickFilterDropdown --> ShowOptions[显示筛选选项]
+
+    ShowOptions --> UserSelect{用户选择}
+    UserSelect -->|全部| SelectAll[选择 全部]
+    UserSelect -->|Featured| SelectFeatured[选择 Featured<br/>官方精选]
+    UserSelect -->|User Repos| SelectUser[选择 User Repositories<br/>用户来源]
+
+    SelectAll --> CallListAPI[调用 list_marketplace_skills API<br/>sourceType: all]
+    SelectFeatured --> CallFeaturedAPI[调用 list_marketplace_skills_by_source API<br/>sourceType: featured]
+    SelectUser --> ShowUserRepos[显示用户来源列表]
+    ShowUserRepos --> SelectSpecificRepo[选择特定仓库<br/>mycompany/team-skills]
+    SelectSpecificRepo --> CallSpecificAPI[调用 list_marketplace_skills_by_source API<br/>repositoryName: xxx]
+
+    CallListAPI --> FetchSkills[从数据库获取 Skills]
+    CallFeaturedAPI --> FetchSkills
+    CallSpecificAPI --> FetchSkills
+
+    FetchSkills --> UpdateList[更新 Skill 列表]
+    UpdateList --> ShowResults[显示筛选结果]
+    ShowResults --> ViewSkill{查看 Skill?}
+    ViewSkill -->|是| ClickSkill[点击 Skill 卡片]
+    ViewSkill -->|否| ChangeFilter{更换筛选?}
+    ClickSkill --> ViewDetail[查看详情<br/>参考 SC-07]
+    ViewDetail --> End([结束])
+
+    ChangeFilter -->|是| ClickFilterDropdown
+    ChangeFilter -->|否| End
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1

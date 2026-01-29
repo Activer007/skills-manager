@@ -1,0 +1,45 @@
+# SC-09: 添加自定义 GitHub 来源
+# 流程图: add-custom-source.mermaid
+
+flowchart TD
+    Start([开始: 用户点击添加仓库]) --> OpenDialog[打开添加仓库对话框]
+    OpenDialog --> InputURL[输入 GitHub URL]
+    InputURL --> ValidateFormat{验证 URL 格式}
+    ValidateFormat -->|无效| ShowFormatError[显示错误<br/>请输入有效的 GitHub 仓库 URL]
+    ValidateFormat -->|有效| ExtractInfo[提取 owner 和 repo]
+
+    ShowFormatError --> End([结束])
+
+    ExtractInfo --> CallScanAPI[调用 scan_repository API]
+    CallScanAPI --> CallGitHub[调用 GitHub API]
+    CallGitHub --> GetRepo[获取仓库信息]
+    GetRepo --> CheckExists{仓库存在?}
+    CheckExists -->|不存在| Show404Error[显示错误<br/>仓库不存在或无权限访问]
+    CheckExists -->|存在| SearchSkills[搜索 Skill 目录]
+
+    Show404Error --> End
+
+    SearchSkills --> FindSKILLMD[查找包含 SKILL.md 的目录]
+    FindSKILLMD --> CheckSkills{发现 Skills?}
+    CheckSkills -->|否| ShowNoSkills[显示提示<br/>仓库中未发现 Skills]
+    CheckSkills -->|是| ExtractMetadata[提取 Skill 元数据]
+
+    ShowNoSkills --> End
+
+    ExtractMetadata --> ParseAllSkills[解析所有 Skills]
+    ParseAllSkills --> InsertRepo[插入 repositories 记录<br/>source_type: user]
+    InsertRepo --> InsertSkills[插入 marketplace_skills 记录]
+    InsertSkills --> UpdateFTS5[更新 FTS5 全文索引]
+    UpdateFTS5 --> ShowResult[显示扫描结果<br/>发现 N 个 Skills]
+    ShowResult --> AskView{立即查看?}
+    AskView -->|是| GoToMarket[跳转到市场页面]
+    AskView -->|否| End2([结束: 添加完成])
+    GoToMarket --> End2
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style End2 fill:#e1f5e1
+    style ShowFormatError fill:#f8d7da
+    style Show404Error fill:#f8d7da
+    style ShowNoSkills fill:#fff3cd
+    style ShowResult fill:#d1ecf1

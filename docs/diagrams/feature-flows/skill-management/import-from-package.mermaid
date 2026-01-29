@@ -1,0 +1,46 @@
+# SC-03: 从 Skill 包导入
+# 流程图: import-from-package.mermaid
+
+flowchart TD
+    Start([开始: 用户选择 .zip 文件]) --> ValidateFile{验证文件}
+    ValidateFile -->|非 .zip| ShowFormatError[显示错误<br/>无效的 Skill 包文件]
+    ValidateFile -->|是 .zip| ExtractZIP[解压 .zip 文件]
+
+    ShowFormatError --> End([结束])
+
+    ExtractZIP --> CheckManifest{检查 skill-manifest.json}
+    CheckManifest -->|不存在| ShowNoManifest[显示错误<br/>无效的包格式]
+    CheckManifest -->|存在| ReadManifest[读取 skill-manifest.json]
+
+    ShowNoManifest --> End
+
+    ReadManifest --> ParseMetadata[解析包元数据]
+    ParseMetadata --> ExtractFields[提取字段<br/>name, description, version, checksum]
+    ExtractFields --> ValidateChecksum{验证完整性}
+    ValidateChecksum --> CalcActualChecksum[计算实际 SHA-256]
+    CalcActualChecksum --> CompareChecksum{对比校验和}
+    CompareChecksum -->|不匹配| ShowCorrupted[显示错误<br/>Skill 包已损坏或被篡改]
+    CompareChecksum -->|匹配| CheckSignature{验证签名?}
+    CheckSignature -->|否| InstallSkill[安装 Skill]
+    CheckSignature -->|是| VerifySignature[验证包签名]
+    VerifySignature -->|失败| ShowSigWarning[显示警告<br/>包签名验证失败]
+    VerifySignature -->|成功| InstallSkill
+
+    ShowCorrupted --> End
+    ShowSigWarning --> UserConfirm{用户确认?}
+    UserConfirm -->|取消| End
+    UserConfirm -->|继续| InstallSkill
+
+    InstallSkill --> CopyFiles[复制 Skill 文件]
+    CopyFiles --> SaveMetadata[保存包元数据]
+    SaveMetadata --> RecordSource[记录包来源]
+    RecordSource --> ShowSuccess[显示导入成功]
+    ShowSuccess --> End([结束: 导入完成])
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style ShowFormatError fill:#f8d7da
+    style ShowNoManifest fill:#f8d7da
+    style ShowCorrupted fill:#f8d7da
+    style ShowSigWarning fill:#fff3cd
+    style ShowSuccess fill:#d1ecf1

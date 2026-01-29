@@ -1,0 +1,55 @@
+# SC-10: 管理来源
+# 流程图: manage-sources.mermaid
+
+flowchart TD
+    Start([开始: 用户进入来源页面]) --> EnterRepos[进入来源管理页面<br/>/repositories]
+    EnterRepos --> CallAPI[调用 get_repositories API]
+    CallAPI --> FetchRepos[获取仓库列表]
+    FetchRepos --> RenderList[渲染仓库列表]
+
+    RenderList --> UserAction{用户操作}
+    UserAction -->|启用/禁用| ToggleRepo
+    UserAction -->|重新扫描| ReScanRepo
+    UserAction -->|删除| DeleteRepo
+
+    %% 启用/禁用流程
+    ToggleRepo --> ClickToggle[点击启用/禁用按钮]
+    ClickToggle --> UpdateEnabled[更新数据库<br/>enabled 字段]
+    UpdateEnabled --> RefreshList[刷新列表]
+    RefreshList --> UserAction
+
+    %% 重新扫描流程
+    ReScanRepo --> ClickReScan[点击重新扫描按钮]
+    ClickReScan --> CallScanAPI[调用 scan_repository API]
+    CallScanAPI --> ScanFlow[扫描流程<br/>参考 SC-09]
+    ScanFlow --> UpdateSkills[更新 Skills]
+    UpdateSkills --> UpdateSkillCount[更新 skill_count]
+    UpdateSkillCount --> RefreshList
+    RefreshList --> UserAction
+
+    %% 删除流程
+    DeleteRepo --> ClickDelete[点击删除按钮]
+    ClickDelete --> ShowConfirm[显示确认对话框]
+    ShowConfirm --> CheckInstalled{检查已安装 Skills}
+    CheckInstalled -->|有| ShowWarning[显示警告<br/>未安装的将被移除<br/>已安装的将保留]
+    CheckInstalled -->|无| ShowConfirm2[显示确认对话框]
+    ShowWarning --> UserConfirm{用户确认?}
+    ShowConfirm2 --> UserConfirm
+
+    UserConfirm -->|取消| UserAction
+    UserConfirm -->|确认| CheckType{来源类型}
+    CheckType -->|Featured| ShowFeaturedError[显示错误<br/>官方精选来源不能删除]
+    CheckType -->|User| DeleteRepoDB[删除仓库记录]
+
+    ShowFeaturedError --> UserAction
+
+    DeleteRepoDB --> CascadeDelete[CASCADE 删除关联记录]
+    CascadeDelete --> CheckInstalled2{检查已安装 Skills}
+    CheckInstalled2 -->|有| UnlinkSkills[解除已安装 Skills 关联]
+    CheckInstalled2 -->|无| RefreshList2
+    UnlinkSkills --> RefreshList2[刷新列表]
+    RefreshList2 --> UserAction
+
+    style Start fill:#e1f5e1
+    style ShowFeaturedError fill:#f8d7da
+    style ShowWarning fill:#fff3cd

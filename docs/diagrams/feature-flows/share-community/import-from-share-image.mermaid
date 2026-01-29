@@ -1,0 +1,51 @@
+# SC-14: 从分享图片导入
+# 流程图: import-from-share-image.mermaid
+
+flowchart TD
+    Start([开始: 用户上传分享图片]) --> SelectImage[选择包含二维码的图片]
+    SelectImage --> ValidateImage{验证图片}
+    ValidateImage -->|无效| ShowImageError[显示错误<br/>请选择有效的图片文件]
+    ValidateImage -->|有效| CallParseAPI[调用 parse_share_image_qr API]
+
+    ShowImageError --> End([结束])
+
+    CallParseAPI --> LoadImage[加载图片]
+    LoadImage --> DetectQR[检测二维码]
+    DetectQR --> CheckQR{发现二维码?}
+    CheckQR -->|否| ShowNoQRError[显示错误<br/>未发现有效的二维码]
+    CheckQR -->|是| DecodeQR[解码二维码数据]
+
+    ShowNoQRError --> End
+
+    DecodeQR --> ValidateFormat{验证数据格式}
+    ValidateFormat -->|无效| ShowFormatError[显示错误<br/>二维码数据格式错误]
+    ValidateFormat -->|有效| DecodeBase64[解码 Base64 数据]
+
+    ShowFormatError --> End
+
+    DecodeBase64 --> ParseJSON[解析 JSON 格式]
+    ParseJSON --> ExtractMetadata[提取 ShareMetadata]
+    ExtractMetadata --> CheckRequired{检查必需字段}
+    CheckRequired -->|缺失| ShowIncompleteError[显示错误<br/>分享数据不完整]
+    CheckRequired -->|完整| ValidateURL{验证 source_url}
+
+    ShowIncompleteError --> End
+
+    ValidateURL -->|无效| ShowInvalidURLError[显示错误<br/>源地址无效]
+    ValidateURL -->|有效| CallImportAPI[调用 import_github_skill_with_progress API]
+
+    ShowInvalidURLError --> End
+
+    CallImportAPI --> ImportFlow[导入流程<br/>参考 SC-01]
+    ImportFlow --> ShowSuccess[显示导入成功]
+    ShowSuccess --> End2([结束: 导入完成])
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style End2 fill:#e1f5e1
+    style ShowImageError fill:#f8d7da
+    style ShowNoQRError fill:#f8d7da
+    style ShowFormatError fill:#f8d7da
+    style ShowIncompleteError fill:#f8d7da
+    style ShowInvalidURLError fill:#f8d7da
+    style ShowSuccess fill:#d1ecf1

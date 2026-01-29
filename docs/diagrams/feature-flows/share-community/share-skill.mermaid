@@ -1,0 +1,84 @@
+# SC-12: 分享 Skill（4 种方式）
+# 流程图: share-skill.mermaid
+
+flowchart TD
+    Start([开始: 用户点击分享按钮]) --> OpenShareSheet[打开 ShareSheet 组件]
+    OpenShareSheet --> ShowOptions[显示 4 种分享方式]
+
+    ShowOptions --> UserSelect{用户选择}
+    UserSelect -->|分享链接| GenLink
+    UserSelect -->|文本分享| GenText
+    UserSelect -->|图片分享| GenImage
+    UserSelect -->|包导出| ExportPackage
+
+    %% 方式 1: 分享链接
+    GenLink --> CallGenAPI[调用 generate_share_link API]
+    CallGenAPI --> ReadMetadata[读取 Skill 元数据<br/>name, description, version, author, source_url]
+    ReadMetadata --> ValidateFields{验证必需字段}
+    ValidateFields -->|缺少 source_url| ShowWarning[显示警告<br/>缺少源地址信息]
+    ValidateFields -->|完整| StoreDB[存储到 ShareRecord 表]
+
+    ShowWarning --> UserConfirm{用户继续?}
+    UserConfirm -->|否| End([结束])
+    UserConfirm -->|是| StoreDB
+
+    StoreDB --> GenShareID[生成唯一 share_id<br/>UUID]
+    GenShareID --> BuildURL[构建分享链接<br/>/share/:shareId]
+    BuildURL --> CopyToClipboard[复制到剪贴板]
+    CopyToClipboard --> ShowLinkSuccess[显示生成成功提示]
+    ShowLinkSuccess --> End
+
+    %% 方式 2: 文本分享
+    GenText --> SelectPlatform{选择平台}
+    SelectPlatform -->|X/Twitter| GenTwitter[生成 X/Twitter 格式文本]
+    SelectPlatform -->|微信| GenWeChat[生成微信格式文本]
+    SelectPlatform -->|邮件| GenEmail[生成邮件格式文本]
+    SelectPlatform -->|通用| GenGeneric[生成通用格式文本]
+
+    GenTwitter --> BuildText[构建分享文本<br/>包含 emoji 和链接]
+    GenWeChat --> BuildText
+    GenEmail --> BuildText
+    GenGeneric --> BuildText
+
+    BuildText --> CopyText[复制文本到剪贴板]
+    CopyText --> ShowTextSuccess[显示复制成功提示]
+    ShowTextSuccess --> End
+
+    %% 方式 3: 图片分享
+    GenImage --> SelectTheme{选择主题}
+    SelectTheme -->|深色| ThemeDark[深色主题]
+    SelectTheme -->|浅色| ThemeLight[浅色主题]
+    SelectTheme -->|渐变| ThemeGradient[渐变主题]
+
+    ThemeDark --> CreateCanvas[创建 Canvas 画布]
+    ThemeLight --> CreateCanvas
+    ThemeGradient --> CreateCanvas
+
+    CreateCanvas --> DrawBackground[绘制背景]
+    DrawBackground --> DrawTitle[绘制标题<br/>Skill 名称]
+    DrawTitle --> DrawInfo[绘制信息<br/>评分、版本、作者]
+    DrawInfo --> GenQRCode[生成二维码<br/>包含分享链接]
+    GenQRCode --> DrawQRCode[绘制二维码]
+    DrawQRCode --> ExportPNG[导出为 PNG 图片]
+    ExportPNG --> SaveImage[保存图片到本地]
+    SaveImage --> ShowImageSuccess[显示生成成功提示]
+    ShowImageSuccess --> End
+
+    %% 方式 4: 包导出
+    ExportPackage --> PackFiles[打包 Skill 文件]
+    PackFiles --> GenManifest[生成 skill-manifest.json]
+    GenManifest --> AddMetadata[添加元数据<br/>name, description, version, checksum]
+    AddMetadata --> CalcChecksum[计算 SHA-256 校验和]
+    CalcChecksum --> CreateZIP[创建 .zip 文件]
+    CreateZIP --> WriteZIP[写入 ZIP 文件]
+    WriteZIP --> SaveZIP[保存到本地目录]
+    SaveZIP --> ShowPackageSuccess[显示导出成功提示]
+    ShowPackageSuccess --> End
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style ShowWarning fill:#fff3cd
+    style ShowLinkSuccess fill:#d1ecf1
+    style ShowTextSuccess fill:#d1ecf1
+    style ShowImageSuccess fill:#d1ecf1
+    style ShowPackageSuccess fill:#d1ecf1
