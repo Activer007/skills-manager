@@ -28,6 +28,8 @@ import { FilterPanel } from '../components/FilterPanel';
 import { Filter as FilterIcon } from 'lucide-react';
 import { MarketplaceHero } from '../components/Marketplace/MarketplaceHero';
 import { AddToCollectionModal } from '../components/AddToCollectionModal';
+import { TokenConfigBanner } from '../components/TokenConfigBanner';
+import { getTokenBannerStatus, setTokenBannerDismissed } from '../utils/tokenBannerStorage';
 
 // Constant
 const GUTTER_SIZE = 24;
@@ -130,6 +132,7 @@ const Marketplace = () => {
   const installTimerRef = useRef<number | null>(null);
   const [installProgress, setInstallProgress] = useState(0);
   const [isInstalling, setIsInstalling] = useState(false);
+  const [showTokenBanner, setShowTokenBanner] = useState(false);
 
   const formatUpdatedAt = useCallback((value?: number) => {
     if (!value) return i18n.language === 'zh' ? '未知' : 'Unknown';
@@ -146,6 +149,17 @@ const Marketplace = () => {
         installTimerRef.current = null;
       }
     };
+  }, []);
+
+  // Token Config Banner
+  useEffect(() => {
+    const status = getTokenBannerStatus();
+    setShowTokenBanner(status === 'show');
+  }, []);
+
+  const handleDismissBanner = useCallback((type: 'never' | 'later') => {
+    setTokenBannerDismissed(type);
+    setShowTokenBanner(false);
   }, []);
 
   const handleInstall = useCallback(async (skill: MarketplaceSkill) => {
@@ -317,6 +331,15 @@ const Marketplace = () => {
         onImportClick={() => setShowImportModal(true)}
         isGithubUrl={isGithubUrl}
       />
+
+      {/* Token Config Banner */}
+      {showTokenBanner && (
+        <div className="px-2">
+          <TokenConfigBanner
+            onDismiss={handleDismissBanner}
+          />
+        </div>
+      )}
 
       {/* Filter Chips with Scroll Indicators */}
       <div className="relative">
