@@ -1,5 +1,5 @@
-# 旅程 1: 新用户入门
-# 流程图: new-user-onboarding.mermaid
+%% 旅程 1: 新用户入门
+%% 流程图: new-user-onboarding.mermaid
 
 flowchart TD
     Start([开始: 新用户首次启动应用]) --> LaunchApp[启动应用]
@@ -27,11 +27,9 @@ flowchart TD
     CheckInfo -->|安全| ViewSecurityLevel[查看安全等级<br/>🟢 安全 90分]
     CheckInfo -->|版本| ViewVersion[查看版本信息<br/>📦 v1.0.0]
 
-    ViewQualityScore --> DecideInstall
-    ViewSecurityLevel --> DecideInstall
-    ViewVersion --> DecideInstall
-
-    DecideInstall{决定是否安装?}
+    ViewQualityScore --> DecideInstall{决定是否安装?}
+    ViewSecurityLevel --> DecideInstall{决定是否安装?}
+    ViewVersion --> DecideInstall{决定是否安装?}
     DecideInstall -->|否| GoBack[返回继续浏览]
     DecideInstall -->|是| ClickInstall[点击 安装 按钮]
 
