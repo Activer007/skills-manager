@@ -57,12 +57,14 @@ export function useMarketplaceLogic() {
       params.minStars = TOP_RATED_THRESHOLD;
     }
 
-    // Pass sourceType directly to backend (including 'official')
+    // Map 'official' to 'featured' for backend compatibility
+    // Frontend uses 'official' for UI semantics, backend only accepts 'featured'
     if (sourceFilter !== 'all') {
-      params.sourceType = sourceFilter;
+      const backendSourceType = sourceFilter === 'official' ? 'featured' : sourceFilter;
+      params.sourceType = backendSourceType;
       // 开发模式下输出调试信息
       if (import.meta.env.DEV) {
-        console.debug(`[Marketplace] Filtering by sourceType: ${sourceFilter}`);
+        console.debug(`[Marketplace] Filtering by sourceType: ${sourceFilter} -> ${backendSourceType}`);
       }
     }
 
@@ -77,11 +79,11 @@ export function useMarketplaceLogic() {
     refetch: refetchMarketplace,
   } = useMarketplaceSkills(queryParams);
 
-  // 监控 API 错误
+  // 监控 API 错误（已修复：'official' 现在映射到 'featured'）
   useEffect(() => {
     if (isMarketplaceError && sourceFilter === 'official') {
       console.warn(
-        '[Marketplace] API error when filtering by sourceType="official".',
+        '[Marketplace] API error when filtering by sourceType="official" (mapped to "featured").',
         marketplaceError
       );
     }
@@ -137,7 +139,9 @@ export function useMarketplaceLogic() {
           console.debug(`Skill "${skill.name}" missing sourceType, excluding from filter`);
           return false;
         }
-        if (skill.sourceType !== sourceFilter) return false;
+        // Map 'official' filter to 'featured' sourceType for backend compatibility
+        const expectedSourceType = sourceFilter === 'official' ? 'featured' : sourceFilter;
+        if (skill.sourceType !== expectedSourceType) return false;
       }
 
       return true;
