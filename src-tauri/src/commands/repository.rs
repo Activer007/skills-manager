@@ -17,6 +17,7 @@ use tauri::ipc::Channel;
 use std::process::Command;
 use std::fs;
 use crate::tasks::{BackgroundTask, TaskType, TaskStatus, ProgressEvent, ProgressStage, TASK_MANAGER};
+use crate::errors::detect_api_rate_limit;
 
 /// Request to add a new repository
 #[derive(Debug, Deserialize)]
@@ -169,8 +170,6 @@ pub async fn add_repository(
 /// Delete a repository by ID
 #[tauri::command]
 pub fn delete_repository(id: String) -> Result<DeleteRepositoryResult, String> {
-    use crate::errors::detect_api_rate_limit;
-
     let service = RepositoryService::new();
 
     // Check if repository exists
@@ -448,7 +447,11 @@ pub async fn scan_repository_with_progress(
                         .map_err(|e| format!("Git clone failed: {}", e))?;
 
                     if !output.status.success() {
-                        return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&output.stderr)));
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        if let Some(rate_limit_err) = detect_api_rate_limit(&stderr) {
+                             return Err(rate_limit_err.to_string());
+                        }
+                        return Err(format!("Git clone failed: {}", stderr));
                     }
                 }
             } else {
@@ -458,7 +461,11 @@ pub async fn scan_repository_with_progress(
                     .map_err(|e| format!("Git clone failed: {}", e))?;
 
                 if !output.status.success() {
-                     return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&output.stderr)));
+                     let stderr = String::from_utf8_lossy(&output.stderr);
+                     if let Some(rate_limit_err) = detect_api_rate_limit(&stderr) {
+                          return Err(rate_limit_err.to_string());
+                     }
+                     return Err(format!("Git clone failed: {}", stderr));
                 }
             }
 

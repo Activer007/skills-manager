@@ -5,6 +5,7 @@ use std::time::Duration;
 use walkdir::WalkDir;
 use crate::services::utils::{copy_dir_all, sanitize_filename};
 use crate::models::import::{ImportResult, OriginRecord};
+use crate::errors::detect_api_rate_limit;
 
 #[derive(Debug, Clone)]
 pub struct GithubImportInfo {
@@ -141,7 +142,11 @@ impl ImportService {
 
             if !output.status.success() {
                 let _ = fs::remove_dir_all(&temp_dir);
-                return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&output.stderr)));
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if let Some(rate_limit_err) = detect_api_rate_limit(&stderr) {
+                    return Err(rate_limit_err.to_string());
+                }
+                return Err(format!("Git clone failed: {}", stderr));
             }
 
             println!("DEBUG: [ImportService] Git clone completed successfully");
@@ -233,7 +238,11 @@ impl ImportService {
             )?;
 
             if !output.status.success() {
-                return Err(format!("Git clone failed: {}", String::from_utf8_lossy(&output.stderr)));
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if let Some(rate_limit_err) = detect_api_rate_limit(&stderr) {
+                    return Err(rate_limit_err.to_string());
+                }
+                return Err(format!("Git clone failed: {}", stderr));
             }
 
             detected_branch = Self::detect_git_branch(&target_dir);
