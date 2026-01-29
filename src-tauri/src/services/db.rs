@@ -6,40 +6,62 @@ use anyhow::Result;
 use once_cell::sync::OnceCell;
 use crate::models::security::SecurityReport;
 
-// Include v11 migration module
-include!("../../migrations/v11_refactor_database.rs");
-
 pub type DbPool = Pool<SqliteConnectionManager>;
 
 /// Global database connection pool.
-/// OnceCell is thread-safe and r2d2::Pool is already thread-safe internally,
-/// so we don't need an additional Mutex layer.
 pub static DB_POOL: OnceCell<DbPool> = OnceCell::new();
 
-/// Initialize the database connection pool and run migrations.
+/// Initialize the database connection pool and schema.
 /// This should be called once during application startup.
+/// NOTE: Since we are in dev phase, we use a "clean slate" approach.
+/// Existing databases with old schemas might fail or be incompatible.
+/// Please delete ~/.claude/skills-manager.db if you encounter schema issues.
 pub fn init_db() -> Result<()> {
     let db_path = get_db_path()?;
+    log::info!("Initializing database at path: {:?}", db_path);
+
     if let Some(parent) = db_path.parent() {
-        std::fs::create_dir_all(parent)?;
+        if !parent.exists() {
+            log::debug!("Creating database directory: {:?}", parent);
+            std::fs::create_dir_all(parent)?;
+        }
     }
 
-    let manager = SqliteConnectionManager::file(db_path);
-    let pool = Pool::new(manager)?;
+    let manager = SqliteConnectionManager::file(&db_path);
+    log::debug!("Creating database connection pool...");
+    let pool = Pool::new(manager).map_err(|e| {
+        log::error!("Failed to create database pool: {}", e);
+        e
+    })?;
 
-    // Run migrations
-    let conn = pool.get()?;
-    migrate(&conn)?;
+    // Initialize Schema
+    log::debug!("Initializing database schema...");
+    let conn = pool.get().map_err(|e| {
+        log::error!("Failed to get connection from pool: {}", e);
+        e
+    })?;
+
+    match init_schema(&conn) {
+        Ok(_) => log::info!("Database schema initialized successfully"),
+        Err(e) => {
+            log::error!("Failed to initialize database schema: {:?}", e);
+            return Err(e);
+        }
+    }
 
     // Set the global pool
+    log::debug!("Setting global database pool...");
     DB_POOL.set(pool)
-        .map_err(|_| anyhow::anyhow!("Database already initialized"))?;
+        .map_err(|_| {
+            log::error!("Database already initialized (OnceCell error)");
+            anyhow::anyhow!("Database already initialized")
+        })?;
 
+    log::info!("Database initialization completed");
     Ok(())
 }
 
 /// Get a database connection from the global pool.
-/// This is thread-safe and efficient as it avoids unnecessary locking.
 pub fn get_connection() -> Result<r2d2::PooledConnection<SqliteConnectionManager>> {
     DB_POOL
         .get()
@@ -55,207 +77,16 @@ fn get_db_path() -> Result<PathBuf> {
     Ok(path)
 }
 
-/// Current database schema version
-const CURRENT_DB_VERSION: i32 = 11;
+/// Define and create the complete database schema (V11+) directly.
+fn init_schema(conn: &Connection) -> Result<()> {
+    // Enable Foreign Keys
+    conn.execute("PRAGMA foreign_keys = ON;", [])?;
 
-/// Run database migrations to ensure schema is up to date.
-/// This function creates a schema_migrations table to track version.
-fn migrate(conn: &Connection) -> Result<()> {
-    // Create schema_migrations table first if it doesn't exist
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS schema_migrations (
-            version INTEGER PRIMARY KEY,
-            applied_at INTEGER NOT NULL
-        )",
-        [],
-    )?;
+    // ==================================================================================
+    // 1. Security & Caching
+    // ==================================================================================
 
-    // Get current version
-    let current_version: i32 = conn.query_row(
-        "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
-        [],
-        |row| row.get(0),
-    ).unwrap_or(0);
-
-    // Run migrations if needed
-    if current_version < CURRENT_DB_VERSION {
-        log::info!("Database migration: v{} -> v{}", current_version, CURRENT_DB_VERSION);
-
-        // Migration v1: Create initial schema
-        if current_version < 1 {
-            migrate_v1(conn)?;
-            // Record migration
-            conn.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (1, ?)",
-                [chrono::Utc::now().timestamp_millis()],
-            )?;
-        }
-
-        // Migration v2: Create cached_reports table for incremental scanning
-        if current_version < 2 {
-            migrate_v2(conn)?;
-            conn.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (2, ?)",
-                [chrono::Utc::now().timestamp_millis()],
-            )?;
-        }
-
-        // Migration v3: Create whitelist table
-        if current_version < 3 {
-            migrate_v3(conn)?;
-            conn.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (3, ?)",
-                [chrono::Utc::now().timestamp_millis()],
-            )?;
-        }
-
-        // Migration v4: Create repositories and repository_scan_queue tables
-        if current_version < 4 {
-            migrate_v4(conn)?;
-            conn.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (4, ?)",
-                [chrono::Utc::now().timestamp_millis()],
-            )?;
-        }
-
-        // Migration v5: Create collections tables
-        if current_version < 5 {
-            migrate_v5(conn)?;
-            conn.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (5, ?)",
-                [chrono::Utc::now().timestamp_millis()],
-            )?;
-        }
-
-        // Migration v6: Create creators and followed_creators tables
-        if current_version < 6 {
-            migrate_v6(conn)?;
-            conn.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (6, ?)",
-                [chrono::Utc::now().timestamp_millis()],
-            )?;
-        }
-
-        // Migration v7: Create shares table
-        if current_version < 7 {
-            migrate_v7(conn)?;
-            conn.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (7, ?)",
-                [chrono::Utc::now().timestamp_millis()],
-            )?;
-        }
-
-        // Migration v8: Create publish_history table
-        if current_version < 8 {
-            migrate_v8(conn)?;
-            conn.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (8, ?)",
-                [chrono::Utc::now().timestamp_millis()],
-            )?;
-        }
-
-        // Migration v9: Create marketplace_skills table and FTS optimization
-        if current_version < 9 {
-            migrate_v9(conn)?;
-            conn.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (9, ?)",
-                [chrono::Utc::now().timestamp_millis()],
-            )?;
-        }
-
-        // Migration v10: Create collections and collection_items tables
-        if current_version < 10 {
-            migrate_v10(conn)?;
-            conn.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (10, ?)",
-                [chrono::Utc::now().timestamp_millis()],
-            )?;
-        }
-
-        // Migration v11: Repository-Marketplace Unified Architecture
-        if current_version < 11 {
-            migrate_v11(conn)?;
-            conn.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (11, ?)",
-                [chrono::Utc::now().timestamp_millis()],
-            )?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Save cached scan report to database
-pub fn save_cached_report(skill_id: &str, skill_path: &str, report: &SecurityReport, checksum: &str) -> Result<()> {
-    let conn = get_connection()?;
-    let report_json = serde_json::to_string(report)?;
-    let now = chrono::Utc::now().timestamp();
-
-    conn.execute(
-        "INSERT OR REPLACE INTO cached_reports (skill_id, skill_path, report_json, checksum, cached_at)
-         VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![skill_id, skill_path, report_json, checksum, now],
-    )?;
-    Ok(())
-}
-
-/// Get cached scan report from database by skill path
-pub fn get_cached_report_by_path(skill_path: &str) -> Result<Option<(SecurityReport, String, i64)>> {
-    let conn = get_connection()?;
-    let mut stmt = conn.prepare("SELECT report_json, checksum, cached_at FROM cached_reports WHERE skill_path = ?1")?;
-    let mut rows = stmt.query(params![skill_path])?;
-
-    if let Some(row) = rows.next()? {
-        let report_json: String = row.get(0)?;
-        let checksum: String = row.get(1)?;
-        let cached_at: i64 = row.get(2)?;
-        // Handle JSON parsing errors gracefully - if we can't parse it, treat as cache miss
-        match serde_json::from_str(&report_json) {
-            Ok(report) => Ok(Some((report, checksum, cached_at))),
-            Err(e) => {
-                log::warn!("Failed to parse cached report for {}, cleaning up: {}", skill_path, e);
-                // Delete the corrupted cache entry to prevent repeated warnings
-                let _ = delete_cached_report(skill_path);
-                Ok(None)
-            }
-        }
-    } else {
-        Ok(None)
-    }
-}
-
-/// Delete cached report
-pub fn delete_cached_report(skill_path: &str) -> Result<()> {
-    let conn = get_connection()?;
-    conn.execute("DELETE FROM cached_reports WHERE skill_path = ?1", params![skill_path])?;
-    Ok(())
-}
-
-/// Clear all cached reports
-pub fn clear_all_cached_reports() -> Result<()> {
-    let conn = get_connection()?;
-    conn.execute("DELETE FROM cached_reports", [])?;
-    Ok(())
-}
-
-/// Prune expired reports
-pub fn prune_expired_reports(ttl_seconds: u64) -> Result<usize> {
-    let conn = get_connection()?;
-    let now = chrono::Utc::now().timestamp();
-    let threshold = now - (ttl_seconds as i64);
-    let count = conn.execute("DELETE FROM cached_reports WHERE cached_at < ?1", params![threshold])?;
-    Ok(count)
-}
-
-/// Get database cache stats (count)
-pub fn get_cache_stats_db() -> Result<usize> {
-     let conn = get_connection()?;
-     let count: usize = conn.query_row("SELECT COUNT(*) FROM cached_reports", [], |row| row.get(0))?;
-     Ok(count)
-}
-
-/// Migration v1: Create initial schema for scan history
-fn migrate_v1(conn: &Connection) -> Result<()> {
+    // Security Scan History
     conn.execute(
         "CREATE TABLE IF NOT EXISTS security_scan_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -270,22 +101,10 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
         )",
         [],
     )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_scan_history_skill_id ON security_scan_history(skill_id)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_scan_history_scanned_at ON security_scan_history(scanned_at DESC)", [])?;
 
-    // Create indexes for better query performance
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_scan_history_skill_id ON security_scan_history(skill_id)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_scan_history_scanned_at ON security_scan_history(scanned_at DESC)",
-        [],
-    )?;
-
-    Ok(())
-}
-
-/// Migration v2: Create cached_reports table for incremental scanning
-fn migrate_v2(conn: &Connection) -> Result<()> {
+    // Cached Reports
     conn.execute(
         "CREATE TABLE IF NOT EXISTS cached_reports (
             skill_id TEXT PRIMARY KEY,
@@ -296,19 +115,9 @@ fn migrate_v2(conn: &Connection) -> Result<()> {
         )",
         [],
     )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_cached_reports_checksum ON cached_reports(checksum)", [])?;
 
-    // Create index on checksum for faster lookups
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_cached_reports_checksum ON cached_reports(checksum)",
-        [],
-    )?;
-
-    log::info!("Created cached_reports table for incremental scanning");
-    Ok(())
-}
-
-/// Migration v3: Create whitelist table
-fn migrate_v3(conn: &Connection) -> Result<()> {
+    // Whitelist
     conn.execute(
         "CREATE TABLE IF NOT EXISTS whitelist (
             id TEXT PRIMARY KEY,
@@ -320,25 +129,13 @@ fn migrate_v3(conn: &Connection) -> Result<()> {
         )",
         [],
     )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_whitelist_target ON whitelist(target)", [])?;
 
-    // Create indexes
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_whitelist_target ON whitelist(target)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_whitelist_type ON whitelist(entry_type)",
-        [],
-    )?;
+    // ==================================================================================
+    // 2. Repositories (Unified Architecture)
+    // ==================================================================================
 
-    log::info!("Created whitelist table");
-    Ok(())
-}
-
-/// Migration v4: Create repositories and repository_scan_queue tables for multi-source repository management
-fn migrate_v4(conn: &Connection) -> Result<()> {
-    // Create repositories table to store repository metadata
-    // Note: Using INTEGER for timestamps (Unix milliseconds) for consistency with V1
+    // Repositories Table (Enhanced with V11 fields directly)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS repositories (
             id TEXT PRIMARY KEY,
@@ -351,13 +148,21 @@ fn migrate_v4(conn: &Connection) -> Result<()> {
             last_scanned INTEGER,
             cache_path TEXT,
             cached_commit_sha TEXT,
-            featured INTEGER DEFAULT 0,
-            category TEXT DEFAULT 'custom'
+            category TEXT DEFAULT 'custom',
+            -- New fields from V11
+            source_type TEXT DEFAULT 'user',
+            priority INTEGER DEFAULT 100,
+            scan_status TEXT DEFAULT 'pending',
+            etag TEXT
         )",
         [],
     )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_repositories_url ON repositories(url)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_repositories_category ON repositories(category)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_repos_source_type ON repositories(source_type)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_repos_priority ON repositories(priority)", [])?;
 
-    // Create repository_scan_queue table for scan task queue
+    // Repository Scan Queue
     conn.execute(
         "CREATE TABLE IF NOT EXISTS repository_scan_queue (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -372,36 +177,147 @@ fn migrate_v4(conn: &Connection) -> Result<()> {
         )",
         [],
     )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_scan_queue_status ON repository_scan_queue(status)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_scan_queue_repository_id ON repository_scan_queue(repository_id)", [])?;
 
-    // Create indexes for better query performance
+    // ==================================================================================
+    // 3. Marketplace (Unified Architecture)
+    // ==================================================================================
+
+    // Marketplace Skills (V11 Structure)
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_repositories_url ON repositories(url)",
+        "CREATE TABLE IF NOT EXISTS marketplace_skills (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            author TEXT,
+            description TEXT,
+            skill_path TEXT NOT NULL,
+            repository_id TEXT NOT NULL,
+            version TEXT,
+            stars INTEGER DEFAULT 0,
+            forks INTEGER DEFAULT 0,
+            updated_at INTEGER,
+            tags TEXT,
+            config_schema TEXT,
+            quality_score INTEGER,
+            security_score INTEGER,
+            discovered_at INTEGER NOT NULL,
+            synced_at INTEGER NOT NULL,
+            FOREIGN KEY (repository_id) REFERENCES repositories(id) ON DELETE CASCADE,
+            UNIQUE(repository_id, skill_path)
+        )",
         [],
     )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_marketplace_skills_stars ON marketplace_skills(stars DESC)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_marketplace_skills_updated ON marketplace_skills(updated_at DESC)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_marketplace_skills_repo ON marketplace_skills(repository_id)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_marketplace_skills_name_author ON marketplace_skills(name, author)", [])?;
+
+    // FTS5 Virtual Table & Triggers
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_repositories_category ON repositories(category)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_repositories_enabled ON repositories(enabled)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_scan_queue_status ON repository_scan_queue(status)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_scan_queue_repository_id ON repository_scan_queue(repository_id)",
+        "CREATE VIRTUAL TABLE IF NOT EXISTS marketplace_skills_fts USING fts5(
+            name,
+            description,
+            author,
+            tags,
+            content='marketplace_skills',
+            content_rowid='rowid'
+        )",
         [],
     )?;
 
-    log::info!("Created repositories and repository_scan_queue tables for multi-source repository management");
-    Ok(())
-}
+    // Triggers for FTS sync
+    conn.execute(
+        "CREATE TRIGGER IF NOT EXISTS marketplace_skills_ai AFTER INSERT ON marketplace_skills BEGIN
+            INSERT INTO marketplace_skills_fts(rowid, name, description, author, tags)
+            VALUES (new.rowid, new.name, new.description, new.author, new.tags);
+        END",
+        [],
+    )?;
+    conn.execute(
+        "CREATE TRIGGER IF NOT EXISTS marketplace_skills_ad AFTER DELETE ON marketplace_skills BEGIN
+            INSERT INTO marketplace_skills_fts(marketplace_skills_fts, rowid, name, description, author, tags)
+            VALUES('delete', old.rowid, old.name, old.description, old.author, old.tags);
+        END",
+        [],
+    )?;
+    conn.execute(
+        "CREATE TRIGGER IF NOT EXISTS marketplace_skills_au AFTER UPDATE ON marketplace_skills BEGIN
+            INSERT INTO marketplace_skills_fts(marketplace_skills_fts, rowid, name, description, author, tags)
+            VALUES('delete', old.rowid, old.name, old.description, old.author, old.tags);
+            INSERT INTO marketplace_skills_fts(rowid, name, description, author, tags)
+            VALUES (new.rowid, new.name, new.description, new.author, new.tags);
+        END",
+        [],
+    )?;
 
-/// Migration v5: Create fork system tables
-fn migrate_v5(conn: &Connection) -> Result<()> {
-    // Create skill_forks table
+    // ==================================================================================
+    // 4. Installed Skills (Unified Architecture)
+    // ==================================================================================
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS installed_skills (
+            id TEXT PRIMARY KEY,
+            marketplace_skill_id TEXT,
+            original_repository_id TEXT,
+            original_repository_name TEXT,
+            original_repository_url TEXT,
+            original_skill_path TEXT,
+            original_author TEXT,
+            original_source_type TEXT,
+            name TEXT NOT NULL,
+            local_path TEXT NOT NULL,
+            installed_at INTEGER NOT NULL,
+            enabled INTEGER DEFAULT 1,
+            FOREIGN KEY (marketplace_skill_id) REFERENCES marketplace_skills(id) ON DELETE SET NULL
+        )",
+        [],
+    )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_installed_skills_name ON installed_skills(name)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_installed_skills_local_path ON installed_skills(local_path)", [])?;
+
+    // ==================================================================================
+    // 5. Collections
+    // ==================================================================================
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS collections (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            author TEXT,
+            icon TEXT,
+            color TEXT,
+            is_public BOOLEAN DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_collections_created ON collections(created_at DESC)", [])?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS collection_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            collection_id TEXT NOT NULL,
+            skill_id TEXT NOT NULL,
+            skill_name TEXT NOT NULL,
+            skill_path TEXT,
+            skill_identifier TEXT,
+            added_at INTEGER NOT NULL,
+            note TEXT,
+            sort_order INTEGER DEFAULT 0,
+            FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_collection_items_coll_id ON collection_items(collection_id)", [])?;
+
+    // ==================================================================================
+    // 6. Social, Sharing & Publishing
+    // ==================================================================================
+
+    // Skill Forks
     conn.execute(
         "CREATE TABLE IF NOT EXISTS skill_forks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -418,26 +334,10 @@ fn migrate_v5(conn: &Connection) -> Result<()> {
         )",
         [],
     )?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_skill_forks_child ON skill_forks(child_skill_id)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_skill_forks_parent ON skill_forks(parent_skill_id)", [])?;
 
-    // Create indexes for skill_forks
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_skill_forks_child ON skill_forks(child_skill_id)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_skill_forks_parent ON skill_forks(parent_skill_id)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_skill_forks_type ON skill_forks(fork_type)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_skill_forks_created ON skill_forks(created_at DESC)",
-        [],
-    )?;
-
-    // Create skill_fork_stats view
+    // Fork Stats View
     conn.execute(
         "CREATE VIEW IF NOT EXISTS skill_fork_stats AS
         SELECT
@@ -452,7 +352,7 @@ fn migrate_v5(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    // Create skill_lineage_depth table
+    // Lineage Depth
     conn.execute(
         "CREATE TABLE IF NOT EXISTS skill_lineage_depth (
             skill_id TEXT PRIMARY KEY,
@@ -463,23 +363,7 @@ fn migrate_v5(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    // Create indexes for skill_lineage_depth
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_lineage_depth ON skill_lineage_depth(depth)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_lineage_root ON skill_lineage_depth(root_skill_id)",
-        [],
-    )?;
-
-    log::info!("Created fork system tables");
-    Ok(())
-}
-
-/// Migration v6: Create creators and followed_creators tables
-fn migrate_v6(conn: &Connection) -> Result<()> {
-    // Create creators table
+    // Creators
     conn.execute(
         "CREATE TABLE IF NOT EXISTS creators (
             id TEXT PRIMARY KEY,
@@ -496,7 +380,7 @@ fn migrate_v6(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    // Create followed_creators table
+    // Followed Creators
     conn.execute(
         "CREATE TABLE IF NOT EXISTS followed_creators (
             creator_id TEXT PRIMARY KEY,
@@ -506,22 +390,7 @@ fn migrate_v6(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    // Create indexes
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_creators_name ON creators(name)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_followed_creators_date ON followed_creators(followed_at DESC)",
-        [],
-    )?;
-
-    log::info!("Created creator system tables");
-    Ok(())
-}
-/// Migration v7: Create shares table
-fn migrate_v7(conn: &Connection) -> Result<()> {
-    // Create shares table
+    // Shares
     conn.execute(
         "CREATE TABLE IF NOT EXISTS shares (
             share_id TEXT PRIMARY KEY,
@@ -535,23 +404,7 @@ fn migrate_v7(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    // Create indexes
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_shares_target ON shares(target_id, target_type)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_shares_created ON shares(created_at DESC)",
-        [],
-    )?;
-
-    log::info!("Created shares table");
-    Ok(())
-}
-
-/// Migration v8: Create publish_history table
-fn migrate_v8(conn: &Connection) -> Result<()> {
-    // Create publish_history table for tracking Skill publishing
+    // Publish History
     conn.execute(
         "CREATE TABLE IF NOT EXISTS publish_history (
             id TEXT PRIMARY KEY,
@@ -570,166 +423,125 @@ fn migrate_v8(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    // Create indexes for better query performance
+    // ==================================================================================
+    // 7. Views
+    // ==================================================================================
+
+    // View: marketplace skills with source information
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_publish_history_skill_id ON publish_history(skill_id)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_publish_history_status ON publish_history(status)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_publish_history_published_at ON publish_history(published_at DESC)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_publish_history_repository_url ON publish_history(repository_url)",
+        "CREATE VIEW IF NOT EXISTS v_marketplace_skills_with_source AS
+        SELECT DISTINCT
+            ms.id,
+            ms.name,
+            ms.description,
+            ms.author,
+            ms.stars,
+            ms.forks,
+            ms.updated_at as skill_updated_at,
+            ms.tags,
+            ms.quality_score,
+            ms.security_score,
+            ms.repository_id,
+            r.name as repository_name,
+            r.source_type,
+            r.priority,
+            ms.skill_path,
+            ms.discovered_at,
+            ms.synced_at
+        FROM marketplace_skills ms
+        JOIN repositories r ON ms.repository_id = r.id
+        WHERE r.enabled = 1
+        ORDER BY ms.stars DESC",
         [],
     )?;
 
-    log::info!("Created publish_history table");
+    // View: primary marketplace skills (namespace deduplication with ROW_NUMBER)
+    conn.execute(
+        "CREATE VIEW IF NOT EXISTS v_primary_marketplace_skills AS
+        WITH ranked_skills AS (
+            SELECT
+                ms.id,
+                ms.name,
+                ms.description,
+                ms.author,
+                ms.stars,
+                ms.forks,
+                r.source_type,
+                r.priority,
+                ROW_NUMBER() OVER (
+                    PARTITION BY ms.name, ms.author
+                    ORDER BY r.priority ASC, ms.discovered_at ASC
+                ) as rn
+            FROM marketplace_skills ms
+            JOIN repositories r ON ms.repository_id = r.id
+            WHERE r.enabled = 1
+        )
+        SELECT * FROM ranked_skills WHERE rn = 1",
+        [],
+    )?;
+
     Ok(())
 }
 
-/// Migration v9: Create marketplace_skills table and FTS5 search optimization
-fn migrate_v9(conn: &Connection) -> Result<()> {
-    // 1. Create the main marketplace_skills table
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS marketplace_skills (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            author TEXT NOT NULL,
-            description TEXT,
-            github_url TEXT,
-            stars INTEGER DEFAULT 0,
-            forks INTEGER DEFAULT 0,
-            updated_at INTEGER NOT NULL,
-            tags TEXT,
-            security_score INTEGER,
-            compatibility TEXT,
-            data TEXT
-        )",
-        [],
-    )?;
+// Helper methods for cache operations (Keep existing ones)
 
-    // 2. Create FTS5 virtual table
-    // We include skill_id as UNINDEXED to link back to the main table
-    conn.execute(
-        "CREATE VIRTUAL TABLE IF NOT EXISTS marketplace_skills_fts USING fts5(
-            name,
-            description,
-            author,
-            tags,
-            skill_id UNINDEXED
-        )",
-        [],
-    )?;
+pub fn save_cached_report(skill_id: &str, skill_path: &str, report: &SecurityReport, checksum: &str) -> Result<()> {
+    let conn = get_connection()?;
+    let report_json = serde_json::to_string(report)?;
+    let now = chrono::Utc::now().timestamp();
 
-    // 3. Create Triggers to keep FTS in sync
-
-    // Insert Trigger
-    // IMPORTANT: Explicitly sync rowid to ensure DELETE triggers work correctly
     conn.execute(
-        "CREATE TRIGGER IF NOT EXISTS marketplace_skills_ai AFTER INSERT ON marketplace_skills BEGIN
-            INSERT INTO marketplace_skills_fts(rowid, name, description, author, tags, skill_id)
-            VALUES (new.rowid, new.name, new.description, new.author, new.tags, new.id);
-        END",
-        [],
+        "INSERT OR REPLACE INTO cached_reports (skill_id, skill_path, report_json, checksum, cached_at)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![skill_id, skill_path, report_json, checksum, now],
     )?;
-
-    // Delete Trigger
-    // Uses the External Content delete syntax
-    conn.execute(
-        "CREATE TRIGGER IF NOT EXISTS marketplace_skills_ad AFTER DELETE ON marketplace_skills BEGIN
-            INSERT INTO marketplace_skills_fts(marketplace_skills_fts, rowid, name, description, author, tags, skill_id)
-            VALUES('delete', old.rowid, old.name, old.description, old.author, old.tags, old.id);
-        END",
-        [],
-    )?;
-
-    // Update Trigger
-    conn.execute(
-        "CREATE TRIGGER IF NOT EXISTS marketplace_skills_au AFTER UPDATE ON marketplace_skills BEGIN
-            INSERT INTO marketplace_skills_fts(marketplace_skills_fts, rowid, name, description, author, tags, skill_id)
-            VALUES('delete', old.rowid, old.name, old.description, old.author, old.tags, old.id);
-            INSERT INTO marketplace_skills_fts(rowid, name, description, author, tags, skill_id)
-            VALUES (new.rowid, new.name, new.description, new.author, new.tags, new.id);
-        END",
-        [],
-    )?;
-
-    // 4. Create Indexes for performance
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_marketplace_skills_stars ON marketplace_skills(stars DESC)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_marketplace_skills_updated ON marketplace_skills(updated_at DESC)",
-        [],
-    )?;
-
-    // 5. Backfill FTS table if main table already has data
-    conn.execute(
-        "INSERT INTO marketplace_skills_fts(rowid, name, description, author, tags, skill_id)
-         SELECT rowid, name, description, author, tags, id FROM marketplace_skills
-         WHERE rowid NOT IN (SELECT rowid FROM marketplace_skills_fts)",
-        [],
-    )?;
-
-    log::info!("Created marketplace_skills table and FTS optimization");
     Ok(())
 }
 
-/// Migration v10: Create collections and collection_items tables
-fn migrate_v10(conn: &Connection) -> Result<()> {
-    // Create collections table
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS collections (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            description TEXT,
-            author TEXT,
-            icon TEXT,
-            color TEXT,
-            is_public BOOLEAN DEFAULT 0,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL
-        )",
-        [],
-    )?;
+pub fn get_cached_report_by_path(skill_path: &str) -> Result<Option<(SecurityReport, String, i64)>> {
+    let conn = get_connection()?;
+    let mut stmt = conn.prepare("SELECT report_json, checksum, cached_at FROM cached_reports WHERE skill_path = ?1")?;
+    let mut rows = stmt.query(params![skill_path])?;
 
-    // Create collection_items table
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS collection_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            collection_id TEXT NOT NULL,
-            skill_id TEXT NOT NULL,
-            skill_name TEXT NOT NULL,
-            skill_path TEXT,
-            skill_identifier TEXT,
-            added_at INTEGER NOT NULL,
-            note TEXT,
-            sort_order INTEGER DEFAULT 0,
-            FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
-        )",
-        [],
-    )?;
+    if let Some(row) = rows.next()? {
+        let report_json: String = row.get(0)?;
+        let checksum: String = row.get(1)?;
+        let cached_at: i64 = row.get(2)?;
+        match serde_json::from_str(&report_json) {
+            Ok(report) => Ok(Some((report, checksum, cached_at))),
+            Err(e) => {
+                log::warn!("Failed to parse cached report for {}, cleaning up: {}", skill_path, e);
+                let _ = delete_cached_report(skill_path);
+                Ok(None)
+            }
+        }
+    } else {
+        Ok(None)
+    }
+}
 
-    // Create indexes for better query performance
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_collections_created ON collections(created_at DESC)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_collection_items_coll_id ON collection_items(collection_id)",
-        [],
-    )?;
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_collection_items_skill_id ON collection_items(skill_id)",
-        [],
-    )?;
-
-    log::info!("Created collections and collection_items tables");
+pub fn delete_cached_report(skill_path: &str) -> Result<()> {
+    let conn = get_connection()?;
+    conn.execute("DELETE FROM cached_reports WHERE skill_path = ?1", params![skill_path])?;
     Ok(())
+}
+
+pub fn clear_all_cached_reports() -> Result<()> {
+    let conn = get_connection()?;
+    conn.execute("DELETE FROM cached_reports", [])?;
+    Ok(())
+}
+
+pub fn prune_expired_reports(ttl_seconds: u64) -> Result<usize> {
+    let conn = get_connection()?;
+    let now = chrono::Utc::now().timestamp();
+    let threshold = now - (ttl_seconds as i64);
+    let count = conn.execute("DELETE FROM cached_reports WHERE cached_at < ?1", params![threshold])?;
+    Ok(count)
+}
+
+pub fn get_cache_stats_db() -> Result<usize> {
+     let conn = get_connection()?;
+     let count: usize = conn.query_row("SELECT COUNT(*) FROM cached_reports", [], |row| row.get(0))?;
+     Ok(count)
 }
