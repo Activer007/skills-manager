@@ -1,10 +1,9 @@
-import { useState, useMemo, useRef, useEffect, useLayoutEffect, memo, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useSkills, useInstallSkill, useUninstallSkill } from '../hooks/useSkills';
 import { useMarketplaceLogic } from '../hooks/useMarketplaceLogic';
 import type { MarketplaceSkill, InstalledSkill } from '../types';
-import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
 import { getLocalizedDescription } from '../utils/i18n';
 import { SECURITY_SCORE_THRESHOLDS } from '../utils/securityHelpers';
 import { invoke } from '@tauri-apps/api/core';
@@ -16,78 +15,18 @@ import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Progress } from '../components/ui/Progress';
 import { cn } from '../utils/cn';
-import { Star, GitBranch, Github, Shield, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
-import { FixedSizeGrid as Grid } from 'react-window';
-import { AutoSizer } from 'react-virtualized-auto-sizer';
-import type { CSSProperties } from 'react';
-import { motion } from 'framer-motion';
+import { Star, GitBranch, Github, Shield, CheckCircle, AlertTriangle, XCircle, Search } from 'lucide-react';
+import { VirtuosoGrid } from 'react-virtuoso';
 
 import { ImportSkillModal } from '../components/ImportSkillModal';
 import ModalDialog from '../components/common/ModalDialog';
-import { SortDropdown } from '../components/SortDropdown';
-import { FilterPanel } from '../components/FilterPanel';
-import { Filter as FilterIcon } from 'lucide-react';
-import { MarketplaceHero } from '../components/Marketplace/MarketplaceHero';
 import { AddToCollectionModal } from '../components/AddToCollectionModal';
 import { TokenConfigBanner } from '../components/TokenConfigBanner';
 import { getTokenBannerStatus, setTokenBannerDismissed } from '../utils/tokenBannerStorage';
 
-// Constant
-const GUTTER_SIZE = 24;
-const ROW_HEIGHT = 330;
-
-interface MarketplaceItemData {
-  skills: MarketplaceSkill[];
-  columnCount: number;
-  isInstalled: (skill: MarketplaceSkill) => boolean;
-  handleInstall: (skill: MarketplaceSkill) => void;
-  handleUninstall: (skill: MarketplaceSkill) => void;
-  setSelectedSkill: (skill: MarketplaceSkill | null) => void;
-  setSkillAddToCollection: (skill: MarketplaceSkill | null) => void;
-  setShowDrawer: (show: boolean) => void;
-  language: string;
-}
-
-// Manual definition for react-window cell props
-interface CellProps {
-  columnIndex: number;
-  rowIndex: number;
-  style: CSSProperties;
-  data: MarketplaceItemData;
-}
-
-// Cell defined outside to prevent re-creation on render
-const Cell = memo(({ columnIndex, rowIndex, style, data }: CellProps) => {
-    const { skills, columnCount, isInstalled, handleInstall, handleUninstall, setSelectedSkill, setSkillAddToCollection, setShowDrawer, language } = data;
-    const index = rowIndex * columnCount + columnIndex;
-
-    if (index >= skills.length) return null;
-
-    const skill = skills[index];
-
-    // Adjust style to add gaps (gutter) - simplified to avoid overflow
-    const left = parseFloat(style.left?.toString() || '0') + GUTTER_SIZE / 2;
-    const top = parseFloat(style.top?.toString() || '0') + GUTTER_SIZE / 2;
-    const width = parseFloat(style.width?.toString() || '0') - GUTTER_SIZE;
-    const height = parseFloat(style.height?.toString() || '0') - GUTTER_SIZE;
-
-    return (
-        <div style={{ position: 'absolute', left, top, width, height }}>
-            <SkillCard
-                skill={{...skill, description: getLocalizedDescription(skill, language)}}
-                viewMode="grid"
-                isInstalled={isInstalled(skill)}
-                onInstall={async () => handleInstall(skill)}
-                onUninstall={isInstalled(skill) ? async () => handleUninstall(skill) : undefined}
-                onViewDetails={() => {
-                    setSelectedSkill(skill);
-                    setShowDrawer(true);
-                }}
-                onAddToCollection={() => setSkillAddToCollection(skill)}
-            />
-        </div>
-    );
-});
+// New Components
+import { MarketplaceHeader } from '../components/Marketplace/MarketplaceHeader';
+import { FeaturedBanner } from '../components/Marketplace/FeaturedBanner';
 
 const Marketplace = () => {
   const { i18n } = useTranslation();
@@ -111,11 +50,9 @@ const Marketplace = () => {
     setCompatibilityFilter,
     sourceFilter,
     setSourceFilter,
-    showFilters,
-    setShowFilters,
     isGithubUrl,
     filteredAndSortedSkills,
-    marketplaceSkills // Expose to check if database is empty
+    marketplaceSkills
   } = useMarketplaceLogic();
 
   const { data: installedSkills = [] } = useSkills();
@@ -128,8 +65,6 @@ const Marketplace = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [pendingInstall, setPendingInstall] = useState<MarketplaceSkill | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledSkill | null>(null);
-  const [gridSize, setGridSize] = useState({ width: 0, height: 0 });
-  const gridContainerRef = useRef<HTMLDivElement>(null);
   const installTimerRef = useRef<number | null>(null);
   const [installProgress, setInstallProgress] = useState(0);
   const [isInstalling, setIsInstalling] = useState(false);
@@ -255,269 +190,137 @@ const Marketplace = () => {
     }
   };
 
-  // State for scroll indicators
-  const [showLeftArrow, setShowLeftArrow] = useState(false);
-  const [showRightArrow, setShowRightArrow] = useState(false);
-  const filterChipsRef = useRef<HTMLDivElement>(null);
-
-  // Update arrow visibility based on scroll position
-  const handleScroll = () => {
-      if (filterChipsRef.current) {
-          setShowLeftArrow(filterChipsRef.current.scrollLeft > 0);
-          setShowRightArrow(
-              filterChipsRef.current.scrollWidth >
-              filterChipsRef.current.clientWidth + filterChipsRef.current.scrollLeft + 1
-          );
-      }
-  };
-
-  // Add event listener for scroll
-  useEffect(() => {
-      const currentRef = filterChipsRef.current;
-      if (currentRef) {
-          currentRef.addEventListener('scroll', handleScroll);
-          handleScroll(); // Initial check
-
-          // Re-check on window resize
-          window.addEventListener('resize', handleScroll);
-      }
-      return () => {
-          if (currentRef) {
-              currentRef.removeEventListener('scroll', handleScroll);
-          }
-          window.removeEventListener('resize', handleScroll);
-      };
-  }, []);
-
-  // Memoize stable parts of itemData
-  const baseItemData = useMemo(() => ({
-      isInstalled: isMarketplaceSkillInstalled,
-      handleInstall,
-      handleUninstall,
-      setSelectedSkill,
-      setSkillAddToCollection,
-      setShowDrawer,
-      language: i18n.language
-  }), [isMarketplaceSkillInstalled, handleInstall, handleUninstall, i18n.language]);
-
   const selectedInstalled = useMemo(() => {
     if (!selectedSkill) return null;
     return resolveInstalledSkill(selectedSkill);
   }, [selectedSkill, resolveInstalledSkill]);
 
-  useLayoutEffect(() => {
-    const updateSize = () => {
-      const el = gridContainerRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const width = Math.floor(rect.width);
-      const height = Math.floor(rect.height);
-      if (width && height) {
-        setGridSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
-      }
-    };
-
-    updateSize();
-    const handleResize = () => requestAnimationFrame(updateSize);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // Determine if we should show the Featured Banner
+  // Only show on "All" filter and "All" source (Discovery mode)
+  // Or explicitly when sourceFilter is 'official' or 'featured' (but might want different logic there)
+  const showFeaturedBanner = useMemo(() => {
+     return filter === 'all' && sourceFilter === 'all' && searchTerm === '';
+  }, [filter, sourceFilter, searchTerm]);
 
   return (
-    <div className="flex flex-col gap-6 h-full min-h-0">
-      {/* Hero Section */}
-      <MarketplaceHero
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        onImportClick={() => setShowImportModal(true)}
-        isGithubUrl={isGithubUrl}
-      />
+    <div className="flex h-full overflow-hidden bg-base-100">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        <MarketplaceHeader
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          onImportClick={() => setShowImportModal(true)}
+          isGithubUrl={isGithubUrl}
+          sortOption={sortOption}
+          onSortChange={setSortOption}
+        />
 
-      {/* Token Config Banner */}
-      {showTokenBanner && (
-        <div className="px-2">
-          <TokenConfigBanner
-            onDismiss={handleDismissBanner}
-          />
-        </div>
-      )}
-
-      {/* Filter Chips with Scroll Indicators */}
-      <div className="relative">
-          {showLeftArrow && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-gradient-to-l from-white dark:from-base-100 to-transparent w-16 h-full flex items-center pointer-events-none pl-2">
-                  <ChevronLeft size={20} className="text-slate-500 dark:text-slate-400" />
-              </div>
-          )}
-          <div
-              ref={filterChipsRef}
-              className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide px-2"
-              onScroll={handleScroll}
-          >
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                    "flex-shrink-0 rounded-full h-9",
-                    (securityFilter !== 'all' || compatibilityFilter !== 'all' || sourceFilter !== 'all' || showFilters) && "border-primary text-primary bg-primary/5"
-                )}
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <FilterIcon size={16} className="mr-1" />
-                {i18n.language === 'zh' ? '筛选' : 'Filters'}
-                {(securityFilter !== 'all' || compatibilityFilter !== 'all' || sourceFilter !== 'all') && (
-                    <span className="ml-1 w-2 h-2 rounded-full bg-primary" />
-                )}
-              </Button>
-              <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1 flex-shrink-0" />
-              {[
-                  { id: 'all' as const, label: i18n.language === 'zh' ? '全部' : 'All Skills' },
-                  { id: 'top-rated' as const, label: i18n.language === 'zh' ? '高评分' : 'Top Rated' },
-                  { id: 'coding' as const, label: i18n.language === 'zh' ? '编程开发' : 'Coding' },
-                  { id: 'security' as const, label: i18n.language === 'zh' ? '安全相关' : 'Security' },
-                  { id: 'productivity' as const, label: i18n.language === 'zh' ? '生产力' : 'Productivity' },
-                  { id: 'data' as const, label: i18n.language === 'zh' ? '数据处理' : 'Data' },
-                  { id: 'design' as const, label: i18n.language === 'zh' ? '设计' : 'Design' }
-              ].map((chip) => (
-                  <button
-                      key={chip.id}
-                      onClick={() => {
-                          setFilter(chip.id);
-                      }}
-                      className={cn(
-                          "px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
-                          filter === chip.id
-                              ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md"
-                              : "bg-white dark:bg-base-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-base-100 border border-gray-100 dark:border-base-300"
-                      )}
-                      data-testid={`filter-${chip.id}`}
-                  >
-                      {chip.label}
-                  </button>
-              ))}
-              <div className="flex-1" />
-
-              <SortDropdown value={sortOption} onChange={setSortOption} />
-          </div>
-          {showRightArrow && (
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-gradient-to-r from-white dark:from-base-100 to-transparent w-16 h-full flex items-center justify-end pointer-events-none pr-2">
-                  <ChevronRight size={20} className="text-slate-500 dark:text-slate-400" />
-              </div>
-          )}
-      </div>
-
-      {showFilters && (
-        <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="px-2"
-        >
-            <FilterPanel
-                securityFilter={securityFilter}
-                setSecurityFilter={setSecurityFilter}
-                compatibilityFilter={compatibilityFilter}
-                setCompatibilityFilter={setCompatibilityFilter}
-                sourceFilter={sourceFilter}
-                setSourceFilter={setSourceFilter}
-                onReset={() => {
-                    setSecurityFilter('all');
-                    setCompatibilityFilter('all');
-                    setSourceFilter('all');
-                }}
-            />
-        </motion.div>
-      )}
-
-
-      <div className="flex-1 min-h-0">
-        {isLoadingMarketplace ? (
-          <div className="h-full overflow-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              <SkeletonCard count={8} />
-            </div>
-          </div>
-        ) : isMarketplaceError ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="max-w-lg space-y-4">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                {i18n.language === 'zh' ? '市场数据加载失败' : 'Failed to load marketplace data'}
-              </h2>
-              <p className="text-slate-600 dark:text-slate-400">
-                {marketplaceError instanceof Error ? marketplaceError.message : String(marketplaceError)}
-              </p>
-              <Button variant="primary" onClick={() => refetchMarketplace()}>
-                {i18n.language === 'zh' ? '重试加载' : 'Retry'}
-              </Button>
-            </div>
-          </div>
-        ) : filteredAndSortedSkills.length === 0 ? (
-          // Empty State Component - Check if database is empty or just no search results
-          <div className="flex h-full items-center justify-center">
-            <EmptyState
-              variant="minimal"
-              icon={<Search />}
-              title={i18n.language === 'zh' ? '未找到相关 Skill' : 'No skills found'}
-              description={
-                marketplaceSkills.length === 0
-                  ? (i18n.language === 'zh'
-                      ? 'Marketplace 数据库为空。请先导入数据，或直接导入 GitHub 仓库。'
-                      : 'Marketplace database is empty. Please import data first, or import directly from GitHub.')
-                  : (i18n.language === 'zh'
-                      ? '尝试使用不同的关键词，或者直接导入 GitHub 仓库。'
-                      : 'Try searching with different keywords, or import directly from GitHub.')
-              }
-              action={
-                marketplaceSkills.length === 0
-                  ? {
-                      label: i18n.language === 'zh' ? '导入数据' : 'Import Data',
-                      onClick: () => navigate('/marketplace/data-management'),
-                      variant: 'primary',
-                    }
-                  : {
-                      label: i18n.language === 'zh' ? '从 GitHub 导入' : 'Import from GitHub',
-                      onClick: () => setShowImportModal(true),
-                      variant: 'primary',
-                    }
-              }
-              data-testid="empty-state"
-            />
-          </div>
-        ) : (
-          <div className="w-full h-full overflow-x-hidden overflow-y-auto" ref={gridContainerRef}>
-              <AutoSizer
-              renderProp={({ height, width }) => {
-                  const resolvedHeight = height || gridSize.height;
-                  const resolvedWidth = width || gridSize.width;
-                  if (!resolvedHeight || !resolvedWidth) return null;
-
-                  const columnCount = Math.floor(resolvedWidth / (280 + GUTTER_SIZE)) || 1;
-                  const columnWidth = resolvedWidth / columnCount;
-                  const rowCount = Math.ceil(filteredAndSortedSkills.length / columnCount);
-
-                  return (
-                      <Grid
-                          columnCount={columnCount}
-                          columnWidth={columnWidth}
-                          height={resolvedHeight}
-                          rowCount={rowCount}
-                          rowHeight={ROW_HEIGHT}
-                          width={resolvedWidth}
-                          itemData={{
-                              ...baseItemData,
-                              skills: filteredAndSortedSkills,
-                              columnCount
-                          }}
-                      >
-                          {Cell}
-                      </Grid>
-                  );
-              }}
-              />
+        {/* Token Banner */}
+        {showTokenBanner && (
+          <div className="px-6 py-2">
+            <TokenConfigBanner onDismiss={handleDismissBanner} />
           </div>
         )}
+
+        {/* Content */}
+        <div className="flex-1 bg-slate-50 dark:bg-base-200/50">
+          {isLoadingMarketplace ? (
+             <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+               <SkeletonCard count={8} />
+             </div>
+          ) : isMarketplaceError ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-6">
+              <div className="max-w-lg space-y-4">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  {i18n.language === 'zh' ? '市场数据加载失败' : 'Failed to load marketplace data'}
+                </h2>
+                <p className="text-slate-600 dark:text-slate-400">
+                  {marketplaceError instanceof Error ? marketplaceError.message : String(marketplaceError)}
+                </p>
+                <Button variant="primary" onClick={() => refetchMarketplace()}>
+                  {i18n.language === 'zh' ? '重试加载' : 'Retry'}
+                </Button>
+              </div>
+            </div>
+          ) : filteredAndSortedSkills.length === 0 ? (
+            <div className="flex h-full items-center justify-center p-6">
+              <EmptyState
+                variant="minimal"
+                icon={<Search />}
+                title={i18n.language === 'zh' ? '未找到相关 Skill' : 'No skills found'}
+                description={
+                  marketplaceSkills.length === 0
+                    ? (i18n.language === 'zh'
+                        ? 'Marketplace 数据库为空。请先导入数据，或直接导入 GitHub 仓库。'
+                        : 'Marketplace database is empty. Please import data first, or import directly from GitHub.')
+                    : (i18n.language === 'zh'
+                        ? '尝试使用不同的关键词，或者直接导入 GitHub 仓库。'
+                        : 'Try searching with different keywords, or import directly from GitHub.')
+                }
+                action={
+                  marketplaceSkills.length === 0
+                    ? {
+                        label: i18n.language === 'zh' ? '导入数据' : 'Import Data',
+                        onClick: () => navigate('/marketplace/data-management'),
+                        variant: 'primary',
+                      }
+                    : {
+                        label: i18n.language === 'zh' ? '从 GitHub 导入' : 'Import from GitHub',
+                        onClick: () => setShowImportModal(true),
+                        variant: 'primary',
+                      }
+                }
+              />
+            </div>
+          ) : (
+             <VirtuosoGrid
+                style={{ height: '100%' }}
+                totalCount={filteredAndSortedSkills.length}
+                components={{
+                    Header: () => (
+                        <div className="pb-6">
+                           {showFeaturedBanner && <FeaturedBanner />}
+                        </div>
+                    ),
+                    List: forwardRef(({ style, children, ...props }, ref) => (
+                        <div
+                          ref={ref}
+                          {...props}
+                          style={style}
+                          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6"
+                        >
+                          {children}
+                        </div>
+                    )),
+                    Item: ({ children, ...props }) => (
+                        <div {...props} className="min-w-0">
+                            {children}
+                        </div>
+                    )
+                }}
+                itemContent={(index) => {
+                    const skill = filteredAndSortedSkills[index];
+                    return (
+                        <SkillCard
+                            skill={{...skill, description: getLocalizedDescription(skill, i18n.language)}}
+                            viewMode="grid"
+                            isInstalled={isMarketplaceSkillInstalled(skill)}
+                            onInstall={async () => handleInstall(skill)}
+                            onUninstall={isMarketplaceSkillInstalled(skill) ? async () => handleUninstall(skill) : undefined}
+                            onViewDetails={() => {
+                                setSelectedSkill(skill);
+                                setShowDrawer(true);
+                            }}
+                            onAddToCollection={() => setSkillAddToCollection(skill)}
+                        />
+                    );
+                }}
+             />
+          )}
+        </div>
       </div>
 
+      {/* Drawer and Modals */}
       <SlideOver
         isOpen={showDrawer}
         onClose={() => {

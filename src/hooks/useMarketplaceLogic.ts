@@ -4,10 +4,9 @@ import type { SecurityFilter, CompatibilityFilter } from '../components/FilterPa
 import type { SortOption } from '../components/SortDropdown';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
 import type { ListMarketplaceParams, SourceFilter } from '../types';
+import { useMarketplaceContext, type FilterType } from '../context/MarketplaceContext';
 
 // Types and constants
-export type FilterType = 'all' | 'top-rated' | 'productivity' | 'coding' | 'security' | 'data' | 'design';
-
 const TOP_RATED_THRESHOLD = 50;
 
 const CATEGORY_KEYWORDS: Record<Exclude<FilterType, 'all' | 'top-rated'>, string[]> = {
@@ -21,14 +20,24 @@ const CATEGORY_KEYWORDS: Record<Exclude<FilterType, 'all' | 'top-rated'>, string
 const GITHUB_URL_REGEX = /^https:\/\/github\.com\/[\w-]+\/[\w.-]+(\/tree\/[\w.-]+(\/.*)?)?$/;
 
 export function useMarketplaceLogic() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const {
+    searchTerm,
+    setSearchTerm,
+    filter,
+    setFilter,
+    sortOption,
+    setSortOption,
+    securityFilter,
+    setSecurityFilter,
+    compatibilityFilter,
+    setCompatibilityFilter,
+    sourceFilter,
+    setSourceFilter,
+    showFilters,
+    setShowFilters
+  } = useMarketplaceContext();
+
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [sortOption, setSortOption] = useState<SortOption>('stars');
-  const [securityFilter, setSecurityFilter] = useState<SecurityFilter>('all');
-  const [compatibilityFilter, setCompatibilityFilter] = useState<CompatibilityFilter>('all');
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
-  const [showFilters, setShowFilters] = useState(false);
 
   // Debounce search term to avoid excessive backend calls
   useEffect(() => {
@@ -49,7 +58,6 @@ export function useMarketplaceLogic() {
     }
 
     // Pass sourceType directly to backend (including 'official')
-    // 后端需要支持 'official' | 'featured' | 'user' 三种类型
     if (sourceFilter !== 'all') {
       params.sourceType = sourceFilter;
       // 开发模式下输出调试信息
@@ -69,13 +77,11 @@ export function useMarketplaceLogic() {
     refetch: refetchMarketplace,
   } = useMarketplaceSkills(queryParams);
 
-  // 监控 API 错误，如果后端不支持 'official' 类型则提示
+  // 监控 API 错误
   useEffect(() => {
     if (isMarketplaceError && sourceFilter === 'official') {
       console.warn(
-        '[Marketplace] API error when filtering by sourceType="official". ' +
-        'This may indicate the backend does not support the "official" type yet. ' +
-        'Please ensure the backend has been updated to support SourceType::Official.',
+        '[Marketplace] API error when filtering by sourceType="official".',
         marketplaceError
       );
     }
@@ -87,9 +93,6 @@ export function useMarketplaceLogic() {
 
   const filteredAndSortedSkills = useMemo(() => {
     const result = marketplaceSkills.filter(skill => {
-      // If we used backend search, the results are already filtered by the query.
-      // However, we still perform a client-side check to ensure the UI is consistent
-      // during the debounce delay or if the user refines the search locally.
       const name = skill.name ?? '';
       const description = skill.description ?? '';
       const author = skill.author ?? '';
@@ -123,25 +126,13 @@ export function useMarketplaceLogic() {
 
       // 3. Compatibility Filter
       if (compatibilityFilter !== 'all') {
-        // If compatibility info is missing, assume unknown/incompatible for now, or check generic tags
-        // For now, check explicit compatibility field
         const supported = skill.compatibility?.supportedAgents?.includes(compatibilityFilter);
-
-        // Fallback: Check tags for the agent name
         const hasTag = skill.tags?.some(t => t.toLowerCase() === compatibilityFilter.toLowerCase());
-
         if (!supported && !hasTag) return false;
       }
 
       // 4. Source Filter
       if (sourceFilter !== 'all') {
-        // 使用 sourceType 字段筛选（后端负责标记正确的类型）
-        // - official: claude-ai 官方仓库（https://github.com/anthropics/skills）
-        // - featured: 精选仓库
-        // - user: 用户仓库
-        //
-        // 向后兼容：如果 sourceType 为 undefined/null，视为不匹配任何非 'all' 的筛选
-        // 这样老数据不会错误地显示在筛选结果中
         if (!skill.sourceType) {
           console.debug(`Skill "${skill.name}" missing sourceType, excluding from filter`);
           return false;
