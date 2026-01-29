@@ -8,6 +8,7 @@ import { Badge } from './ui/Badge';
 import { TrustShield } from './TrustShield';
 import { CompatibilityBadge } from './CompatibilityBadge';
 import { ShareSheet } from './ShareSheet';
+import { SourceBadge } from './SourceBadge';
 import { cn } from '../utils/cn';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
 import { Star, GitBranch, Trash2, Settings, Plug, Share2, User, GitFork, FolderPlus } from 'lucide-react';
@@ -196,6 +197,17 @@ export const SkillCard = ({
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-bold text-slate-900 dark:text-slate-100 truncate" title={skill.name}>{skill.name}</h3>
+
+                        {/* ✅ 新增：来源徽章 (v2.7.0) */}
+                        {(skill as MarketplaceSkill).sourceType && (
+                            <SourceBadge
+                                sourceType={(skill as MarketplaceSkill).sourceType!}
+                                repositoryName={(skill as MarketplaceSkill).repositoryName}
+                                size="xs"
+                                showLabel={true}
+                            />
+                        )}
+
                         {isMcp && (
                             <Badge variant="info" size="xs" className="gap-1">
                                 <Plug size={10} /> MCP
@@ -350,6 +362,16 @@ export const SkillCard = ({
                 <div className="flex justify-between items-start">
                     {renderIcon()}
                     <div className="flex flex-col items-end gap-1">
+                        {/* ✅ 新增：来源徽章 (v2.7.0) - 网格视图仅显示图标 */}
+                        {(skill as MarketplaceSkill).sourceType && (
+                            <SourceBadge
+                                sourceType={(skill as MarketplaceSkill).sourceType!}
+                                repositoryName={(skill as MarketplaceSkill).repositoryName}
+                                size="xs"
+                                showLabel={false}
+                            />
+                        )}
+
                         <CompatibilityBadge compatibility={skill.compatibility} size="sm" />
                         {isMcp && (
                             <div className="flex items-center gap-1 text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full border border-blue-200 dark:border-blue-800">
