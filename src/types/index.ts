@@ -34,8 +34,8 @@ export interface MarketplaceSkill {
 
 export type AgentType = 'claude-code' | 'cursor' | 'windsurf' | 'v0' | 'unknown';
 
-export type SourceType = 'featured' | 'user';
-export type SourceFilter = 'all' | 'official' | 'featured' | 'user';
+export type SourceType = 'official' | 'featured' | 'user';
+export type SourceFilter = 'all' | SourceType;
 
 export interface CompatibilityInfo {
   supportedAgents: AgentType[];
@@ -107,8 +107,8 @@ export interface Repository {
   description?: string;
 
   // ✅ 新增字段 (v2.1)
-  sourceType: 'featured' | 'user';  // 来源类型
-  priority: number;  // 优先级（精选=10，用户=100）
+  sourceType: 'official' | 'featured' | 'user';  // 来源类型（official=claude-ai官方仓库）
+  priority: number;  // 优先级（official=5, featured=10, user=100）
   scanStatus: 'pending' | 'scanning' | 'success' | 'failed';  // 扫描状态
   etag?: string;  // GitHub API ETag 用于缓存
 

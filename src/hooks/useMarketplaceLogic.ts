@@ -48,8 +48,8 @@ export function useMarketplaceLogic() {
       params.minStars = TOP_RATED_THRESHOLD;
     }
 
-    // Map 'official' to 'all' since backend doesn't support it, we'll filter on frontend
-    params.sourceType = sourceFilter === 'official' ? 'all' : sourceFilter;
+    // Pass sourceType directly to backend (including 'official')
+    params.sourceType = sourceFilter;
 
     return params;
   }, [debouncedSearchTerm, filter, sourceFilter]);
@@ -116,16 +116,8 @@ export function useMarketplaceLogic() {
 
       // 4. Source Filter
       if (sourceFilter !== 'all') {
-        if (sourceFilter === 'official') {
-          // Official: Skills without repositoryId (system built-in)
-          if (skill.repositoryId) return false;
-        } else if (sourceFilter === 'featured') {
-          // Featured repositories
-          if (skill.sourceType !== 'featured') return false;
-        } else if (sourceFilter === 'user') {
-          // User repositories
-          if (skill.sourceType !== 'user') return false;
-        }
+        // Use sourceType directly (backend will set 'official' for claude-ai official repos)
+        if (skill.sourceType !== sourceFilter) return false;
       }
 
       return true;
