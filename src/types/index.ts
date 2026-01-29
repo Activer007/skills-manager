@@ -35,7 +35,7 @@ export interface MarketplaceSkill {
 export type AgentType = 'claude-code' | 'cursor' | 'windsurf' | 'v0' | 'unknown';
 
 export type SourceType = 'featured' | 'user';
-export type SourceFilter = 'all' | SourceType;
+export type SourceFilter = 'all' | 'official' | 'featured' | 'user';
 
 export interface CompatibilityInfo {
   supportedAgents: AgentType[];
@@ -258,6 +258,7 @@ export interface ListMarketplaceParams {
   limit?: number;
   offset?: number;
   searchQuery?: string;
+  sourceType?: SourceFilter;
 }
 
 /**

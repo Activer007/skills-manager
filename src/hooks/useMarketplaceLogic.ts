@@ -48,7 +48,8 @@ export function useMarketplaceLogic() {
       params.minStars = TOP_RATED_THRESHOLD;
     }
 
-    params.sourceType = sourceFilter;
+    // Map 'official' to 'all' since backend doesn't support it, we'll filter on frontend
+    params.sourceType = sourceFilter === 'official' ? 'all' : sourceFilter;
 
     return params;
   }, [debouncedSearchTerm, filter, sourceFilter]);
@@ -111,6 +112,20 @@ export function useMarketplaceLogic() {
         const hasTag = skill.tags?.some(t => t.toLowerCase() === compatibilityFilter.toLowerCase());
 
         if (!supported && !hasTag) return false;
+      }
+
+      // 4. Source Filter
+      if (sourceFilter !== 'all') {
+        if (sourceFilter === 'official') {
+          // Official: Skills without repositoryId (system built-in)
+          if (skill.repositoryId) return false;
+        } else if (sourceFilter === 'featured') {
+          // Featured repositories
+          if (skill.sourceType !== 'featured') return false;
+        } else if (sourceFilter === 'user') {
+          // User repositories
+          if (skill.sourceType !== 'user') return false;
+        }
       }
 
       return true;
