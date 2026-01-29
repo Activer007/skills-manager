@@ -15,6 +15,7 @@ const ScanHistory = lazy(() => import('./pages/ScanHistory'));
 const TaskCenter = lazy(() => import('./pages/TaskCenter'));
 const SharePreview = lazy(() => import('./pages/SharePreview'));
 const CreatorProfile = lazy(() => import('./pages/CreatorProfile'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 const router = createBrowserRouter([
   {
@@ -23,7 +24,7 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to="/my-skills" replace />,
+        element: <Navigate to="/marketplace" replace />,
       },
       {
         path: 'my-skills',
@@ -102,6 +103,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <CreatorProfile />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <Dashboard />
           </Suspense>
         ),
       },
