@@ -98,7 +98,7 @@ export const FilterPanel = ({
     },
     {
       value: 'user',
-      label: i18n.language === 'zh' ? '其他' : 'Others',
+      label: i18n.language === 'zh' ? '用户仓库' : 'User Repositories',
       icon: <User size={14} className="text-blue-500" />
     },
   ];
