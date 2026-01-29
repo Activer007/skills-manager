@@ -23,9 +23,19 @@ export interface MarketplaceSkill {
   securityScore?: number;
   securityIssues?: SecurityIssue[];
   compatibility?: CompatibilityInfo;
+
+  // 来源信息（可选）
+  repositoryId?: string;
+  repositoryName?: string;
+  sourceType?: 'featured' | 'user';
+  priority?: number;
+  skillPath?: string;
 }
 
 export type AgentType = 'claude-code' | 'cursor' | 'windsurf' | 'v0' | 'unknown';
+
+export type SourceType = 'featured' | 'user';
+export type SourceFilter = 'all' | SourceType;
 
 export interface CompatibilityInfo {
   supportedAgents: AgentType[];

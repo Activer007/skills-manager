@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
-import type { InstalledSkill, MarketplaceSkill, MarketplaceSkillDTO, ListMarketplaceParams, DeleteRepositoryResult, ApiErrorResponse } from '../types';
+import type { InstalledSkill, MarketplaceSkill, MarketplaceSkillDTO, ListMarketplaceParams, DeleteRepositoryResult, ApiErrorResponse, SourceFilter } from '../types';
 import { fetchMarketplaceData } from '../utils/marketplace';
 import type { SecurityReport } from '../types/security';
 
@@ -21,6 +21,29 @@ type ScanSkillsResult = {
   systemSkills: ScanSkillEntry[];
   projectSkills: ScanSkillEntry[];
 };
+
+const mapMarketplaceDto = (dto: MarketplaceSkillDTO): MarketplaceSkill => ({
+  id: dto.id,
+  name: dto.name,
+  author: dto.author || 'Unknown',
+  authorAvatar: '',
+  description: dto.description || '',
+  githubUrl: dto.github_url || '',
+  stars: dto.stars,
+  forks: dto.forks,
+  updatedAt: dto.updated_at,
+  hasMarketplace: false,
+  path: dto.skillPath || 'SKILL.md',
+  branch: 'main',
+  tags: dto.tags,
+  securityScore: dto.security_score,
+  compatibility: dto.compatibility,
+  repositoryId: dto.repositoryId,
+  repositoryName: dto.repositoryName,
+  sourceType: dto.sourceType,
+  priority: dto.priority,
+  skillPath: dto.skillPath,
+});
 
 /**
  * Hook for fetching installed skills
@@ -209,7 +232,7 @@ export function useImportPackageSkill() {
  * @param params - Query parameters for filtering and pagination
  * @returns React Query result with MarketplaceSkillDTO array
  */
-export function useMarketplaceSkills(params?: ListMarketplaceParams & { sourceType?: 'featured' | 'user' | 'all' }) {
+export function useMarketplaceSkills(params?: ListMarketplaceParams & { sourceType?: SourceFilter }) {
   return useQuery({
     queryKey: ['marketplace-skills', params],
     queryFn: async () => {
@@ -221,23 +244,7 @@ export function useMarketplaceSkills(params?: ListMarketplaceParams & { sourceTy
           offset: params.offset || 0,
         });
 
-        return data.map(dto => ({
-          id: dto.id,
-          name: dto.name,
-          author: dto.author || 'Unknown',
-          authorAvatar: '',
-          description: dto.description || '',
-          githubUrl: dto.github_url || '',
-          stars: dto.stars,
-          forks: dto.forks,
-          updatedAt: dto.updated_at,
-          hasMarketplace: false,
-          path: 'SKILL.md',
-          branch: 'main',
-          tags: dto.tags,
-          securityScore: dto.security_score,
-          compatibility: dto.compatibility,
-        })) as MarketplaceSkill[];
+        return data.map(mapMarketplaceDto) as MarketplaceSkill[];
       }
 
       // If search query is provided, use search endpoint
@@ -247,23 +254,7 @@ export function useMarketplaceSkills(params?: ListMarketplaceParams & { sourceTy
           limit: params.limit || 100,
         });
 
-        return data.map(dto => ({
-          id: dto.id,
-          name: dto.name,
-          author: dto.author || 'Unknown',
-          authorAvatar: '',
-          description: dto.description || '',
-          githubUrl: dto.github_url || '',
-          stars: dto.stars,
-          forks: dto.forks,
-          updatedAt: dto.updated_at,
-          hasMarketplace: false,
-          path: 'SKILL.md',
-          branch: 'main',
-          tags: dto.tags,
-          securityScore: dto.security_score,
-          compatibility: dto.compatibility,
-        })) as MarketplaceSkill[];
+        return data.map(mapMarketplaceDto) as MarketplaceSkill[];
       }
 
       // Otherwise use list endpoint with filters
@@ -274,23 +265,7 @@ export function useMarketplaceSkills(params?: ListMarketplaceParams & { sourceTy
       });
 
       // Convert DTO to MarketplaceSkill format for compatibility
-      return data.map(dto => ({
-        id: dto.id,
-        name: dto.name,
-        author: dto.author || 'Unknown',
-        authorAvatar: '',  // Not in database yet, can be added later
-        description: dto.description || '',
-        githubUrl: dto.github_url || '',
-        stars: dto.stars,
-        forks: dto.forks,
-        updatedAt: dto.updated_at,
-        hasMarketplace: false,
-        path: 'SKILL.md',
-        branch: 'main',
-        tags: dto.tags,
-        securityScore: dto.security_score,
-        compatibility: dto.compatibility,
-      })) as MarketplaceSkill[];
+      return data.map(mapMarketplaceDto) as MarketplaceSkill[];
     },
     staleTime: 1000 * 60 * 10, // 10 minutes (marketplace data changes less frequently)
     gcTime: 1000 * 60 * 30, // 30 minutes

@@ -106,6 +106,8 @@ const Marketplace = () => {
     setSecurityFilter,
     compatibilityFilter,
     setCompatibilityFilter,
+    sourceFilter,
+    setSourceFilter,
     showFilters,
     setShowFilters,
     isGithubUrl,
@@ -333,13 +335,13 @@ const Marketplace = () => {
                 size="sm"
                 className={cn(
                     "flex-shrink-0 rounded-full h-9",
-                    (securityFilter !== 'all' || compatibilityFilter !== 'all' || showFilters) && "border-primary text-primary bg-primary/5"
+                    (securityFilter !== 'all' || compatibilityFilter !== 'all' || sourceFilter !== 'all' || showFilters) && "border-primary text-primary bg-primary/5"
                 )}
                 onClick={() => setShowFilters(!showFilters)}
               >
                 <FilterIcon size={16} className="mr-1" />
                 {i18n.language === 'zh' ? '筛选' : 'Filters'}
-                {(securityFilter !== 'all' || compatibilityFilter !== 'all') && (
+                {(securityFilter !== 'all' || compatibilityFilter !== 'all' || sourceFilter !== 'all') && (
                     <span className="ml-1 w-2 h-2 rounded-full bg-primary" />
                 )}
               </Button>
@@ -392,9 +394,12 @@ const Marketplace = () => {
                 setSecurityFilter={setSecurityFilter}
                 compatibilityFilter={compatibilityFilter}
                 setCompatibilityFilter={setCompatibilityFilter}
+                sourceFilter={sourceFilter}
+                setSourceFilter={setSourceFilter}
                 onReset={() => {
                     setSecurityFilter('all');
                     setCompatibilityFilter('all');
+                    setSourceFilter('all');
                 }}
             />
         </motion.div>

@@ -124,6 +124,9 @@ export const SkillCard = ({
     const isMcp = 'isMcp' in skill && skill.isMcp;
     const isFork = 'derivedFrom' in skill && !!(skill as InstalledSkill).derivedFrom;
     const forkType = 'forkType' in skill ? (skill as InstalledSkill).forkType : undefined;
+    const sourceType = isMarketplace ? (skill as MarketplaceSkill).sourceType : undefined;
+    const repositoryName = isMarketplace ? (skill as MarketplaceSkill).repositoryName : undefined;
+    const repositoryUrl = isMarketplace ? (skill as MarketplaceSkill).githubUrl : undefined;
 
     // Memoize color calculation
     const iconColor = useMemo(() => stringToColor(skill.name), [skill.name]);
@@ -142,6 +145,48 @@ export const SkillCard = ({
         // If brightness is high, use dark text; otherwise, use light text
         return brightness > 0.5 ? 'text-slate-900' : 'text-slate-50';
     }, [iconColor]);
+
+    const repositoryShortName = useMemo(() => {
+        if (repositoryName) {
+            const parts = repositoryName.split('/');
+            return parts[parts.length - 1] || repositoryName;
+        }
+        if (!repositoryUrl) return undefined;
+        const match = repositoryUrl.match(/github\.com\/([^/]+\/[^/]+)/i);
+        if (!match) return undefined;
+        const repoParts = match[1].split('/');
+        return repoParts[repoParts.length - 1] || match[1];
+    }, [repositoryName, repositoryUrl]);
+
+    const renderSourceBadge = () => {
+        if (!sourceType) return null;
+        if (sourceType === 'featured') {
+            return (
+                <Badge
+                    variant="warning"
+                    size="xs"
+                    className="gap-1"
+                    title={isZh ? '官方精选' : 'Featured'}
+                    data-testid="source-badge-featured"
+                >
+                    <Star size={10} /> {isZh ? '官方精选' : 'Featured'}
+                </Badge>
+            );
+        }
+
+        const label = repositoryShortName || (isZh ? '用户来源' : 'User Source');
+        return (
+            <Badge
+                variant="info"
+                size="xs"
+                className="gap-1"
+                title={repositoryName || label}
+                data-testid="source-badge-user"
+            >
+                <User size={10} /> {label}
+            </Badge>
+        );
+    };
 
 
     // Icon Placeholder Generator (based on name char)
@@ -206,6 +251,7 @@ export const SkillCard = ({
                                 <GitFork size={10} /> {forkType === 'remix' ? 'Remix' : 'Fork'}
                             </Badge>
                         )}
+                        {isMarketplace && renderSourceBadge()}
                         <CompatibilityBadge compatibility={skill.compatibility} size="sm" />
                         {isInstalled && (
                             <Badge variant={isActive ? "success" : "neutral"} size="xs">
@@ -363,6 +409,7 @@ export const SkillCard = ({
                                 {forkType === 'remix' ? 'Remix' : 'Fork'}
                             </div>
                         )}
+                        {isMarketplace && renderSourceBadge()}
                         {/* Display TrustShield - supports both Marketplace and Installed Skills */}
                         {skill.securityScore !== undefined && (
                              <TrustShield level={trustLevel} score={skill.securityScore} size="sm" showLabel={false} />

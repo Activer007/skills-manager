@@ -3,7 +3,7 @@ import { useMarketplaceSkills } from './useSkills';
 import type { SecurityFilter, CompatibilityFilter } from '../components/FilterPanel';
 import type { SortOption } from '../components/SortDropdown';
 import { scoreToTrustLevel } from '../utils/securityHelpers';
-import type { ListMarketplaceParams } from '../types';
+import type { ListMarketplaceParams, SourceFilter } from '../types';
 
 // Types and constants
 export type FilterType = 'all' | 'top-rated' | 'productivity' | 'coding' | 'security' | 'data' | 'design';
@@ -27,6 +27,7 @@ export function useMarketplaceLogic() {
   const [sortOption, setSortOption] = useState<SortOption>('stars');
   const [securityFilter, setSecurityFilter] = useState<SecurityFilter>('all');
   const [compatibilityFilter, setCompatibilityFilter] = useState<CompatibilityFilter>('all');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [showFilters, setShowFilters] = useState(false);
 
   // Debounce search term to avoid excessive backend calls
@@ -47,8 +48,10 @@ export function useMarketplaceLogic() {
       params.minStars = TOP_RATED_THRESHOLD;
     }
 
+    params.sourceType = sourceFilter;
+
     return params;
-  }, [debouncedSearchTerm, filter]);
+  }, [debouncedSearchTerm, filter, sourceFilter]);
 
   const {
     data: marketplaceSkills = [],
@@ -146,6 +149,8 @@ export function useMarketplaceLogic() {
     setSecurityFilter,
     compatibilityFilter,
     setCompatibilityFilter,
+    sourceFilter,
+    setSourceFilter,
     showFilters,
     setShowFilters,
     isGithubUrl,
