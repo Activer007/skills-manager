@@ -77,7 +77,8 @@ export function useScanRepository() {
     onSuccess: () => {
       // 扫描完成后，技能列表和仓库状态（last_scanned）都会更新
       queryClient.invalidateQueries({ queryKey: ['repositories'] });
-      // queryClient.invalidateQueries({ queryKey: ['skills'] }); // 假设有这个 key
+      // 刷新市场列表，以便用户能看到新扫描的 Skills
+      queryClient.invalidateQueries({ queryKey: ['marketplace-skills'] });
     },
   });
 }
