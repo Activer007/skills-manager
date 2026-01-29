@@ -91,40 +91,61 @@ pub fn migrate_v11(conn: &Connection) -> anyhow::Result<()> {
 
 // Step 1: Enhance repositories table with new fields
 fn migrate_v11_enhance_repositories(conn: &Connection) -> anyhow::Result<()> {
+    // Helper to check if column exists
+    let check_column = |table: &str, col: &str| -> bool {
+        let count: i32 = conn.query_row(
+            &format!("SELECT COUNT(*) FROM pragma_table_info('{}') WHERE name='{}'", table, col),
+            [],
+            |row| row.get(0)
+        ).unwrap_or(0);
+        count > 0
+    };
+
     // Add source_type column (default 'user')
-    conn.execute(
-        "ALTER TABLE repositories ADD COLUMN source_type TEXT DEFAULT 'user'",
-        [],
-    )?;
+    if !check_column("repositories", "source_type") {
+        conn.execute(
+            "ALTER TABLE repositories ADD COLUMN source_type TEXT DEFAULT 'user'",
+            [],
+        )?;
+    }
 
     // Add priority column (default 100)
-    conn.execute(
-        "ALTER TABLE repositories ADD COLUMN priority INTEGER DEFAULT 100",
-        [],
-    )?;
+    if !check_column("repositories", "priority") {
+        conn.execute(
+            "ALTER TABLE repositories ADD COLUMN priority INTEGER DEFAULT 100",
+            [],
+        )?;
+    }
 
     // Add scan_status column (default 'pending')
-    conn.execute(
-        "ALTER TABLE repositories ADD COLUMN scan_status TEXT DEFAULT 'pending'",
-        [],
-    )?;
+    if !check_column("repositories", "scan_status") {
+        conn.execute(
+            "ALTER TABLE repositories ADD COLUMN scan_status TEXT DEFAULT 'pending'",
+            [],
+        )?;
+    }
 
     // Add etag column (for GitHub API caching)
-    conn.execute(
-        "ALTER TABLE repositories ADD COLUMN etag TEXT",
-        [],
-    )?;
+    if !check_column("repositories", "etag") {
+        conn.execute(
+            "ALTER TABLE repositories ADD COLUMN etag TEXT",
+            [],
+        )?;
+    }
 
     // Migrate existing featured repositories to source_type='featured' and priority=10
-    let rows_affected = conn.execute(
-        "UPDATE repositories SET source_type = 'featured', priority = 10 WHERE featured = 1",
-        [],
-    )?;
+    // Check if 'featured' column exists first (legacy)
+    if check_column("repositories", "featured") {
+        let rows_affected = conn.execute(
+            "UPDATE repositories SET source_type = 'featured', priority = 10 WHERE featured = 1",
+            [],
+        )?;
 
-    info!(
-        "Migrated {} featured repositories to source_type='featured'",
-        rows_affected
-    );
+        info!(
+            "Migrated {} featured repositories to source_type='featured'",
+            rows_affected
+        );
+    }
 
     // Create indexes for new fields
     conn.execute(
@@ -148,6 +169,9 @@ fn migrate_v11_enhance_repositories(conn: &Connection) -> anyhow::Result<()> {
 
 // Step 2: Create new marketplace_skills table structure
 fn migrate_v11_create_marketplace_skills_table(conn: &Connection) -> anyhow::Result<()> {
+    // Drop the temp table if it exists from a failed previous run
+    conn.execute("DROP TABLE IF EXISTS marketplace_skills_v11", [])?;
+
     conn.execute(
         "CREATE TABLE marketplace_skills_v11 (
             id TEXT PRIMARY KEY,
@@ -342,6 +366,9 @@ fn migrate_v11_create_installed_skills_table(conn: &Connection) -> anyhow::Resul
 
 // Step 5: Replace old tables with new ones
 fn migrate_v11_replace_tables(conn: &Connection) -> anyhow::Result<()> {
+    // If we're retrying, ensure backup doesn't conflict
+    conn.execute("DROP TABLE IF EXISTS marketplace_skills_v10_backup", [])?;
+
     // Backup old marketplace_skills table
     conn.execute(
         "ALTER TABLE marketplace_skills RENAME TO marketplace_skills_v10_backup",
