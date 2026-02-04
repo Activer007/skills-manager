@@ -3,7 +3,7 @@
 # that are displayed in the Skills Manager marketplace.
 
 version: "1.0"
-last_updated: "2026-01-23"
+last_updated: "2026-02-04"
 
 categories:
   # Official repositories - Anthropic and verified partners
@@ -49,22 +49,4 @@ categories:
           zh: "精选 Claude 技能和资源列表"
         tags: ["community", "awesome", "resources"]
         featured: true
-        scan_subdirs: true
-
-  # Specialized repositories - Domain-specific skills
-  - id: "specialized"
-    name:
-      en: "Specialized"
-      zh: "专业领域"
-    description:
-      en: "Domain-specific skill repositories for specialized use cases"
-      zh: "针对特定领域的专业技能仓库"
-    repositories:
-      - url: "https://github.com/simonw/llm-skills"
-        name: "llm-skills"
-        description:
-          en: "Skills for LLM integration and tooling"
-          zh: "LLM 集成和工具相关技能"
-        tags: ["llm", "integration", "tooling"]
-        featured: false
         scan_subdirs: true

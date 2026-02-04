@@ -46,7 +46,11 @@
       "Bash(npx eslint:*)",
       "Bash(git commit:*)",
       "Bash(git stash:*)",
-      "Bash(npm run build)"
+      "Bash(npm run build)",
+      "Bash(dir:*)",
+      "Bash(node -e \"\nconst fs = require\\(''fs''\\);\n\n// 读取数据\nconst data = JSON.parse\\(fs.readFileSync\\(''public/data/marketplace.json'', ''utf8''\\)\\);\n\n// 过滤 stars >= 1000\nconst filtered = data.filter\\(skill => \\(skill.stars || 0\\) >= 1000\\);\n\n// 写入新文件\nfs.writeFileSync\\(''public/data/marketplace.json'', JSON.stringify\\(filtered, null, 2\\), ''utf8''\\);\n\n// 验证文件大小\nconst stats = fs.statSync\\(''public/data/marketplace.json''\\);\nconsole.log\\(''=== 清理完成 ===''\\);\nconsole.log\\(''保留 Skills 数量:'', filtered.length\\);\nconsole.log\\(''新文件大小:'', \\(stats.size / 1024 / 1024\\).toFixed\\(2\\), ''MB''\\);\n\")",
+      "Bash(ls:*)",
+      "Bash(unzip:*)"
     ]
   }
 }
