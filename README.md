@@ -1,8 +1,15 @@
 # Skill Master
 
-[English](./README_en.md)
-
 一个用于管理 Claude Code Skills 的桌面应用程序，支持系统级和项目级 Skill 的浏览、安装、导入和安全扫描。
+
+## 📚 文档
+
+- **[项目路线图](./docs/TASK-ROADMAP.md)** - 项目总体路线图和历史记录
+- **[安全体系](./docs/topics/security.md)** - 安全扫描和 TrustShield 评分系统
+- **[UI/UX 设计](./docs/topics/ui-ux.md)** - 设计系统和组件库
+- **[分享功能](./docs/topics/sharing-features.md)** - Skill 分享完整指南
+- **[开发规范](./CLAUDE.md)** - 开发规范和 API 文档
+- **[文档中心](./docs/README.md)** - 完整文档索引
 
 ## 快速开始
 
