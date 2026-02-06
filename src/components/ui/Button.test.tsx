@@ -132,4 +132,93 @@ describe('Button', () => {
         render(<Button />);
         expect(screen.getByRole('button')).toBeInTheDocument();
     });
+
+    // ========================================
+    // Design System v2.0 增强功能测试
+    // ========================================
+    describe('Design System v2.0 Enhancements', () => {
+        it('应该应用渐变效果到 primary 按钮', () => {
+            render(<Button variant="primary">Primary Button</Button>);
+            const button = screen.getByRole('button');
+            expect(button.className).toContain('btn-primary-gradient');
+            expect(button.className).toContain('btn-enhanced');
+        });
+
+        it('应该应用光效动画类', () => {
+            render(<Button variant="primary">Shine Effect</Button>);
+            const button = screen.getByRole('button');
+            expect(button.className).toContain('btn-shine');
+        });
+
+        it('应该应用毛玻璃效果到 ghost 按钮', () => {
+            render(<Button variant="ghost">Ghost Button</Button>);
+            const button = screen.getByRole('button');
+            expect(button.className).toContain('glass-effect');
+        });
+
+        it('应该应用渐变边框到 outline 按钮', () => {
+            render(<Button variant="outline">Outline Button</Button>);
+            const button = screen.getByRole('button');
+            expect(button.className).toContain('border-gradient');
+        });
+
+        it('应该应用错误渐变到 error 按钮', () => {
+            render(<Button variant="error">Error Button</Button>);
+            const button = screen.getByRole('button');
+            expect(button.className).toContain('btn-enhanced');
+            expect(button.className).toContain('from-red-500');
+            expect(button.className).toContain('to-red-600');
+        });
+
+        it('应该应用增强阴影类', () => {
+            render(<Button variant="primary" className="shadow-lg">Enhanced Shadow</Button>);
+            const button = screen.getByRole('button');
+            expect(button.className).toContain('shadow-lg');
+        });
+
+        it('应该支持所有 v2.0 动画过渡', () => {
+            render(<Button variant="primary">Animated</Button>);
+            const button = screen.getByRole('button');
+            expect(button.className).toContain('transition-all');
+            expect(button.className).toContain('duration-normal');
+        });
+
+        it('应该保持向后兼容性 - 次要按钮样式', () => {
+            render(<Button variant="secondary">Secondary</Button>);
+            const button = screen.getByRole('button');
+            expect(button.className).toContain('btn-neutral');
+            expect(button.className).toContain('transition-all');
+        });
+
+        it('应该保持向后兼容性 - 链接按钮样式', () => {
+            render(<Button variant="link">Link</Button>);
+            const button = screen.getByRole('button');
+            expect(button.className).toContain('btn-link');
+            expect(button.className).toContain('duration-fast');
+        });
+
+        it('应该支持自定义类名与 v2.0 样式合并', () => {
+            render(<Button variant="primary" className="custom-class">Custom</Button>);
+            const button = screen.getByRole('button');
+            expect(button.className).toContain('custom-class');
+            expect(button.className).toContain('btn-primary-gradient');
+            expect(button.className).toContain('btn-enhanced');
+        });
+
+        it('应该在禁用状态下保持 v2.0 样式', () => {
+            render(<Button variant="primary" disabled>Disabled Primary</Button>);
+            const button = screen.getByRole('button');
+            expect(button).toBeDisabled();
+            expect(button.className).toContain('btn-primary-gradient');
+            expect(button.className).toContain('disabled:opacity-70');
+        });
+
+        it('应该在加载状态下保持 v2.0 样式', () => {
+            render(<Button variant="primary" isLoading>Loading Primary</Button>);
+            const button = screen.getByRole('button');
+            expect(button).toBeDisabled();
+            expect(button.className).toContain('btn-primary-gradient');
+            expect(button.className).toContain('btn-enhanced');
+        });
+    });
 });

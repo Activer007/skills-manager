@@ -138,6 +138,20 @@
   transition: all var(--duration-normal) var(--ease-out);
 }
 
+/* 按钮焦点指示器 - 无障碍性 */
+.btn-enhanced:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 卡片焦点指示器 - 无障碍性 */
+.card-enhanced:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 输入框焦点指示器已在 Input.tsx 中处理 */
+
 /* 按钮渐变背景 */
 .btn-primary-gradient {
   background: var(--gradient-primary);
@@ -316,6 +330,14 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  /* Fallback for non-webkit browsers */
+  color: var(--color-primary);
+}
+
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .text-gradient-primary {
+    color: transparent;
+  }
 }
 
 /* 边框渐变 */
