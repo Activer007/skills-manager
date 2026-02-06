@@ -28,15 +28,15 @@ const mapMarketplaceDto = (dto: MarketplaceSkillDTO): MarketplaceSkill => ({
   author: dto.author || 'Unknown',
   authorAvatar: '',
   description: dto.description || '',
-  githubUrl: dto.github_url || '',
+  githubUrl: dto.githubUrl || '', // Corrected property access
   stars: dto.stars,
   forks: dto.forks,
-  updatedAt: dto.updated_at,
+  updatedAt: dto.updatedAt, // Corrected property access
   hasMarketplace: false,
   path: dto.skillPath || 'SKILL.md',
   branch: 'main',
   tags: dto.tags,
-  securityScore: dto.security_score,
+  securityScore: dto.securityScore, // Corrected property access
   compatibility: dto.compatibility,
   repositoryId: dto.repositoryId,
   repositoryName: dto.repositoryName,
