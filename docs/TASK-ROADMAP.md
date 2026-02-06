@@ -135,7 +135,11 @@
 - `calculate_skill_checksum` - 计算 SHA-256 校验和
 - `export_skill_package` - 导出 .zip 包
 - `import_skill_package` - 导入 .zip 包
-- `parse_share_image_qr` - 解析 QR 码
+- `export_collection_package` - 导出集合包（新增）
+- `generate_share_link` - 生成分享链接
+- `resolve_share_link` - 解析分享链接
+
+**QR 码识别**: 前端使用 `jsQR` 库直接处理，无需后端命令
 
 **可选增强**（未来版本）:
 - ⚪ **P5-1**: UI 升级（可选）
@@ -197,7 +201,7 @@ Phase 6 (UI/UX 升级)   ██████████████████�
 
 **Share-First 生态完整实现**:
 - 🚀 **统一分享入口 (ShareSheet)**: 整合所有分享功能为单一入口
-  - 支持 4 种分享方式：链接、文本、图片、包导出
+  - 支持 6 种分享方式：链接、文本、图片、包导出、嵌入代码、发布到市场
   - `useShare` Hook 统一管理分享逻辑
   - 优化用户体验，减少点击步骤
 - 🔗 **分享链接系统**: 完整的生成、解析、预览流程
