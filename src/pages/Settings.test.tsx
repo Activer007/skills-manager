@@ -4,13 +4,24 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 // Mock dependencies
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        settings: 'Settings',
+        projectPaths: 'Project Paths',
+        noData: 'noData',
+        saveError: 'Save failed',
+        theme: 'Theme',
+        light: 'Light',
+        dark: 'Dark',
+      };
+      return translations[key] || key;
+    },
     i18n: { language: 'en' },
   }),
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(),
+  invoke: vi.fn().mockResolvedValue({ scan_mode: 'standard' }),
 }));
 
 vi.mock('../store/useSkillStore', () => ({
@@ -44,13 +55,14 @@ vi.mock('../components/ui/Button', () => ({
 }));
 
 vi.mock('../components/ui/Input', () => ({
-  Input: ({ placeholder, value, onChange, onKeyDown }: any) => (
+  Input: ({ placeholder, value, onChange, onKeyDown, ...props }: any) => (
     <input
       type="text"
       placeholder={placeholder}
       value={value}
       onChange={onChange}
       onKeyDown={onKeyDown}
+      data-testid={props['data-testid']}
     />
   ),
 }));
@@ -84,7 +96,7 @@ describe('Settings', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<Settings />);
-      expect(screen.getByText('settings')).toBeInTheDocument();
+      expect(screen.getByText('Settings')).toBeInTheDocument();
     });
 
     it('should render page title', () => {
@@ -95,12 +107,12 @@ describe('Settings', () => {
 
     it('should render installation settings section', () => {
       render(<Settings />);
-      expect(screen.getByText(/Installation Settings/)).toBeInTheDocument();
+      expect(screen.getByText(/Skill Installation Settings/)).toBeInTheDocument();
     });
 
     it('should render project paths section', () => {
       render(<Settings />);
-      expect(screen.getByText(/projectPaths/)).toBeInTheDocument();
+      expect(screen.getByText(/Project Paths/)).toBeInTheDocument();
     });
 
     it('should render cache stats card', () => {
@@ -156,8 +168,7 @@ describe('Settings', () => {
 
     it('should render add path input', () => {
       render(<Settings />);
-      const inputs = screen.getAllByRole('textbox');
-      expect(inputs.length).toBeGreaterThan(0);
+      expect(screen.getByTestId('path-input')).toBeInTheDocument();
     });
 
     it('should render add button', () => {

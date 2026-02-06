@@ -34,6 +34,7 @@ export const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input
             type="text"
+            data-testid="search-input"
             placeholder={t('searchSkills')}
             className="w-full pl-10 pr-4 py-2 rounded-lg bg-slate-100 dark:bg-base-200 border-none focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-slate-400 text-slate-900 dark:text-slate-100"
             value={searchTerm}
