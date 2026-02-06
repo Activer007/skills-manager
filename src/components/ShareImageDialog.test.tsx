@@ -141,11 +141,19 @@ describe('ShareImageDialog', () => {
         expect(screen.queryByText(/Generating/)).not.toBeInTheDocument();
       });
 
+      // Clear previous calls
+      (generateShareCard as any).mockClear();
+
       const buttons = screen.getAllByText('Minimal');
       await userEvent.click(buttons[0]);
 
-      // Should not throw error
-      expect(generateShareCard).toHaveBeenCalled();
+      // Wait for useEffect to run with new theme (includes 100ms delay + async generation)
+      await waitFor(
+        () => {
+          expect(generateShareCard).toHaveBeenCalledWith(mockSkill, 'minimal');
+        },
+        { timeout: 500 }
+      );
     });
 
     it('should switch to dark theme when clicked', async () => {
@@ -155,12 +163,19 @@ describe('ShareImageDialog', () => {
         expect(screen.queryByText(/Generating/)).not.toBeInTheDocument();
       });
 
-      const buttons = screen.getAllByText('Dark');
+      // Clear previous calls
+      (generateShareCard as any).mockClear();
 
-      // Should be able to click without error
-      await expect(async () => {
-        await userEvent.click(buttons[0]);
-      }).not.toThrow();
+      const buttons = screen.getAllByText('Dark');
+      await userEvent.click(buttons[0]);
+
+      // Wait for useEffect to run with new theme (includes 100ms delay + async generation)
+      await waitFor(
+        () => {
+          expect(generateShareCard).toHaveBeenCalledWith(mockSkill, 'dark');
+        },
+        { timeout: 500 }
+      );
     });
   });
 
