@@ -29,8 +29,13 @@ export const ShareTextDialog: React.FC<ShareTextDialogProps> = ({
   const [copied, setCopied] = useState(false);
   const [isModified, setIsModified] = useState<boolean | null>(null);
   const shareLink = resolveSkillLink(skill);
-  const normalizedStatus =
-    skill.status === 'unsafe' ? 'risk' : (skill.status ?? 'unknown');
+
+  // 优先使用 securityLevel（如果存在）
+  const normalizedStatus = skill.securityLevel
+    ? skill.securityLevel
+    : skill.status === 'unsafe'
+      ? 'risk'
+      : (skill.status ?? 'unknown');
 
   useEffect(() => {
     let isMounted = true;

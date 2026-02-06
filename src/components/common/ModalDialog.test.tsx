@@ -8,6 +8,7 @@ vi.mock('lucide-react', () => ({
   CheckCircle: ({ className }: { className: string }) => <div data-testid="check-icon" className={className} />,
   XCircle: ({ className }: { className: string }) => <div data-testid="x-circle-icon" className={className} />,
   Info: ({ className }: { className: string }) => <div data-testid="info-icon" className={className} />,
+  Loader2: ({ className }: { className: string }) => <div data-testid="loader-icon" className={className} />,
 }));
 
 // Mock react-dom createPortal

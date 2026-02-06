@@ -107,9 +107,9 @@ describe('ShareSheet', () => {
     );
 
     expect(screen.getByTestId('share-option-link')).toBeInTheDocument();
-    expect(screen.getByTestId('share-option-text')).toBeInTheDocument();
-    expect(screen.getByTestId('share-option-image')).toBeInTheDocument();
-    expect(screen.getByTestId('share-option-package')).toBeInTheDocument();
+    expect(screen.getByTestId('share-text-tab')).toBeInTheDocument();
+    expect(screen.getByTestId('share-image-tab')).toBeInTheDocument();
+    expect(screen.getByTestId('share-package-tab')).toBeInTheDocument();
   });
 
   it('switches to text panel when text option is clicked', async () => {
@@ -121,7 +121,7 @@ describe('ShareSheet', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('share-option-text'));
+    fireEvent.click(screen.getByTestId('share-text-tab'));
 
     await waitFor(() => {
       expect(screen.getByTestId('share-text-panel')).toBeInTheDocument();
@@ -137,7 +137,7 @@ describe('ShareSheet', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('share-option-image'));
+    fireEvent.click(screen.getByTestId('share-image-tab'));
 
     await waitFor(() => {
       expect(screen.getByTestId('share-image-panel')).toBeInTheDocument();
@@ -153,7 +153,7 @@ describe('ShareSheet', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('share-option-package'));
+    fireEvent.click(screen.getByTestId('share-package-tab'));
 
     await waitFor(() => {
       expect(screen.getByTestId('share-package-panel')).toBeInTheDocument();
@@ -170,17 +170,11 @@ describe('ShareSheet', () => {
       />
     );
 
-    // Find and click the close button (usually in the modal header)
-    const closeButtons = screen.getAllByRole('button');
-    const closeButton = closeButtons.find(btn =>
-      btn.getAttribute('aria-label')?.includes('close') ||
-      btn.textContent?.toLowerCase().includes('close')
-    );
+    // Click the close button using its testid
+    const closeButton = screen.getByTestId('close-dialog');
+    fireEvent.click(closeButton);
 
-    if (closeButton) {
-      fireEvent.click(closeButton);
-      expect(onClose).toHaveBeenCalled();
-    }
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('displays security status badge', () => {

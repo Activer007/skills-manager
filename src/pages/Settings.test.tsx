@@ -1,6 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
+// Mock lucide-react icons
+vi.mock('lucide-react', () => ({
+  Plus: ({ className }: { className?: string }) => <svg data-testid="plus-icon" className={className} />,
+  X: ({ className }: { className?: string }) => <svg data-testid="x-icon" className={className} />,
+  FolderOpen: ({ className }: { className?: string }) => <svg data-testid="folder-icon" className={className} />,
+  ExternalLink: ({ className }: { className?: string }) => <svg data-testid="external-icon" className={className} />,
+  Package: ({ className }: { className?: string }) => <svg data-testid="package-icon" className={className} />,
+}));
+
 // Mock dependencies
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -21,13 +30,21 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn().mockResolvedValue({ scan_mode: 'standard' }),
+  invoke: vi.fn((cmd: string) => {
+    if (cmd === 'get_security_config') {
+      return Promise.resolve({ scan_mode: 'standard' });
+    }
+    if (cmd === 'get_cache_stats') {
+      return Promise.resolve({ total_size: 0, file_count: 0, skills_count: 0 });
+    }
+    return Promise.resolve(undefined);
+  }),
 }));
 
 vi.mock('../store/useSkillStore', () => ({
   useSkillStore: () => ({
     projectPaths: [],
-    fetchProjectPaths: vi.fn(),
+    fetchProjectPaths: vi.fn().mockResolvedValue(undefined),
     saveProjectPaths: vi.fn().mockResolvedValue(undefined),
     defaultInstallLocation: 'system',
     setDefaultInstallLocation: vi.fn(),

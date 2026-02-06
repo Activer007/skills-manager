@@ -54,6 +54,9 @@ vi.mock('lucide-react', async () => {
     CheckCircle2: () => <span>Check</span>,
     XCircle: () => <span>X</span>,
     FolderOpen: () => <span>Folder</span>,
+    AlertTriangle: () => <span>Alert</span>,
+    CheckCircle: () => <span>Check</span>,
+    Info: () => <span>Info</span>,
   };
 });
 

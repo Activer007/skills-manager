@@ -77,8 +77,25 @@ const getSecurityLabel = (level: string, locale: string): string => {
 };
 
 const normalizeShareStatus = (
-  status?: string
+  status?: string,
+  securityLevel?: string
 ): 'safe' | 'risk' | 'blocked' | 'unknown' => {
+  // 优先使用 securityLevel（如果存在）
+  if (securityLevel) {
+    switch (securityLevel) {
+      case 'safe':
+        return 'safe';
+      case 'risk':
+        return 'risk';
+      case 'blocked':
+        return 'blocked';
+      case 'unknown':
+        return 'unknown';
+      default:
+        break;
+    }
+  }
+
   if (!status) return 'unknown';
 
   switch (status) {
@@ -114,7 +131,7 @@ export const generateShareText = (
   locale: string = 'zh'
 ): string => {
   const sourceUrl = resolveSkillLink(skill) || '本地创建';
-  const status = normalizeShareStatus(skill.status);
+  const status = normalizeShareStatus(skill.status, skill.securityLevel);
   const qualityScore = getQualityScore(skill);
 
   const securityEmoji = SECURITY_EMOJIS[status] || '❓';
@@ -152,7 +169,7 @@ const generateCompactText = (
   locale: string = 'zh'
 ): string => {
   const sourceUrl = resolveSkillLink(skill) || '本地创建';
-  const status = normalizeShareStatus(skill.status);
+  const status = normalizeShareStatus(skill.status, skill.securityLevel);
   const qualityScore = getQualityScore(skill);
 
   const securityEmoji = SECURITY_EMOJIS[status] || '❓';
@@ -177,7 +194,7 @@ const generateMarkdownText = (
   locale: string = 'zh'
 ): string => {
   const sourceUrl = resolveSkillLink(skill) || '本地创建';
-  const status = normalizeShareStatus(skill.status);
+  const status = normalizeShareStatus(skill.status, skill.securityLevel);
   const qualityScore = getQualityScore(skill);
 
   const securityLabel = getSecurityLabel(status, locale);
