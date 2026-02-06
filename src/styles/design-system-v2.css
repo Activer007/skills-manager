@@ -1,0 +1,393 @@
+/**
+ * ========================================
+ * Skill Master Design System v2.0
+ * 现代/科技感设计系统
+ * ========================================
+ *
+ * 基于现有设计系统，增强现代感和科技感
+ * 保持与现有风格的兼容性
+ */
+
+/* ========================================
+ * 字体系统 - 特色字体选择
+ * ======================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* 主字体：Plus Jakarta Sans - 现代几何感，科技向 */
+  --font-family-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans',
+    'Droid Sans', 'Helvetica Neue', sans-serif;
+
+  /* 代码字体：JetBrains Mono - 开发者友好 */
+  --font-family-mono: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Cascadia Code',
+    'Roboto Mono', 'Courier New', monospace;
+}
+
+/* ========================================
+ * 渐变系统 - 微妙的科技感
+ * ======================================== */
+
+:root {
+  /* 主色渐变 - 蓝色系 */
+  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --gradient-primary-subtle: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%);
+
+  /* 成功渐变 - 绿色系 */
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+  /* 警告渐变 - 橙色系 */
+  --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+
+  /* 错误渐变 - 红色系 */
+  --gradient-error: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+
+  /* 信息渐变 - 天蓝系 */
+  --gradient-info: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+
+  /* 科技感背景渐变 */
+  --gradient-tech-light: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  --gradient-tech-dark: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+
+  /* 卡片渐变叠加 */
+  --gradient-card-overlay: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.02) 100%);
+}
+
+/* ========================================
+ * 增强的阴影系统 - 更细腻的层次
+ * ======================================== */
+
+:root {
+  /* 软阴影 - 用于卡片、对话框 */
+  --shadow-soft-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.05),
+                    0 1px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-soft-md: 0 4px 16px -4px rgba(0, 0, 0, 0.08),
+                    0 2px 8px -2px rgba(0, 0, 0, 0.04);
+  --shadow-soft-lg: 0 8px 24px -6px rgba(0, 0, 0, 0.12),
+                    0 4px 12px -3px rgba(0, 0, 0, 0.06);
+
+  /* 彩色发光阴影 - 用于强调元素 */
+  --shadow-glow-primary: 0 0 20px rgba(59, 130, 246, 0.15),
+                         0 4px 12px rgba(59, 130, 246, 0.1);
+  --shadow-glow-success: 0 0 20px rgba(16, 185, 129, 0.15),
+                         0 4px 12px rgba(16, 185, 129, 0.1);
+  --shadow-glow-error: 0 0 20px rgba(239, 68, 68, 0.15),
+                       0 4px 12px rgba(239, 68, 68, 0.1);
+
+  /* 内阴影 - 用于输入框聚焦 */
+  --shadow-inner-focus: inset 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 暗色模式下的阴影调整 */
+.dark {
+  --shadow-soft-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.3),
+                    0 1px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-soft-md: 0 4px 16px -4px rgba(0, 0, 0, 0.4),
+                    0 2px 8px -2px rgba(0, 0, 0, 0.3);
+  --shadow-soft-lg: 0 8px 24px -6px rgba(0, 0, 0, 0.5),
+                    0 4px 12px -3px rgba(0, 0, 0, 0.4);
+
+  --shadow-glow-primary: 0 0 30px rgba(59, 130, 246, 0.3),
+                         0 4px 16px rgba(59, 130, 246, 0.2);
+  --shadow-glow-success: 0 0 30px rgba(16, 185, 129, 0.3),
+                         0 4px 16px rgba(16, 185, 129, 0.2);
+  --shadow-glow-error: 0 0 30px rgba(239, 68, 68, 0.3),
+                       0 4px 16px rgba(239, 68, 68, 0.2);
+}
+
+/* ========================================
+ * 毛玻璃效果系统
+ * ======================================== */
+
+:root {
+  /* 背景模糊度 */
+  --backdrop-blur-sm: blur(8px);
+  --backdrop-blur-md: blur(12px);
+  --backdrop-blur-lg: blur(16px);
+
+  /* 毛玻璃背景 */
+  --backdrop-bg-light: rgba(255, 255, 255, 0.7);
+  --backdrop-bg-dark: rgba(15, 23, 42, 0.7);
+
+  /* 毛玻璃边框 */
+  --backdrop-border-light: rgba(255, 255, 255, 0.18);
+  --backdrop-border-dark: rgba(255, 255, 255, 0.08);
+}
+
+.glass-effect {
+  background: var(--backdrop-bg-light);
+  backdrop-filter: var(--backdrop-blur-md);
+  -webkit-backdrop-filter: var(--backdrop-blur-md);
+  border: 1px solid var(--backdrop-border-light);
+}
+
+.dark .glass-effect {
+  background: var(--backdrop-bg-dark);
+  border: 1px solid var(--backdrop-border-dark);
+}
+
+/* ========================================
+ * 按钮增强系统
+ * ======================================== */
+
+/* 按钮基础样式增强 */
+.btn-enhanced {
+  position: relative;
+  overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+/* 按钮焦点指示器 - 无障碍性 */
+.btn-enhanced:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 卡片焦点指示器 - 无障碍性 */
+.card-enhanced:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 输入框焦点指示器已在 Input.tsx 中处理 */
+
+/* 按钮渐变背景 */
+.btn-primary-gradient {
+  background: var(--gradient-primary);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+.btn-primary-gradient:hover {
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35),
+              0 0 24px rgba(59, 130, 246, 0.2);
+  transform: translateY(-1px);
+}
+
+.btn-primary-gradient:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+/* 按钮光效动画 */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.btn-shine:hover::before {
+  left: 100%;
+}
+
+/* ========================================
+ * 卡片增强系统
+ * ======================================== */
+
+/* 卡片基础增强 */
+.card-enhanced {
+  position: relative;
+  overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+/* 卡片悬停效果 */
+.card-enhanced:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft-lg);
+}
+
+/* 卡片边框高光 */
+.card-enhanced::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.3),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity var(--duration-normal);
+}
+
+.card-enhanced:hover::before {
+  opacity: 1;
+}
+
+/* 科技感卡片背景 */
+.card-tech-gradient {
+  background: var(--gradient-tech-light);
+}
+
+.dark .card-tech-gradient {
+  background: var(--gradient-tech-dark);
+}
+
+/* ========================================
+ * 输入框增强系统
+ * ======================================== */
+
+.input-enhanced {
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.input-enhanced:focus {
+  box-shadow: var(--shadow-inner-focus),
+              0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--color-primary);
+}
+
+/* ========================================
+ * Badge 增强系统
+ * ======================================== */
+
+/* 软阴影 Badge */
+.badge-soft {
+  box-shadow: var(--shadow-soft-sm);
+}
+
+/* 渐变 Badge */
+.badge-gradient {
+  background: var(--gradient-primary);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+}
+
+/* ========================================
+ * 动画增强
+ * ======================================== */
+
+/* 脉冲动画 - 用于强调 */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 加载动画 - 更流畅 */
+@keyframes spin-smooth {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-smooth {
+  animation: spin-smooth 1s linear infinite;
+}
+
+/* 淡入上滑动画 */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s var(--ease-out);
+}
+
+/* ========================================
+ * 工具类
+ * ======================================== */
+
+/* 文字渐变 */
+.text-gradient-primary {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  /* Fallback for non-webkit browsers */
+  color: var(--color-primary);
+}
+
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .text-gradient-primary {
+    color: transparent;
+  }
+}
+
+/* 边框渐变 */
+.border-gradient {
+  position: relative;
+  background: white;
+  border-radius: var(--radius-lg);
+}
+
+.border-gradient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--gradient-primary);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.5;
+  transition: opacity var(--duration-normal);
+}
+
+.border-gradient:hover::before {
+  opacity: 1;
+}
+
+/* 发光效果 */
+.glow-primary {
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.glow-success {
+  box-shadow: var(--shadow-glow-success);
+}
+
+.glow-error {
+  box-shadow: var(--shadow-glow-error);
+}
+
+/* ========================================
+ * 响应式增强
+ * ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

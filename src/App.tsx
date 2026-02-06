@@ -16,6 +16,7 @@ const TaskCenter = lazy(() => import('./pages/TaskCenter'));
 const SharePreview = lazy(() => import('./pages/SharePreview'));
 const CreatorProfile = lazy(() => import('./pages/CreatorProfile'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const DesignShowcase = lazy(() => import('./pages/DesignShowcase'));
 
 const router = createBrowserRouter([
   {
@@ -111,6 +112,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <Dashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'design-showcase',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <DesignShowcase />
           </Suspense>
         ),
       },

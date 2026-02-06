@@ -51,6 +51,19 @@ export default {
                 'green': '0 1px 3px 0 rgb(16 185 129 / 0.3)',
                 'red': '0 1px 3px 0 rgb(239 68 68 / 0.3)',
                 'amber': '0 1px 3px 0 rgb(245 158 11 / 0.3)',
+                // ========================================
+                // Design System v2.0 - 增强阴影系统
+                // ========================================
+                // 软阴影系统
+                'soft-sm': 'var(--shadow-soft-sm)',
+                'soft-md': 'var(--shadow-soft-md)',
+                'soft-lg': 'var(--shadow-soft-lg)',
+                // 发光阴影系统
+                'glow-primary': 'var(--shadow-glow-primary)',
+                'glow-success': 'var(--shadow-glow-success)',
+                'glow-error': 'var(--shadow-glow-error)',
+                // 内阴影（聚焦效果）
+                'inner-focus': 'var(--shadow-inner-focus)',
             },
 
             // ========================================

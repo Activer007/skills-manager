@@ -90,21 +90,21 @@ export const Modal = ({
       {...dialogProps}
     >
       <div className={cn(
-        // 统一圆角：rounded-lg (12px)
-        // 统一阴影：shadow-2xl
-        // 动画效果
-        "modal-box bg-white dark:bg-base-100 p-0 overflow-hidden relative shadow-2xl rounded-lg border border-gray-100 dark:border-base-300",
+        // 增强圆角：rounded-xl (16px) - 更现代
+        // 增强阴影：shadow-soft-lg + 发光效果
+        // 毛玻璃背景效果
+        "modal-box bg-white/95 dark:bg-base-100/95 p-0 overflow-hidden relative shadow-soft-lg glow-primary rounded-xl border border-gray-200 dark:border-base-300 backdrop-blur-md",
         sizeClasses[size],
         animationClasses,
         className
       )}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-base-200 bg-white dark:bg-base-100">
-          <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 leading-none">{title}</h3>
+        {/* Header - 增加渐变边框效果 */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-base-200 bg-gradient-to-r from-white to-gray-50 dark:from-base-100 dark:to-base-200/30">
+          <h3 className="font-bold text-lg text-gradient-primary">{title}</h3>
           <Button
             variant="ghost"
             size="sm"
-            className="btn-circle btn-sm hover:bg-slate-100 dark:hover:bg-base-200 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            className="btn-circle btn-sm hover:bg-slate-100 dark:hover:bg-base-200 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all duration-fast"
             onClick={onClose}
             data-testid="close-dialog"
             aria-label="Close"
@@ -118,14 +118,14 @@ export const Modal = ({
           {children}
         </div>
 
-        {/* Footer */}
+        {/* Footer - 毛玻璃效果 */}
         {footer && (
-          <div className="px-6 py-4 bg-gray-50 dark:bg-base-200/50 flex justify-end gap-3 border-t border-gray-100 dark:border-base-200">
+          <div className="px-6 py-4 bg-gray-50/80 dark:bg-base-200/50 backdrop-blur-sm flex justify-end gap-3 border-t border-gray-100 dark:border-base-200">
             {footer}
           </div>
         )}
       </div>
-      <form method="dialog" className="modal-backdrop bg-black/40 backdrop-blur-sm">
+      <form method="dialog" className="modal-backdrop bg-black/50 backdrop-blur-sm transition-opacity duration-normal">
         <button>close</button>
       </form>
     </dialog>,

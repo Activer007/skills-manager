@@ -4,6 +4,11 @@
  * ======================================== */
 @import './styles/design-tokens.css';
 
+/* ========================================
+ * Design System v2.0 - 现代/科技感增强
+ * ======================================== */
+@import './styles/design-system-v2.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
