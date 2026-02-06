@@ -1,7 +1,8 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ShareCollectionModal } from './ShareCollectionModal';
 import * as useCollectionsHook from '../hooks/useCollections';
+import userEvent from '@testing-library/user-event';
 
 // Mock the hooks
 vi.mock('../hooks/useCollections');
@@ -70,6 +71,7 @@ describe('ShareCollectionModal', () => {
       fileName: 'test.zip',
     });
 
+    const user = userEvent.setup();
     render(
       <ShareCollectionModal
         isOpen={true}
@@ -78,7 +80,7 @@ describe('ShareCollectionModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Start Export'));
+    await user.click(screen.getByText('Start Export'));
 
     await waitFor(() => {
       expect(mockExportMutation.mutateAsync).toHaveBeenCalledWith({
@@ -94,6 +96,7 @@ describe('ShareCollectionModal', () => {
       fileName: 'collection.skillcollection.zip',
     });
 
+    const user = userEvent.setup();
     render(
       <ShareCollectionModal
         isOpen={true}
@@ -102,7 +105,7 @@ describe('ShareCollectionModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Start Export'));
+    await user.click(screen.getByText('Start Export'));
 
     await waitFor(() => {
       expect(screen.getByText('Export Successful!')).toBeInTheDocument();
@@ -117,6 +120,7 @@ describe('ShareCollectionModal', () => {
       error: 'Disk full',
     });
 
+    const user = userEvent.setup();
     render(
       <ShareCollectionModal
         isOpen={true}
@@ -125,7 +129,7 @@ describe('ShareCollectionModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Start Export'));
+    await user.click(screen.getByText('Start Export'));
 
     await waitFor(() => {
       expect(screen.getByText('Export Failed')).toBeInTheDocument();

@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { Button } from './Button';
 import { cn } from '../../utils/cn';
 
-interface ModalProps {
+interface ModalProps extends React.ComponentPropsWithoutRef<'dialog'> {
   isOpen: boolean;
   onClose: () => void;
   title: string;
@@ -24,6 +24,7 @@ export const Modal = ({
   className,
   size = 'lg',
   animation = true,
+  ...dialogProps
 }: ModalProps) => {
   const modalRef = useRef<HTMLDialogElement>(null);
 
@@ -86,6 +87,7 @@ export const Modal = ({
         "modal modal-bottom sm:modal-middle",
         isOpen && "modal-open"
       )}
+      {...dialogProps}
     >
       <div className={cn(
         // 统一圆角：rounded-lg (12px)

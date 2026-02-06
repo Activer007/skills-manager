@@ -8,6 +8,7 @@ vi.mock('lucide-react', () => ({
   CheckCircle: ({ className }: { className: string }) => <div data-testid="check-icon" className={className} />,
   XCircle: ({ className }: { className: string }) => <div data-testid="x-circle-icon" className={className} />,
   Info: ({ className }: { className: string }) => <div data-testid="info-icon" className={className} />,
+  Loader2: ({ className }: { className: string }) => <div data-testid="loader-icon" className={className} />,
 }));
 
 // Mock react-dom createPortal
@@ -112,8 +113,8 @@ describe('ModalDialog', () => {
   it('shows loading spinner when isLoading is true', () => {
     const { container } = render(<ModalDialog {...defaultProps} onConfirm={vi.fn()} isLoading={true} />);
 
-    // When loading, button shows spinner instead of text
-    expect(container.querySelector('.loading-spinner')).toBeInTheDocument();
+    // When loading, button shows spinner with animate-spin class
+    expect(container.querySelector('.animate-spin')).toBeInTheDocument();
   });
 
   it('uses custom confirm and cancel text', () => {
@@ -159,10 +160,10 @@ describe('ModalDialog', () => {
     const onConfirm = vi.fn();
     render(<ModalDialog {...defaultProps} onConfirm={onConfirm} isLoading={true} />);
 
-    // When loading, the button is disabled and shows a spinner
-    const button = screen.getByRole('button');
-    expect(button).toBeDisabled();
-    expect(button.querySelector('.loading-spinner')).toBeInTheDocument();
+    // When loading, the confirm button is disabled and shows a spinner
+    const confirmButton = screen.getByTestId('modal-confirm-button');
+    expect(confirmButton).toBeDisabled();
+    expect(confirmButton.querySelector('.animate-spin')).toBeInTheDocument();
   });
 
   it('disables cancel button when loading', () => {
@@ -176,15 +177,15 @@ describe('ModalDialog', () => {
   it('applies destructive styling to confirm button', () => {
     render(<ModalDialog {...defaultProps} type="confirm" isDestructive={true} onConfirm={vi.fn()} />);
 
-    const confirmButton = screen.getByRole('button', { name: /confirm/i });
-    expect(confirmButton).toHaveClass('bg-red-500');
+    const confirmButton = screen.getByTestId('modal-confirm-button');
+    expect(confirmButton).toHaveClass('btn-error');
   });
 
   it('applies normal styling to confirm button when not destructive', () => {
     render(<ModalDialog {...defaultProps} type="confirm" isDestructive={false} onConfirm={vi.fn()} />);
 
-    const confirmButton = screen.getByRole('button', { name: /confirm/i });
-    expect(confirmButton).toHaveClass('bg-blue-500');
+    const confirmButton = screen.getByTestId('modal-confirm-button');
+    expect(confirmButton).toHaveClass('btn-primary');
   });
 
   it('only shows confirm button when onCancel is not provided for confirm type', () => {

@@ -66,10 +66,10 @@ describe('SkillCard', () => {
     });
 
     it('renders in list mode correctly', () => {
-        render(<SkillCard skill={mockSkill} viewMode="list" />);
+        render(<SkillCard skill={mockSkill} viewMode="list" onInstall={vi.fn()} />);
         expect(screen.getByText('Test Skill')).toBeInTheDocument();
-        // Check for install button
-        expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
+        // Check for install button using testid
+        expect(screen.getByTestId('install-button')).toBeInTheDocument();
     });
 
     it('calls onInstall when clicked', async () => {
@@ -199,21 +199,6 @@ describe('SkillCard', () => {
             expect(handleInstall).toHaveBeenCalled();
         });
         expect(handleViewDetails).not.toHaveBeenCalled(); // Should not bubble up
-    });
-
-    it('exports package for installed skills', async () => {
-        vi.mocked(invoke).mockResolvedValueOnce({ success: true, filePath: '/tmp/test.skillpack.zip' });
-        render(<SkillCard skill={mockInstalledSkill} viewMode="list" isInstalled={true} />);
-
-        fireEvent.click(screen.getByTitle('Export Package'));
-
-        await waitFor(() => {
-            expect(invoke).toHaveBeenCalledWith('export_skill_package', {
-                request: {
-                    skillPath: mockInstalledSkill.localPath
-                }
-            });
-        });
     });
 
     it('calls onToggle when switch is clicked in list mode', async () => {

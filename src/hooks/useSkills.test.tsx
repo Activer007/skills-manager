@@ -427,42 +427,61 @@ describe('useSkills Hooks', () => {
 
   describe('useMarketplaceSkills', () => {
     it('fetches marketplace data', async () => {
-      const mockMarketplaceData = [
+      const mockMarketplaceDTO = [
         {
+          id: '1',
           name: 'marketplace-skill',
-          githubUrl: 'https://github.com/test/marketplace-skill',
+          github_url: 'https://github.com/test/marketplace-skill',
           description: 'Test',
           author: 'tester',
-          version: '1.0.0',
           stars: 100,
-          installDate: Date.now(),
+          forks: 10,
+          updated_at: Date.now(),
+          tags: [],
+          skillPath: 'SKILL.md',
+          repositoryId: '1',
+          repositoryName: 'test/marketplace-skill',
+          sourceType: 'official' as const,
         },
       ];
 
-      vi.mocked(fetchMarketplaceData).mockResolvedValue(mockMarketplaceData);
+      vi.mocked(invoke).mockResolvedValue(mockMarketplaceDTO);
 
       const { result } = renderHook(() => useMarketplaceSkills(), { wrapper });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      expect(fetchMarketplaceData).toHaveBeenCalled();
-      expect(result.current.data).toEqual(mockMarketplaceData);
+      expect(invoke).toHaveBeenCalledWith('list_marketplace_skills', expect.any(Object));
+      expect(result.current.data).toHaveLength(1);
+      expect(result.current.data?.[0]).toMatchObject({
+        name: 'marketplace-skill',
+        githubUrl: 'https://github.com/test/marketplace-skill',
+        description: 'Test',
+        author: 'tester',
+        stars: 100,
+      });
     });
 
     it('caches marketplace data for 10 minutes', async () => {
-      const mockMarketplaceData = [
+      const mockMarketplaceDTO = [
         {
+          id: '1',
           name: 'marketplace-skill',
-          githubUrl: 'https://github.com/test/marketplace-skill',
+          github_url: 'https://github.com/test/marketplace-skill',
           description: 'Test',
           author: 'tester',
-          version: '1.0.0',
           stars: 100,
-          installDate: Date.now(),
+          forks: 10,
+          updated_at: Date.now(),
+          tags: [],
+          skillPath: 'SKILL.md',
+          repositoryId: '1',
+          repositoryName: 'test/marketplace-skill',
+          sourceType: 'official' as const,
         },
       ];
 
-      vi.mocked(fetchMarketplaceData).mockResolvedValue(mockMarketplaceData);
+      vi.mocked(invoke).mockResolvedValue(mockMarketplaceDTO);
 
       const { result, rerender } = renderHook(() => useMarketplaceSkills(), { wrapper });
 
@@ -471,7 +490,7 @@ describe('useSkills Hooks', () => {
       // Rerender should use cache
       rerender();
 
-      expect(fetchMarketplaceData).toHaveBeenCalledTimes(1);
+      expect(invoke).toHaveBeenCalledTimes(1);
     });
   });
 

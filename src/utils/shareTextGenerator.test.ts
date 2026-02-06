@@ -40,7 +40,7 @@ describe('shareTextGenerator', () => {
       expect(text).toContain('✅');
       expect(text).toContain('安全');
       expect(text).toContain('⭐ 质量评分: 85/100');
-      expect(text).toContain('来自 Skill Manager 分享');
+      expect(text).toContain('来自 Skill Master 分享');
     });
 
     it('should generate share text for en locale', () => {
@@ -48,7 +48,7 @@ describe('shareTextGenerator', () => {
 
       expect(text).toContain('Test Skill');
       expect(text).toContain('Safe');
-      expect(text).toContain('来自 Skill Manager 分享');
+      expect(text).toContain('来自 Skill Master 分享');
     });
 
     it('should handle skill without sourceUrl', () => {
