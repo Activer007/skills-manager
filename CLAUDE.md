@@ -135,13 +135,70 @@ cargo clippy              # Rust lint 检查
 - `calculate_skill_checksum` - 计算 Skill 目录的 SHA-256 校验和（用于检测修改）
 - `export_skill_package` - 将 Skill 打包为 `.zip` 文件（包含元数据和可选的依赖）
 - `import_skill_package` - 从 `.zip` 包文件导入 Skill（验证格式和安全性）
-- `parse_share_image_qr` - 解析分享图片中的 QR 码数据
+- `export_collection_package` - 导出收藏集合为 `.collection.zip`（新增）
 
 **v2.6.0 新增特性（分享链接系统）**:
 - `generate_share_link` - 生成分享链接（返回 share_id）
 - `resolve_share_link` - 解析分享链接（返回 ShareRecord）
 - `import_github_skill_with_progress` - 从 GitHub 导入 Skill（带进度跟踪）
 - `get_git_remote_url` - 获取本地仓库的远程 URL
+
+> **注意**：QR 码识别由前端使用 `jsQR` 库直接处理，无需后端命令。
+
+#### 仓库管理命令（src-tauri/src/commands/repository.rs）
+- `get_repositories` - 获取所有仓库列表
+- `get_repository` - 获取单个仓库详情
+- `add_repository` - 添加新仓库
+- `delete_repository` - 删除仓库
+- `toggle_repository_enabled` - 启用/禁用仓库
+- `get_featured_repositories` - 获取官方精选仓库
+- `refresh_featured_repositories` - 刷新精选仓库数据
+- `get_unscanned_repositories` - 获取未扫描的仓库列表
+- `get_repository_stats` - 获取仓库统计信息
+- `scan_repository_with_progress` - 扫描仓库（带进度）
+
+#### 市场管理命令（src-tauri/src/commands/marketplace.rs）
+- `search_marketplace_skills` - 搜索市场 Skills
+- `list_marketplace_skills` - 列出市场 Skills（分页）
+- `list_marketplace_skills_by_source` - 按来源列出 Skills
+- `get_marketplace_skill` - 获取单个市场 Skill
+- `upsert_marketplace_skill` - 创建或更新市场 Skill
+- `delete_marketplace_skill` - 删除市场 Skill
+- `get_marketplace_stats` - 获取市场统计信息
+- `clear_marketplace_skills` - 清空市场数据
+- `import_marketplace_from_json` - 从 JSON 导入市场数据
+
+#### 收藏管理命令（src-tauri/src/commands/collection.rs）
+- `get_collections` - 获取所有收藏列表
+- `get_collection` - 获取单个收藏详情
+- `create_collection` - 创建新收藏
+- `update_collection` - 更新收藏信息
+- `delete_collection` - 删除收藏
+- `add_skill_to_collection` - 添加 Skill 到收藏
+- `remove_skill_from_collection` - 从收藏移除 Skill
+- `export_collection_package` - 导出收藏集合为 .collection.zip
+
+#### 分支管理命令（src-tauri/src/commands/fork.rs）
+- `fork_skill` - Fork Skill 到本地或组织
+- `get_skill_lineage` - 获取 Skill 谱系信息
+- `get_fork_info` - 获取分支信息
+- `get_fork_stats` - 获取分支统计信息
+
+#### 发布管理命令（src-tauri/src/commands/publish.rs）
+- `run_publish_preflight` - 运行发布前检查
+- `publish_skill` - 发布 Skill 到市场
+- `get_publish_history` - 获取发布历史
+- `delete_publish_record` - 删除发布记录
+
+#### 创作者管理命令（src-tauri/src/commands/creator.rs）
+- `get_creator_profile` - 获取创作者档案
+- `get_creator_skills` - 获取创作者发布的 Skills
+
+#### 任务管理命令（src-tauri/src/commands/task.rs）
+- `get_tasks` - 获取所有任务列表
+- `get_task` - 获取单个任务详情
+- `cancel_task` - 取消任务
+- `cleanup_tasks` - 清理已完成的任务
 
 #### Share Link 相关命令（src-tauri/src/commands/share.rs）
 
