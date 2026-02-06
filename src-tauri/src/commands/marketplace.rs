@@ -20,7 +20,7 @@ struct RawMarketplaceSkill {
     #[serde(default)]
     author_avatar: Option<String>,
     description: Option<String>,
-    #[serde(rename = "githubUrl")]
+    #[serde(rename = "githubUrl", alias = "url")]  // Add alias to handle both field names
     github_url: Option<String>,
     #[serde(default)]
     version: Option<String>,
