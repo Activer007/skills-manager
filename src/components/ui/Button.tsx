@@ -12,18 +12,18 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, children, disabled, ...props }, ref) => {
     const variants = {
-      // 主要按钮：明确背景色、白色文字、增加 padding
-      primary: 'btn-primary bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-semibold px-4 shadow-md hover:shadow-lg',
-      // 次要按钮
-      secondary: 'btn-neutral text-neutral-content shadow-sm hover:shadow-md',
-      // 轮廓按钮
-      outline: 'btn-outline hover:border-primary hover:text-primary',
-      // 幽灵按钮：彩色悬停效果
-      ghost: 'btn-ghost hover:bg-primary/10 hover:text-primary',
-      // 错误按钮
-      error: 'btn-error text-error-content shadow-sm hover:shadow-md hover:bg-error/90',
-      // 链接按钮
-      link: 'btn-link hover:text-primary/80',
+      // 主要按钮 - 渐变效果 + 光效
+      primary: 'btn-primary-gradient btn-shine text-white font-semibold px-4 shadow-md hover:shadow-xl btn-enhanced',
+      // 次要按钮 - 保持原样
+      secondary: 'btn-neutral text-neutral-content shadow-sm hover:shadow-md transition-all duration-normal',
+      // 轮廓按钮 - 增强边框高光
+      outline: 'btn-outline border-gradient hover:border-primary hover:text-primary transition-all duration-normal',
+      // 幽灵按钮 - 毛玻璃效果
+      ghost: 'btn-ghost hover:bg-primary/10 hover:text-primary glass-effect transition-all duration-normal',
+      // 错误按钮 - 渐变效果
+      error: 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-sm hover:shadow-lg hover:shadow-red-500/25 btn-enhanced transition-all duration-normal',
+      // 链接按钮 - 保持原样
+      link: 'btn-link hover:text-primary/80 transition-colors duration-fast',
     };
 
     const sizes = {

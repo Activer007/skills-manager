@@ -31,10 +31,10 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           className={cn(
             // 统一圆角：rounded-md (8px)
-            // 统一过渡：duration-normal (200ms)
-            // 统一焦点环：ring-2
-            'select select-bordered w-full pl-3 pr-10 bg-base-100 text-slate-900 dark:text-slate-100 border-gray-200 dark:border-base-300 transition-all duration-normal rounded-md focus:ring-2 focus:ring-primary/20 focus:outline-none focus:border-primary',
-            error && 'select-error focus:ring-error/20 focus:border-error',
+            // 统一过渡：duration-fast (150ms)
+            // 增强焦点环：ring-2 + 发光效果
+            'select select-bordered w-full pl-3 pr-10 bg-base-100 text-slate-900 dark:text-slate-100 border-gray-200 dark:border-base-300 transition-all duration-fast rounded-md focus:ring-2 focus:ring-primary/20 focus:outline-none focus:border-primary input-enhanced shadow-soft-sm',
+            error && 'select-error focus:ring-error/20 focus:border-error focus:shadow-glow-error',
             className
           )}
           {...props}

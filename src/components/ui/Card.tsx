@@ -7,10 +7,11 @@ const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     <div
       ref={ref}
       className={cn(
-        // 统一使用 rounded-lg (12px) 而非 rounded-2xl (16px)
-        // 统一阴影：shadow-sm（默认）/shadow-md（悬停）
+        // 统一使用 rounded-lg (12px)
+        // 增强阴影系统：shadow-soft-sm（默认）/shadow-soft-lg（悬停）
         // 统一过渡：duration-normal (200ms)
-        'bg-white dark:bg-base-100 border border-gray-100 dark:border-base-200 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-base-300 rounded-lg transition-all duration-normal',
+        // 添加卡片增强效果
+        'bg-white dark:bg-base-100 border border-gray-100 dark:border-base-200 shadow-soft-sm hover:shadow-soft-lg hover:border-gray-200 dark:hover:border-base-300 rounded-lg transition-all duration-normal card-enhanced',
         className
       )}
       {...props}
