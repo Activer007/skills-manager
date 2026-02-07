@@ -28,15 +28,15 @@ const mapMarketplaceDto = (dto: MarketplaceSkillDTO): MarketplaceSkill => ({
   author: dto.author || 'Unknown',
   authorAvatar: '',
   description: dto.description || '',
-  githubUrl: dto.github_url || '',
+  githubUrl: dto.githubUrl || '', // Corrected property access
   stars: dto.stars,
   forks: dto.forks,
-  updatedAt: dto.updated_at,
+  updatedAt: dto.updatedAt, // Corrected property access
   hasMarketplace: false,
   path: dto.skillPath || 'SKILL.md',
   branch: 'main',
   tags: dto.tags,
-  securityScore: dto.security_score,
+  securityScore: dto.securityScore, // Corrected property access
   compatibility: dto.compatibility,
   repositoryId: dto.repositoryId,
   repositoryName: dto.repositoryName,
@@ -298,12 +298,31 @@ export function useInstallSkill() {
 
   return useMutation({
     mutationFn: async (skill: MarketplaceSkill) => {
-      return await invoke('import_github_skill', {
+      console.log('Attempting to install skill:', skill);
+
+      if (!skill.githubUrl) {
+        // Fallback: try to construct URL from repositoryName if available
+        // Format: "owner/repo" -> "https://github.com/owner/repo"
+        if (skill.repositoryName && skill.repositoryName.includes('/')) {
+            console.warn('githubUrl is missing, falling back to repositoryName:', skill.repositoryName);
+            skill.githubUrl = `https://github.com/${skill.repositoryName}`;
+        } else {
+            throw new Error(`Cannot install skill: Missing GitHub URL for ${skill.name}`);
+        }
+      }
+
+      const result = await invoke<{ success: boolean; message: string }>('import_github_skill', {
         request: {
           repoUrl: skill.githubUrl,
           skipSecurityCheck: false
         }
       });
+
+      if (!result.success) {
+        throw new Error(result.message || 'Installation failed');
+      }
+
+      return result;
     },
     onSuccess: () => {
       // Invalidate both skills and marketplace queries

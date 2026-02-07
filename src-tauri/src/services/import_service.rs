@@ -99,14 +99,19 @@ impl ImportService {
         repo_url: &str,
         install_dir: &std::path::Path,
     ) -> Result<(PathBuf, Option<String>, GithubImportInfo), String> {
+        log::info!("Preparing to clone: {}", repo_url);
+
         let github_info = Self::parse_github_import_url(repo_url);
         let parts: Vec<&str> = repo_url
             .trim_end_matches('/')
             .split('/')
             .collect();
 
+        log::debug!("URL parts: {:?}", parts);
+
         if parts.len() < 5 {
-            return Err("Invalid GitHub URL".to_string());
+            log::error!("Invalid GitHub URL format: {} (parts: {:?})", repo_url, parts);
+            return Err(format!("Invalid GitHub URL: {}", repo_url));
         }
 
         let target_dir_name = if repo_url.contains("/tree/") {

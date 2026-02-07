@@ -132,11 +132,11 @@ export interface Repository {
 
   // Original fields
   enabled: boolean;
-  scanSubdirs: boolean; // 注意：后端是 snake_case，前端通常用 camelCase，但 Tauri 默认序列化可能保留 snake_case，需要确认
-  addedAt: number;      // Unix timestamp (ms)
-  lastScanned?: number; // Unix timestamp (ms)
-  cachePath?: string;
-  cachedCommitSha?: string;
+  scanSubdirs: boolean; // Corrected: camelCase
+  addedAt: number;      // Corrected: camelCase
+  lastScanned?: number; // Corrected: camelCase
+  cachePath?: string;   // Corrected: camelCase
+  cachedCommitSha?: string; // Corrected: camelCase
 
   // Legacy field (kept for backwards compatibility)
   featured: boolean;  // 映射到 sourceType='featured'
@@ -244,27 +244,27 @@ export interface MarketplaceSkillDTO {
   description?: string;
 
   // Metadata
-  github_url?: string;
-  version?: string;  // ✅ 新增：Skill 版本号
+  githubUrl?: string; // Corrected: camelCase to match backend
+  version?: string;
   stars: number;
   forks: number;
-  updated_at: number;
+  updatedAt: number; // Corrected: camelCase
 
   // Tags (parsed as array)
   tags: string[];
-  security_score?: number;
+  securityScore?: number; // Corrected: camelCase
   compatibility?: CompatibilityInfo;
 
-  // ✅ 新增：来源信息（Source Information）
+  // Source information
   repositoryId: string;
   repositoryName: string;
-  sourceType: 'featured' | 'user';  // ✅ 新增：来源类型
-  priority: number;  // ✅ 新增：优先级（精选=10，用户=100）
-  skillPath: string;  // ✅ 新增：在仓库中的路径
+  sourceType: 'featured' | 'user';
+  priority: number;
+  skillPath: string;
 
   // Sync information
-  discoveredAt: number;  // ✅ 新增：发现时间戳
-  syncedAt: number;  // ✅ 新增：同步时间戳
+  discoveredAt: number;
+  syncedAt: number;
 }
 
 /**

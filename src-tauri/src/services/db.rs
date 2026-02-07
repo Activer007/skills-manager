@@ -165,8 +165,6 @@ fn init_schema(conn: &Connection) -> Result<()> {
     )?;
     conn.execute("CREATE INDEX IF NOT EXISTS idx_repositories_url ON repositories(url)", [])?;
     conn.execute("CREATE INDEX IF NOT EXISTS idx_repositories_category ON repositories(category)", [])?;
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_repos_source_type ON repositories(source_type)", [])?;
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_repos_priority ON repositories(priority)", [])?;
 
     // Repository Scan Queue
     conn.execute(
@@ -579,6 +577,10 @@ fn ensure_repository_schema(conn: &Connection) -> Result<()> {
          WHERE scan_status IS NULL OR scan_status = ''",
         [],
     )?;
+
+    // Ensure indices for new columns (moved from init_schema to handle migration correctly)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_repos_source_type ON repositories(source_type)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_repos_priority ON repositories(priority)", [])?;
 
     Ok(())
 }
